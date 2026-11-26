@@ -8,6 +8,7 @@ pub mod chars;
 pub mod graphemes;
 pub mod line_endings;
 pub mod ranges;
+pub mod selections;
 
 pub use chars::{categorize_char, char_category, char_is_punctuation, char_is_whitespace, char_is_word};
 pub use graphemes::{
@@ -17,3 +18,4 @@ pub use graphemes::{
 };
 pub use line_endings::{char_is_line_ending, detect_line_ending, line_ending, line_ending_at};
 pub use ranges::{direction, range};
+pub use selections::selection;
