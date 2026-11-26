@@ -2,4 +2,6 @@
 
 #![warn(missing_docs)]
 
-// Core modules will be registered as implemented.
+pub mod histories;
+
+pub use histories::{history, history_entry};
