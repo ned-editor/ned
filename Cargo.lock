@@ -52,6 +52,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ned_core"
+version = "0.1.0"
+dependencies = [
+ "ned_config",
+ "ned_git",
+ "ned_lsp",
+ "ned_rope",
+ "ned_text",
+ "ned_tree",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "ned_git"
 version = "0.1.0"
 dependencies = [
