@@ -9,6 +9,7 @@
 
 pub mod app;
 pub mod input_mapping;
+pub mod picker;
 pub mod prompt;
 pub mod renderer;
 pub mod theme_bridge;
