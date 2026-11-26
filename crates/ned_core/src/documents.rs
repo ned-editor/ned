@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use ned_config::language_config;
 use ned_git::{compute_diff, discover_repo, fetch_file_base, hunk};
+use ned_lsp::diagnostic;
 use ned_rope::rope;
 use ned_text::{change_set, detect_line_ending, line_ending, selection};
 use ned_tree::{highlight_span, syntax_highlighter};
@@ -29,6 +30,7 @@ pub struct document {
     highlighter: syntax_highlighter,
     language: Option<language_config>,
     diff_hunks: Vec<hunk>,
+    diagnostics: Vec<diagnostic>,
 }
 
 impl document {
@@ -47,6 +49,7 @@ impl document {
             highlighter: syntax_highlighter::new(None),
             language: None,
             diff_hunks: Vec::new(),
+            diagnostics: Vec::new(),
         }
     }
 
@@ -60,7 +63,14 @@ impl document {
         path: impl AsRef<Path>,
         lang_cfg: Option<language_config>,
     ) -> io::Result<Self> {
-        let path_buf = path.as_ref().to_path_buf();
+        let path_ref = path.as_ref();
+        let path_buf = if path_ref.is_absolute() {
+            path_ref.to_path_buf()
+        } else if let Ok(cwd) = std::env::current_dir() {
+            cwd.join(path_ref)
+        } else {
+            path_ref.to_path_buf()
+        };
         let content = fs::read_to_string(&path_buf)?;
         let buffer = rope::from_str(&content);
         let line_end = detect_line_ending(&buffer);
@@ -80,6 +90,7 @@ impl document {
             highlighter,
             language: lang_cfg,
             diff_hunks: Vec::new(),
+            diagnostics: Vec::new(),
         };
 
         doc.reload_diff();
@@ -261,6 +272,18 @@ impl document {
     #[must_use]
     pub fn diff_hunks(&self) -> &[hunk] {
         &self.diff_hunks
+    }
+
+    /// Returns the active compiler diagnostics for this document.
+    #[inline]
+    #[must_use]
+    pub fn diagnostics(&self) -> &[diagnostic] {
+        &self.diagnostics
+    }
+
+    /// Sets the active compiler diagnostics for this document.
+    pub fn set_diagnostics(&mut self, diags: Vec<diagnostic>) {
+        self.diagnostics = diags;
     }
 
     /// Returns a mutable reference to the syntax highlighter.

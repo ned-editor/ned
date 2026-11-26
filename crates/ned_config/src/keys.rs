@@ -148,6 +148,10 @@ pub enum action {
     goto_next_diag,
     /// Jump to previous diagnostic (`[d`).
     goto_prev_diag,
+    /// Open file picker (`space f`).
+    file_picker,
+    /// Open buffer picker (`space b`).
+    buffer_picker,
 
     // --- File operations ---
     /// Save current buffer (`:w`).
@@ -490,6 +494,14 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     let mut right_bracket = key_trie_node::new("Right bracket");
     right_bracket.insert("d", action::goto_next_diag);
     normal.insert_node("]", right_bracket);
+
+    // Space leader keymap
+    let mut space = key_trie_node::new("Space");
+    space.insert("f", action::file_picker);
+    space.insert("b", action::buffer_picker);
+    space.insert("k", action::hover);
+    space.insert("y", action::yank);
+    normal.insert_node("space", space);
 
     keymaps.insert(mode::normal, normal);
 

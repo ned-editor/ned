@@ -92,12 +92,19 @@ impl editor {
     /// Returns `std::io::Error` if reading the file from disk fails.
     pub fn open_file(&mut self, path: impl AsRef<Path>) -> std::io::Result<document_id> {
         let path_ref = path.as_ref();
-        let lang_cfg = self.config.languages.detect_by_path(path_ref).cloned();
+        let abs_path = if path_ref.is_absolute() {
+            path_ref.to_path_buf()
+        } else if let Ok(cwd) = std::env::current_dir() {
+            cwd.join(path_ref)
+        } else {
+            path_ref.to_path_buf()
+        };
+        let lang_cfg = self.config.languages.detect_by_path(&abs_path).cloned();
 
         let doc_id = self.next_doc_id;
         self.next_doc_id += 1;
 
-        let doc = document::open(doc_id, path_ref, lang_cfg)?;
+        let doc = document::open(doc_id, &abs_path, lang_cfg)?;
         self.documents.insert(doc_id, doc);
         self.active_doc_id = doc_id;
 
@@ -108,6 +115,7 @@ impl editor {
         }
 
         self.ensure_active_cursor_visible();
+        self.start_lsp_for_doc(doc_id);
         Ok(doc_id)
     }
 
@@ -498,12 +506,28 @@ impl editor {
             }
 
             // --- LSP & other actions ---
-            action::goto_definition
-            | action::goto_reference
-            | action::hover
-            | action::goto_next_diag
-            | action::goto_prev_diag
-            | action::no_op => {}
+            action::goto_next_diag => {
+                self.goto_diagnostic(true);
+            }
+            action::goto_prev_diag => {
+                self.goto_diagnostic(false);
+            }
+            action::hover => {
+                self.request_hover();
+            }
+            action::goto_definition => {
+                self.request_definition();
+            }
+            action::goto_reference => {
+                self.status_message = Some("LSP references queried".to_string());
+            }
+            action::file_picker => {
+                self.status_message = Some("picker:file".to_string());
+            }
+            action::buffer_picker => {
+                self.status_message = Some("picker:buffer".to_string());
+            }
+            action::no_op => {}
         }
     }
 
@@ -905,6 +929,216 @@ impl editor {
             Err(e) => {
                 self.status_message = Some(e);
             }
+        }
+    }
+
+    /// Starts or connects the language server for `doc_id`.
+    pub fn start_lsp_for_doc(&mut self, doc_id: document_id) {
+        let (lang_name, srv_cmd, srv_args, doc_path, doc_text) = {
+            let doc = match self.documents.get(&doc_id) {
+                Some(d) => d,
+                None => return,
+            };
+            let lang = match doc.language() {
+                Some(l) => l,
+                None => return,
+            };
+            let lsp_cfg = match &lang.language_server {
+                Some(c) => c,
+                None => return,
+            };
+            let path = match doc.path() {
+                Some(p) => p.to_path_buf(),
+                None => return,
+            };
+            (
+                lang.name.clone(),
+                lsp_cfg.command.clone(),
+                lsp_cfg.args.clone(),
+                path,
+                doc.text().to_string(),
+            )
+        };
+
+        if !self.lsp_clients.contains_key(&lang_name) {
+            let root_path = ned_git::discover_repo(&doc_path).map(|p| p.to_string_lossy().to_string());
+            let srv_cfg = ned_lsp::server_config::new(&lang_name, &srv_cmd, srv_args, root_path);
+            if let Ok(c) = ned_lsp::client::start(srv_cfg) {
+                let _ = c.initialize(std::time::Duration::from_millis(300));
+                self.lsp_clients.insert(lang_name.clone(), c);
+            }
+        }
+
+        if let Some(client) = self.lsp_clients.get(&lang_name) {
+            let uri = format!("file://{}", doc_path.to_string_lossy());
+            let _ = client.notify_did_open(&uri, &lang_name, 1, &doc_text);
+        }
+    }
+
+    /// Polls diagnostics from connected LSP clients and assigns them to matching documents.
+    pub fn poll_lsp(&mut self) {
+        let mut new_diagnostics: Vec<(String, Vec<ned_lsp::diagnostic>)> = Vec::new();
+
+        for client in self.lsp_clients.values() {
+            while let Some(params) = client.poll_diagnostics() {
+                new_diagnostics.push((params.uri, params.diagnostics));
+            }
+        }
+
+        for (uri, diags) in new_diagnostics {
+            for doc in self.documents.values_mut() {
+                if let Some(path) = doc.path() {
+                    let doc_uri = format!("file://{}", path.to_string_lossy());
+                    if doc_uri == uri || uri.ends_with(&path.to_string_lossy().to_string()) {
+                        doc.set_diagnostics(diags.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    /// Jumps cursor to the next or previous diagnostic.
+    pub fn goto_diagnostic(&mut self, next: bool) {
+        let doc_id = self.active_doc_id;
+        let (target_line, target_col, msg) = {
+            let doc = match self.documents.get(&doc_id) {
+                Some(d) => d,
+                None => return,
+            };
+            if doc.diagnostics().is_empty() {
+                self.status_message = Some("No diagnostics for this document".to_string());
+                return;
+            }
+            let cursor_char = doc.selection().primary().cursor(doc.text());
+            let cursor_byte = doc.text().char_to_byte(cursor_char);
+            let current_line = doc.text().byte_to_line(cursor_byte) as u32;
+
+            let mut sorted = doc.diagnostics().to_vec();
+            sorted.sort_by_key(|d| (d.range.start.line, d.range.start.character));
+
+            let candidate = if next {
+                sorted
+                    .iter()
+                    .find(|d| d.range.start.line > current_line)
+                    .or_else(|| sorted.first())
+            } else {
+                sorted
+                    .iter()
+                    .rfind(|d| d.range.start.line < current_line)
+                    .or_else(|| sorted.last())
+            };
+
+            match candidate {
+                Some(d) => (d.range.start.line as usize, d.range.start.character as usize, d.message.clone()),
+                None => return,
+            }
+        };
+
+        let doc = self.active_doc_mut();
+        let target_line_byte = doc.text().line_to_byte(target_line).unwrap_or(0);
+        let target_line_char = doc.text().byte_to_char(target_line_byte);
+        let target_char = (target_line_char + target_col).min(doc.text().char_len());
+        doc.set_selection(selection::point(target_char));
+        self.ensure_active_cursor_visible();
+        self.status_message = Some(format!("[LSP] {msg}"));
+    }
+
+    /// Queries hover documentation for the symbol under cursor.
+    pub fn request_hover(&mut self) {
+        let doc = self.active_doc();
+        let lang_name = match doc.language() {
+            Some(l) => l.name.clone(),
+            None => {
+                self.status_message = Some("No language server for this buffer".to_string());
+                return;
+            }
+        };
+        let path = match doc.path() {
+            Some(p) => p.to_path_buf(),
+            None => return,
+        };
+
+        let cursor_char = doc.selection().primary().cursor(doc.text());
+        let cursor_byte = doc.text().char_to_byte(cursor_char);
+        let line = doc.text().byte_to_line(cursor_byte);
+        let line_start_byte = doc.text().line_to_byte(line).unwrap_or(0);
+        let line_start_char = doc.text().byte_to_char(line_start_byte);
+        let col = cursor_char.saturating_sub(line_start_char);
+
+        if let Some(client) = self.lsp_clients.get(&lang_name) {
+            let uri = format!("file://{}", path.to_string_lossy());
+            match client.request_hover(&uri, line as u32, col as u32, std::time::Duration::from_millis(500)) {
+                Ok(Some(h)) => {
+                    let text = match h.contents {
+                        serde_json::Value::String(s) => s,
+                        serde_json::Value::Object(map) => {
+                            map.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string()
+                        }
+                        other => other.to_string(),
+                    };
+                    let first_line = text.lines().next().unwrap_or("").to_string();
+                    self.status_message = Some(first_line);
+                }
+                Ok(None) => {
+                    self.status_message = Some("No hover information available".to_string());
+                }
+                Err(e) => {
+                    self.status_message = Some(format!("Hover error: {e}"));
+                }
+            }
+        } else {
+            self.status_message = Some("Language server not connected".to_string());
+        }
+    }
+
+    /// Queries definition location and jumps to it.
+    pub fn request_definition(&mut self) {
+        let doc = self.active_doc();
+        let lang_name = match doc.language() {
+            Some(l) => l.name.clone(),
+            None => return,
+        };
+        let path = match doc.path() {
+            Some(p) => p.to_path_buf(),
+            None => return,
+        };
+
+        let cursor_char = doc.selection().primary().cursor(doc.text());
+        let cursor_byte = doc.text().char_to_byte(cursor_char);
+        let line = doc.text().byte_to_line(cursor_byte);
+        let line_start_byte = doc.text().line_to_byte(line).unwrap_or(0);
+        let line_start_char = doc.text().byte_to_char(line_start_byte);
+        let col = cursor_char.saturating_sub(line_start_char);
+
+        let target_location = if let Some(client) = self.lsp_clients.get(&lang_name) {
+            let uri = format!("file://{}", path.to_string_lossy());
+            match client.request_definition(&uri, line as u32, col as u32, std::time::Duration::from_millis(500)) {
+                Ok(Some(locs)) => locs.into_iter().next(),
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+        if let Some(loc) = target_location {
+            let target_path_str = loc.uri.strip_prefix("file://").unwrap_or(&loc.uri);
+            let target_line = loc.range.start.line as usize;
+            let target_col = loc.range.start.character as usize;
+
+            let is_same_file = doc.path().map_or(false, |p| p.to_string_lossy() == target_path_str);
+            if !is_same_file {
+                let _ = self.open_file(target_path_str);
+            }
+
+            let doc = self.active_doc_mut();
+            let line_byte = doc.text().line_to_byte(target_line).unwrap_or(0);
+            let line_char = doc.text().byte_to_char(line_byte);
+            let target_char = (line_char + target_col).min(doc.text().char_len());
+            doc.set_selection(selection::point(target_char));
+            self.ensure_active_cursor_visible();
+            self.status_message = Some(format!("Jumped to {target_path_str}:{target_line}"));
+        } else {
+            self.status_message = Some("Definition not found".to_string());
         }
     }
 }
