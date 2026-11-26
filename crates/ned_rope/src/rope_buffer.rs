@@ -210,6 +210,19 @@ impl rope {
         let end_byte = self.char_to_byte(range.end);
         self.slice_to_string(start_byte..end_byte)
     }
+
+    /// inserts a string slice at the given 0-based character index.
+    pub fn insert_chars(&mut self, char_idx: usize, text: &str) {
+        let byte_offset = self.char_to_byte(char_idx);
+        self.insert_str(byte_offset, text);
+    }
+
+    /// deletes a character range from the rope.
+    pub fn delete_chars(&mut self, range: Range<usize>) {
+        let start_byte = self.char_to_byte(range.start);
+        let end_byte = self.char_to_byte(range.end);
+        self.delete_bytes(start_byte..end_byte);
+    }
 }
 
 impl fmt::Display for rope {

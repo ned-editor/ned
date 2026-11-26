@@ -4,12 +4,14 @@
 //! including selection ranges, cursor positions, character categorization,
 //! line endings, grapheme boundary navigation, changesets, and editor motions.
 
+pub mod changes;
 pub mod chars;
 pub mod graphemes;
 pub mod line_endings;
 pub mod ranges;
 pub mod selections;
 
+pub use changes::{assoc, change_error, change_set, operation};
 pub use chars::{categorize_char, char_category, char_is_punctuation, char_is_whitespace, char_is_word};
 pub use graphemes::{
     ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, is_grapheme_boundary,
