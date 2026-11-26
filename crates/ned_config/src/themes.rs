@@ -139,8 +139,12 @@ impl theme {
         t.insert("ui.popup", style::new().fg(fg).bg(mantle));
         t.insert("ui.menu", style::new().fg(fg).bg(mantle));
         t.insert("ui.menu.selected", style::new().fg(bg).bg(c_blue));
+        t.insert("ui.window", style::new().fg(surface1));
+        t.insert("ui.background.separator", style::new().fg(surface1));
         t.insert("ui.help", style::new().fg(fg).bg(surface0));
         t.insert("ui.text.inactive", style::new().fg(overlay0));
+        t.insert("ui.highlight", style::new().bg(surface1));
+        t.insert("special", style::new().fg(c_yellow).modifier(modifier { bold: true, ..Default::default() }));
 
         // Git diff scopes
         t.insert("diff.plus", style::new().fg(c_green));
