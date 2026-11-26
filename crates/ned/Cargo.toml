@@ -1,0 +1,26 @@
+[package]
+name = "ned"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+description = "Fast, disciplined, Helix-inspired modal terminal text editor in pure Rust"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "ned"
+path = "src/main.rs"
+
+[dependencies]
+ned_core = { path = "../ned_core" }
+ned_tui = { path = "../ned_tui" }
+ned_config = { path = "../ned_config" }
+ned_tree = { path = "../ned_tree" }
+ned_git = { path = "../ned_git" }
+ned_lsp = { path = "../ned_lsp" }
+ned_text = { path = "../ned_text" }
+ned_rope = { path = "../ned_rope" }
+yokio = { workspace = true }
