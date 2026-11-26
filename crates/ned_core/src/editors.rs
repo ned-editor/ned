@@ -1083,7 +1083,9 @@ impl editor {
     }
 
     /// Polls diagnostics from connected LSP clients and assigns them to matching documents.
-    pub fn poll_lsp(&mut self) {
+    ///
+    /// Returns `true` if any diagnostics were received and applied.
+    pub fn poll_lsp(&mut self) -> bool {
         let mut new_diagnostics: Vec<(String, Vec<ned_lsp::diagnostic>)> = Vec::new();
 
         for client in self.lsp_clients.values() {
@@ -1092,16 +1094,23 @@ impl editor {
             }
         }
 
+        if new_diagnostics.is_empty() {
+            return false;
+        }
+
+        let mut updated = false;
         for (uri, diags) in new_diagnostics {
             for doc in self.documents.values_mut() {
                 if let Some(path) = doc.path() {
                     let doc_uri = format!("file://{}", path.to_string_lossy());
                     if doc_uri == uri || uri.ends_with(&path.to_string_lossy().to_string()) {
                         doc.set_diagnostics(diags.clone());
+                        updated = true;
                     }
                 }
             }
         }
+        updated
     }
 
     /// Jumps cursor to the next or previous diagnostic.

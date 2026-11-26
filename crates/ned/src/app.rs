@@ -154,6 +154,19 @@ pub fn run(paths: &[String]) -> io::Result<()> {
 
     state.borrow_mut().input_watcher = Some(watcher);
 
+    // Poll LSP diagnostics asynchronously so UI updates immediately when servers respond
+    let lsp_state = Rc::clone(&state);
+    let _lsp_ticker = yokio::every(std::time::Duration::from_millis(100), move || {
+        if let Ok(mut app) = lsp_state.try_borrow_mut() {
+            if app.ed.should_quit {
+                return;
+            }
+            if app.ed.poll_lsp() {
+                let _ = app.render();
+            }
+        }
+    });
+
     // Drive event loop until quit
     rt.run().map_err(|e| io::Error::other(e.to_string()))?;
 
