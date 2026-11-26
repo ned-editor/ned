@@ -31,6 +31,7 @@ pub struct document {
     language: Option<language_config>,
     diff_hunks: Vec<hunk>,
     diagnostics: Vec<diagnostic>,
+    version: i32,
 }
 
 impl document {
@@ -50,6 +51,7 @@ impl document {
             language: None,
             diff_hunks: Vec::new(),
             diagnostics: Vec::new(),
+            version: 1,
         }
     }
 
@@ -91,6 +93,7 @@ impl document {
             language: lang_cfg,
             diff_hunks: Vec::new(),
             diagnostics: Vec::new(),
+            version: 1,
         };
 
         doc.reload_diff();
@@ -154,6 +157,7 @@ impl document {
 
         let _ = changes.apply(&mut self.text);
         self.selection = selection_after;
+        self.version += 1;
         self.modified = self.history.current_revision() != self.saved_revision;
     }
 
@@ -162,6 +166,7 @@ impl document {
         if let Some(restored_sel) = self.history.undo(&mut self.text) {
             self.selection = restored_sel;
             self.highlighter.invalidate_from(0);
+            self.version += 1;
             self.modified = self.history.current_revision() != self.saved_revision;
             true
         } else {
@@ -174,6 +179,7 @@ impl document {
         if let Some(restored_sel) = self.history.redo(&mut self.text) {
             self.selection = restored_sel;
             self.highlighter.invalidate_from(0);
+            self.version += 1;
             self.modified = self.history.current_revision() != self.saved_revision;
             true
         } else {
@@ -272,6 +278,13 @@ impl document {
     #[must_use]
     pub fn diff_hunks(&self) -> &[hunk] {
         &self.diff_hunks
+    }
+
+    /// Returns the monotonically increasing document version for LSP sync.
+    #[inline]
+    #[must_use]
+    pub fn version(&self) -> i32 {
+        self.version
     }
 
     /// Returns the active compiler diagnostics for this document.

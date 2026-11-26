@@ -412,14 +412,18 @@ impl editor {
                 self.paste_register(false);
             }
             action::undo => {
-                let doc = self.active_doc_mut();
-                doc.undo();
+                let changed = self.active_doc_mut().undo();
                 self.ensure_active_cursor_visible();
+                if changed {
+                    self.notify_lsp_did_change(self.active_doc_id);
+                }
             }
             action::redo => {
-                let doc = self.active_doc_mut();
-                doc.redo();
+                let changed = self.active_doc_mut().redo();
                 self.ensure_active_cursor_visible();
+                if changed {
+                    self.notify_lsp_did_change(self.active_doc_id);
+                }
             }
             action::switch_case | action::switch_to_lowercase | action::switch_to_uppercase => {
                 self.transform_selection_case(act);
@@ -472,9 +476,12 @@ impl editor {
 
             // --- File operations ---
             action::write => {
-                let doc = self.active_doc_mut();
-                match doc.save() {
-                    Ok(()) => self.status_message = Some("written".to_string()),
+                let res = self.active_doc_mut().save();
+                match res {
+                    Ok(()) => {
+                        self.status_message = Some("written".to_string());
+                        self.notify_lsp_did_save(self.active_doc_id);
+                    }
                     Err(e) => self.status_message = Some(format!("write error: {e}")),
                 }
             }
@@ -681,6 +688,7 @@ impl editor {
         let new_sel = cs.map_selection(doc.selection().clone());
         doc.apply(cs, Some(new_sel));
         self.ensure_active_cursor_visible();
+        self.notify_lsp_did_change(self.active_doc_id);
     }
 
     /// Deletes character backward from each selection head.
@@ -715,6 +723,7 @@ impl editor {
         let new_sel = cs.map_selection(doc.selection().clone());
         doc.apply(cs, Some(new_sel));
         self.ensure_active_cursor_visible();
+        self.notify_lsp_did_change(self.active_doc_id);
     }
 
     /// Deletes text covered by all selections and collapses selections to point cursors.
@@ -742,6 +751,7 @@ impl editor {
         let new_sel = cs.map_selection(doc.selection().clone());
         doc.apply(cs, Some(new_sel));
         self.ensure_active_cursor_visible();
+        self.notify_lsp_did_change(self.active_doc_id);
     }
 
     /// Yanks text from active selection ranges into the chosen register.
@@ -929,14 +939,19 @@ impl editor {
     pub fn execute_command(&mut self, cmd_str: &str) {
         match parse_command(cmd_str) {
             Ok(editor_command::write(path_opt)) => {
-                let doc = self.active_doc_mut();
-                let res = if let Some(path) = path_opt {
-                    doc.save_to(path)
-                } else {
-                    doc.save()
+                let res = {
+                    let doc = self.active_doc_mut();
+                    if let Some(path) = path_opt {
+                        doc.save_to(path)
+                    } else {
+                        doc.save()
+                    }
                 };
                 match res {
-                    Ok(()) => self.status_message = Some("written".to_string()),
+                    Ok(()) => {
+                        self.status_message = Some("written".to_string());
+                        self.notify_lsp_did_save(self.active_doc_id);
+                    }
                     Err(e) => self.status_message = Some(format!("write error: {e}")),
                 }
             }
@@ -980,7 +995,7 @@ impl editor {
 
     /// Starts or connects the language server for `doc_id`.
     pub fn start_lsp_for_doc(&mut self, doc_id: document_id) {
-        let (lang_name, srv_cmd, srv_args, doc_path, doc_text) = {
+        let (lang_name, srv_cmd, srv_args, doc_path, doc_text, doc_version) = {
             let doc = match self.documents.get(&doc_id) {
                 Some(d) => d,
                 None => return,
@@ -1003,21 +1018,60 @@ impl editor {
                 lsp_cfg.args.clone(),
                 path,
                 doc.text().to_string(),
+                doc.version(),
             )
         };
 
         if !self.lsp_clients.contains_key(&lang_name) {
-            let root_path = ned_git::discover_repo(&doc_path).map(|p| p.to_string_lossy().to_string());
+            let root_path = ned_git::discover_repo(&doc_path)
+                .or_else(|| doc_path.parent().map(std::path::Path::to_path_buf))
+                .map(|p| p.to_string_lossy().to_string());
             let srv_cfg = ned_lsp::server_config::new(&lang_name, &srv_cmd, srv_args, root_path);
             if let Ok(c) = ned_lsp::client::start(srv_cfg) {
-                let _ = c.initialize(std::time::Duration::from_millis(50));
+                if c.initialize(std::time::Duration::from_millis(2000)).is_ok() {
+                    let _ = c.initialized();
+                }
                 self.lsp_clients.insert(lang_name.clone(), c);
             }
         }
 
         if let Some(client) = self.lsp_clients.get(&lang_name) {
             let uri = format!("file://{}", doc_path.to_string_lossy());
-            let _ = client.notify_did_open(&uri, &lang_name, 1, &doc_text);
+            let _ = client.notify_did_open(&uri, &lang_name, doc_version, &doc_text);
+        }
+    }
+
+    /// Notifies the connected LSP server that `doc_id` contents changed.
+    pub fn notify_lsp_did_change(&self, doc_id: document_id) {
+        let Some(doc) = self.documents.get(&doc_id) else {
+            return;
+        };
+        let Some(lang) = doc.language() else {
+            return;
+        };
+        let Some(path) = doc.path() else {
+            return;
+        };
+        if let Some(client) = self.lsp_clients.get(&lang.name) {
+            let uri = format!("file://{}", path.to_string_lossy());
+            let _ = client.notify_did_change(&uri, doc.version(), &doc.text().to_string());
+        }
+    }
+
+    /// Notifies the connected LSP server that `doc_id` was saved.
+    pub fn notify_lsp_did_save(&self, doc_id: document_id) {
+        let Some(doc) = self.documents.get(&doc_id) else {
+            return;
+        };
+        let Some(lang) = doc.language() else {
+            return;
+        };
+        let Some(path) = doc.path() else {
+            return;
+        };
+        if let Some(client) = self.lsp_clients.get(&lang.name) {
+            let uri = format!("file://{}", path.to_string_lossy());
+            let _ = client.notify_did_save(&uri);
         }
     }
 
