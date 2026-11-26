@@ -106,8 +106,7 @@ fn myers_diff(base: &[&str], current: &[&str]) -> Vec<edit_step> {
 
             while x < isize::try_from(n).unwrap_or(0)
                 && y < isize::try_from(m).unwrap_or(0)
-                && base[usize::try_from(x).unwrap_or(0)]
-                    == current[usize::try_from(y).unwrap_or(0)]
+                && base[usize::try_from(x).unwrap_or(0)] == current[usize::try_from(y).unwrap_or(0)]
             {
                 x += 1;
                 y += 1;
