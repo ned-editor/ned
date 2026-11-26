@@ -16,7 +16,7 @@ use ned_tui::Termit;
 use crate::input_mapping::translate_key_event;
 use crate::picker::{picker_action, picker_state};
 use crate::prompt::{prompt_action, prompt_state};
-use crate::renderer::{cursor_render_info, render_frame};
+use crate::ui::{cursor_render_info, render_frame};
 
 /// Internal mutable state shared between event loop and input handlers.
 struct app_state {
