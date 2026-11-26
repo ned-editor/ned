@@ -2,13 +2,17 @@
 
 #![warn(missing_docs)]
 
+pub mod command_parser;
 pub mod documents;
+pub mod editors;
 pub mod histories;
 pub mod registers;
 pub mod runtime_loader;
 pub mod views;
 
+pub use command_parser::{editor_command, parse_command};
 pub use documents::{document, document_id};
+pub use editors::editor;
 pub use histories::{history, history_entry};
 pub use registers::register_storage;
 pub use runtime_loader::{discover_grammar_file, load_grammar};
