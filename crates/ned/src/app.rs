@@ -171,10 +171,28 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
             picker_action::cancel => {
                 app.picker = None;
             }
-            picker_action::select(path) => {
+            picker_action::select(item) => {
                 app.picker = None;
-                if let Err(e) = app.ed.open_file(&path) {
-                    app.ed.status_message = Some(format!("error opening {path}: {e}"));
+                if p.title == "Diagnostics" {
+                    if let Some((loc, msg)) = item.split_once("] ") {
+                        if let Some(coords) = loc.split_whitespace().next() {
+                            if let Some((l_str, c_str)) = coords.split_once(':') {
+                                if let (Ok(l), Ok(c)) = (l_str.parse::<usize>(), c_str.parse::<usize>()) {
+                                    let doc = app.ed.active_doc_mut();
+                                    let line_idx = l.saturating_sub(1);
+                                    let col_idx = c.saturating_sub(1);
+                                    let line_byte = doc.text().line_to_byte(line_idx).unwrap_or(0);
+                                    let line_char = doc.text().byte_to_char(line_byte);
+                                    let target_char = (line_char + col_idx).min(doc.text().char_len());
+                                    doc.set_selection(ned_text::selection::point(target_char));
+                                    app.ed.ensure_active_cursor_visible();
+                                }
+                            }
+                        }
+                        app.ed.status_message = Some(format!("[LSP] {msg}"));
+                    }
+                } else if let Err(e) = app.ed.open_file(&item) {
+                    app.ed.status_message = Some(format!("error opening {item}: {e}"));
                 }
             }
         }
@@ -236,6 +254,28 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                     buffers.push(name);
                 }
                 app.picker = Some(picker_state::new_buffer_picker(buffers));
+            } else if msg == "picker:diagnostics" {
+                let diags = app.ed.active_doc().diagnostics();
+                if diags.is_empty() {
+                    app.ed.status_message = Some("No diagnostics for this document".to_string());
+                } else {
+                    let mut items = Vec::with_capacity(diags.len());
+                    for d in diags {
+                        let sev = match d.severity {
+                            Some(ned_lsp::diagnostic_severity::error) => "ERROR",
+                            Some(ned_lsp::diagnostic_severity::warning) => "WARN",
+                            Some(ned_lsp::diagnostic_severity::information) => "INFO",
+                            Some(ned_lsp::diagnostic_severity::hint) | None => "HINT",
+                        };
+                        let first_line = d.message.lines().next().unwrap_or("");
+                        items.push(format!(
+                            "{}:{} [{sev}] {first_line}",
+                            d.range.start.line + 1,
+                            d.range.start.character + 1
+                        ));
+                    }
+                    app.picker = Some(picker_state::new_diagnostics_picker(items));
+                }
             } else {
                 app.ed.status_message = Some(msg);
             }

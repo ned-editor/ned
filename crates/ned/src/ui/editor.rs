@@ -5,10 +5,12 @@ use ned_core::editor;
 use ned_git::diff_tag;
 use ned_lsp::diagnostic_severity;
 use ned_tui::geometry::point;
+use ned_tui::output::color::Color;
 use ned_tui::output::style::Style;
 use ned_tui::Screen;
 
 use crate::theme_bridge::{merge_style, style_for_scope};
+use crate::ui::draw_str;
 
 /// Computes the dynamic width of the gutter for `line_count` matching Helix layout:
 /// `[diagnostic (1)] [line_digits] [space (1)] [diff indicator (1)]`.
@@ -181,6 +183,20 @@ pub fn render_editor(
                     token_style = merge_style(token_style, scope_style);
                 }
 
+                // Inline diagnostic underline
+                if let Some(ul_color) = diag_underline_color(
+                    doc.diagnostics(),
+                    line_idx,
+                    char_idx_in_line,
+                    diag_error_style,
+                    diag_warning_style,
+                    diag_info_style,
+                    diag_hint_style,
+                ) {
+                    token_style.underlined = Some(true);
+                    token_style.frame_color = Some(ul_color);
+                }
+
                 // Selection overlay
                 for sel_range in doc.selection() {
                     let is_primary = *sel_range == primary_range;
@@ -197,6 +213,26 @@ pub fn render_editor(
 
                 let s = ch.to_string();
                 screen.set(point(screen_col, row), &token_style, &s);
+            }
+
+            // Inline end-of-line diagnostic message (Helix inline-diagnostics parity)
+            if let Some((diag_msg, diag_fg_style)) = get_line_inline_diagnostic(
+                doc.diagnostics(),
+                line_idx,
+                diag_error_style,
+                diag_warning_style,
+                diag_info_style,
+                diag_hint_style,
+            ) {
+                let visible_len = line_chars.len().saturating_sub(col_offset) as u16;
+                let eol_col = gutter_width + visible_len + 2;
+                if eol_col + 4 < width {
+                    let mut inline_style = merge_style(line_bg, diag_fg_style);
+                    inline_style.italic = Some(true);
+                    let first_line = diag_msg.lines().next().unwrap_or("");
+                    let display_msg = format!("■ {first_line}");
+                    draw_str(screen, eol_col, row, &display_msg, &inline_style, width);
+                }
             }
         } else {
             // Beyond EOF: Helix virtual line indicator `~`
@@ -297,6 +333,77 @@ fn get_diagnostic_indicator(
         Some(diagnostic_severity::hint) => ("●", hint_style),
         None => (" ", gutter_style),
     }
+}
+
+/// Returns the underline color for a character inside a diagnostic range, prioritizing errors.
+fn diag_underline_color(
+    diags: &[ned_lsp::diagnostic],
+    line_idx: usize,
+    col_idx: usize,
+    error_style: Style,
+    warning_style: Style,
+    info_style: Style,
+    hint_style: Style,
+) -> Option<Color> {
+    let l = line_idx as u32;
+    let c = col_idx as u32;
+    let mut best: Option<(u8, Style)> = None;
+
+    for d in diags {
+        let s = &d.range.start;
+        let e = &d.range.end;
+        let in_range = if s.line == e.line {
+            l == s.line
+                && c >= s.character
+                && (c < e.character || (s.character == e.character && c == s.character))
+        } else {
+            (l == s.line && c >= s.character)
+                || (l > s.line && l < e.line)
+                || (l == e.line && c < e.character)
+        };
+
+        if in_range {
+            let (prio, st) = match d.severity {
+                Some(diagnostic_severity::error) => (4, error_style),
+                Some(diagnostic_severity::warning) => (3, warning_style),
+                Some(diagnostic_severity::information) => (2, info_style),
+                Some(diagnostic_severity::hint) | None => (1, hint_style),
+            };
+            if best.is_none_or(|(bp, _)| prio > bp) {
+                best = Some((prio, st));
+            }
+        }
+    }
+
+    best.and_then(|(_, st)| st.front_color)
+}
+
+/// Returns the highest-severity diagnostic message and style for inline end-of-line display.
+fn get_line_inline_diagnostic(
+    diags: &[ned_lsp::diagnostic],
+    line_idx: usize,
+    error_style: Style,
+    warning_style: Style,
+    info_style: Style,
+    hint_style: Style,
+) -> Option<(&str, Style)> {
+    let mut best: Option<(u8, &str, Style)> = None;
+
+    for d in diags {
+        if d.range.start.line as usize == line_idx {
+            let (prio, st) = match d.severity {
+                Some(diagnostic_severity::error) => (4, error_style),
+                Some(diagnostic_severity::warning) => (3, warning_style),
+                Some(diagnostic_severity::information) => (2, info_style),
+                Some(diagnostic_severity::hint) | None => (1, hint_style),
+            };
+            if best.is_none_or(|(bp, _, _)| prio > bp) {
+                best = Some((prio, d.message.as_str(), st));
+            }
+        }
+    }
+
+    best.map(|(_, msg, st)| (msg, st))
 }
 
 /// Formats the line number string respecting relative and absolute settings.

@@ -117,6 +117,22 @@ impl picker_state {
         state
     }
 
+    /// Creates a new diagnostics picker listing formatted LSP diagnostics.
+    #[must_use]
+    pub fn new_diagnostics_picker(items: Vec<String>) -> Self {
+        let filtered = (0..items.len()).collect();
+        Self {
+            title: "Diagnostics".to_string(),
+            query: String::new(),
+            items,
+            filtered,
+            selected: 0,
+            root_dir: None,
+            show_preview: false,
+            preview_cache: HashMap::new(),
+        }
+    }
+
     /// Returns the currently selected item string, if any.
     #[must_use]
     pub fn selected_item(&self) -> Option<&str> {

@@ -6,7 +6,7 @@ use ned_tui::geometry::point;
 use ned_tui::Screen;
 
 use crate::theme_bridge::{merge_style, style_for_scope};
-use crate::ui::draw_str;
+use crate::ui::{draw_str, wrap_text};
 
 /// Renders the floating which-key autoinfo popup in the bottom right corner.
 ///
@@ -134,5 +134,100 @@ pub fn render_autoinfo(
         // Render action description in theme `ui.text` scope
         let desc_x = col_x + max_key_len as u16 + 2;
         draw_str(screen, desc_x, r, desc_str, &desc_style, end_col - 1);
+    }
+}
+
+/// Renders the floating LSP hover documentation popup near the cursor (matching Helix).
+pub fn render_hover_popup(
+    screen: &mut Screen,
+    ed: &editor,
+    content: &str,
+    width: u16,
+    statusline_row: u16,
+    cursor_col: u16,
+    cursor_row: u16,
+) {
+    if content.is_empty() || width < 25 || statusline_row < 5 {
+        return;
+    }
+
+    let theme = &ed.config.theme;
+    let base_text_style = style_for_scope(theme, "ui.text");
+    let base_bg_style = style_for_scope(theme, "ui.background");
+    let default_style = merge_style(base_bg_style, base_text_style);
+
+    let popup_style = merge_style(default_style, style_for_scope(theme, "ui.popup"));
+    let border_style = merge_style(popup_style, style_for_scope(theme, "ui.window"));
+    let title_style = merge_style(border_style, style_for_scope(theme, "ui.text.focus"));
+    let text_style = merge_style(popup_style, style_for_scope(theme, "ui.text"));
+
+    let max_inner_w = (width.saturating_sub(6) as usize).clamp(20, 76);
+    let mut wrapped_lines: Vec<String> = Vec::new();
+    for raw_line in content.lines() {
+        let trimmed = raw_line.trim_end();
+        if trimmed.is_empty() {
+            wrapped_lines.push(String::new());
+        } else {
+            wrapped_lines.extend(wrap_text(trimmed, max_inner_w));
+        }
+    }
+    if wrapped_lines.is_empty() {
+        return;
+    }
+
+    let max_line_len = wrapped_lines.iter().map(|l| l.chars().count()).max().unwrap_or(10);
+    let popup_width = (max_line_len as u16 + 4).clamp(20, width.saturating_sub(2));
+    let max_popup_h = statusline_row.min(18);
+    let popup_height = (wrapped_lines.len() as u16 + 2).clamp(3, max_popup_h);
+
+    let start_col = if cursor_col + popup_width < width {
+        cursor_col
+    } else {
+        width.saturating_sub(popup_width).saturating_sub(1)
+    };
+
+    let start_row = if cursor_row >= popup_height {
+        cursor_row - popup_height
+    } else if cursor_row + 1 + popup_height <= statusline_row {
+        cursor_row + 1
+    } else {
+        0
+    };
+
+    let end_col = start_col + popup_width.saturating_sub(1);
+    let end_row = start_row + popup_height.saturating_sub(1);
+
+    for r in start_row..=end_row {
+        for c in start_col..=end_col {
+            screen.set(point(c, r), &popup_style, " ");
+        }
+    }
+
+    screen.set(point(start_col, start_row), &border_style, "┌");
+    screen.set(point(end_col, start_row), &border_style, "┐");
+    screen.set(point(start_col, end_row), &border_style, "└");
+    screen.set(point(end_col, end_row), &border_style, "┘");
+
+    for c in start_col + 1..end_col {
+        screen.set(point(c, start_row), &border_style, "─");
+        screen.set(point(c, end_row), &border_style, "─");
+    }
+    for r in start_row + 1..end_row {
+        screen.set(point(start_col, r), &border_style, "│");
+        screen.set(point(end_col, r), &border_style, "│");
+    }
+
+    draw_str(screen, start_col + 2, start_row, " info ", &title_style, end_col - 1);
+
+    let max_lines = popup_height.saturating_sub(2) as usize;
+    for (i, line) in wrapped_lines.iter().take(max_lines).enumerate() {
+        draw_str(
+            screen,
+            start_col + 2,
+            start_row + 1 + i as u16,
+            line,
+            &text_style,
+            end_col - 1,
+        );
     }
 }

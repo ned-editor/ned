@@ -40,6 +40,8 @@ pub struct editor {
     pub key_prefix: Option<key_trie_node>,
     /// Ephemeral status line message.
     pub status_message: Option<String>,
+    /// Floating hover documentation popup text.
+    pub hover_popup: Option<String>,
     /// Active search pattern query string.
     pub search_query: Option<String>,
     /// Connected LSP language clients keyed by language name.
@@ -77,6 +79,7 @@ impl editor {
             selected_register: None,
             key_prefix: None,
             status_message: None,
+            hover_popup: None,
             search_query: None,
             lsp_clients: HashMap::new(),
             should_quit: false,
@@ -175,6 +178,7 @@ impl editor {
     ///
     /// Returns `true` if the event was handled and may require redraw.
     pub fn handle_key(&mut self, ev: key_event) -> bool {
+        self.hover_popup = None;
         if self.mode == mode::insert {
             // Check insert mode keybindings first (e.g. Esc -> normal_mode, Backspace)
             let matched_entry = self
@@ -533,6 +537,9 @@ impl editor {
             }
             action::buffer_picker => {
                 self.status_message = Some("picker:buffer".to_string());
+            }
+            action::diagnostics_picker => {
+                self.status_message = Some("picker:diagnostics".to_string());
             }
             action::no_op => {}
         }
@@ -1176,8 +1183,12 @@ impl editor {
                         }
                         other => other.to_string(),
                     };
-                    let first_line = text.lines().next().unwrap_or("").to_string();
-                    self.status_message = Some(first_line);
+                    let trimmed = text.trim().to_string();
+                    if trimmed.is_empty() {
+                        self.status_message = Some("No hover information available".to_string());
+                    } else {
+                        self.hover_popup = Some(trimmed);
+                    }
                 }
                 Ok(None) => {
                     self.status_message = Some("No hover information available".to_string());

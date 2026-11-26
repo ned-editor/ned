@@ -114,6 +114,18 @@ pub fn render_frame(
                 (gutter_width, 0, false)
             };
 
+        if let Some(ref hover_text) = ed.hover_popup {
+            info::render_hover_popup(
+                screen,
+                ed,
+                hover_text,
+                width,
+                statusline_row,
+                cursor_col,
+                cursor_row,
+            );
+        }
+
         let shape = match ed.mode {
             ned_config::mode::normal => ed.config.editor.cursor_shape.normal,
             ned_config::mode::insert => ed.config.editor.cursor_shape.insert,

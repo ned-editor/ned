@@ -152,6 +152,8 @@ pub enum action {
     file_picker,
     /// Open buffer picker (`space b`).
     buffer_picker,
+    /// Open diagnostics picker (`space d`).
+    diagnostics_picker,
 
     // --- File operations ---
     /// Save current buffer (`:w`).
@@ -499,6 +501,7 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     let mut space = key_trie_node::new("Space");
     space.insert("f", action::file_picker);
     space.insert("b", action::buffer_picker);
+    space.insert("d", action::diagnostics_picker);
     space.insert("k", action::hover);
     space.insert("y", action::yank);
     normal.insert_node("space", space);
