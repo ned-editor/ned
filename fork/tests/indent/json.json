@@ -1,0 +1,41 @@
+{
+  "name": "helix",
+  "version": 1,
+  "nested": {
+//           ^ 4 eof
+    "empty": {},
+//            ^ 4
+    "enabled": true,
+    "deep": {
+//           ^ 6 eof
+      "value": null
+    }
+  },
+  "list": [
+    1,
+    2,
+    3
+  ],
+  "objects": [
+    {
+      "id": 1,
+      "tags": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "id": 2
+    }
+  ],
+  "matrix": [
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ]
+}

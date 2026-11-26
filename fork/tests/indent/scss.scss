@@ -1,0 +1,11 @@
+.container {
+  &:hover {}
+//         ^ 2
+  color: red;
+  .nested {
+    width: 100%;
+  }
+  @media (max-width: 600px) {
+    display: none;
+  }
+}

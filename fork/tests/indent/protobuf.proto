@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+message Person {
+//              ^ 2 eof
+  message Empty {}
+//               ^ 2
+  string name = 1;
+
+  enum PhoneType {
+//                ^ 4 eof
+    MOBILE = 0;
+    HOME = 1;
+  }
+
+  oneof contact {
+    string email = 3;
+    string phone = 4;
+  }
+}
+
+service AddressBook {
+  rpc GetPerson(PersonRequest) returns (Person) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
