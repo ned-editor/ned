@@ -26,6 +26,34 @@ pub fn lex_line(
     // 1. Resume from multiline state if active
     let mut state = initial_state;
     match state {
+        line_state::in_string(quote) => {
+            let mut escaped = false;
+            let mut closed = false;
+            let mut close_char = num_chars;
+
+            while char_idx < num_chars {
+                let curr = chars[char_idx].1;
+                if escaped {
+                    escaped = false;
+                } else if curr == '\\' {
+                    escaped = true;
+                } else if curr == quote {
+                    char_idx += 1;
+                    close_char = char_idx;
+                    closed = true;
+                    break;
+                }
+                char_idx += 1;
+            }
+
+            out_spans.push(highlight_span::new(0, close_char, syntax_kind::string_literal));
+
+            if closed {
+                state = line_state::normal;
+            } else {
+                return line_state::in_string(quote);
+            }
+        }
         line_state::in_block_comment(depth) => {
             if let Some((_, ref end_delim)) = grammar.block_comment {
                 if let Some(pos) = line.find(end_delim) {
@@ -161,12 +189,38 @@ pub fn lex_line(
             }
         }
 
+        // Rust lifetime or label (e.g. `'static`, `'a`, `'_`)
+        if ch == '\'' {
+            let rem_chars = &chars[char_idx + 1..];
+            if let Some((_, first_after)) = rem_chars.first() {
+                if first_after.is_alphabetic() || *first_after == '_' {
+                    let is_single_char = rem_chars.len() >= 2 && rem_chars[1].1 == '\'';
+                    if !is_single_char {
+                        let lt_start = char_idx;
+                        char_idx += 1;
+                        while char_idx < num_chars
+                            && (chars[char_idx].1.is_alphanumeric() || chars[char_idx].1 == '_')
+                        {
+                            char_idx += 1;
+                        }
+                        out_spans.push(highlight_span::new(
+                            lt_start,
+                            char_idx,
+                            syntax_kind::type_builtin,
+                        ));
+                        continue;
+                    }
+                }
+            }
+        }
+
         // Standard string literals (`"` or `'`)
         if ch == '"' || ch == '\'' {
             let str_start = char_idx;
             let quote = ch;
             char_idx += 1;
             let mut escaped = false;
+            let mut closed = false;
 
             while char_idx < num_chars {
                 let curr = chars[char_idx].1;
@@ -176,17 +230,22 @@ pub fn lex_line(
                     escaped = true;
                 } else if curr == quote {
                     char_idx += 1;
+                    closed = true;
                     break;
                 }
                 char_idx += 1;
             }
 
-            let kind = if quote == '\'' && (char_idx - str_start) <= 4 {
+            let kind = if quote == '\'' {
                 syntax_kind::char_literal
             } else {
                 syntax_kind::string_literal
             };
             out_spans.push(highlight_span::new(str_start, char_idx, kind));
+
+            if !closed && quote == '"' {
+                return line_state::in_string(quote);
+            }
             continue;
         }
 

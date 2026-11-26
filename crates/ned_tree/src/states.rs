@@ -6,6 +6,8 @@ pub enum line_state {
     /// Normal code or top-level syntax.
     #[default]
     normal,
+    /// Inside a standard string literal (`"` or `'`).
+    in_string(char),
     /// Inside a C-style block comment (`/* ... */`) with nesting depth.
     in_block_comment(u8),
     /// Inside a Python/TOML triple-quoted multi-line string (`"""` or `'''`).

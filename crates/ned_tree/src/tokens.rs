@@ -37,6 +37,16 @@ pub enum syntax_kind {
     attribute,
     /// Standard unhighlighted body text.
     text,
+    /// Root document node containing top-level AST items.
+    root,
+    /// Function declaration item containing signature and body.
+    function_item,
+    /// Block item enclosed in braces `{ ... }`.
+    block_item,
+    /// Outer or inner attribute construct `#[...]` or `#! [...]`.
+    attribute_item,
+    /// Call expression item with arguments.
+    call_item,
 }
 
 impl syntax_kind {
@@ -51,7 +61,9 @@ impl syntax_kind {
             Self::keyword_function => "keyword.function",
             Self::type_name => "type",
             Self::type_builtin => "type.builtin",
-            Self::function_name | Self::function_call => "function",
+            Self::function_name | Self::function_call | Self::function_item | Self::call_item => {
+                "function"
+            }
             Self::variable_name => "variable",
             Self::string_literal => "string",
             Self::number_literal => "constant.numeric",
@@ -60,8 +72,8 @@ impl syntax_kind {
             Self::comment_block => "comment.block",
             Self::operator => "operator",
             Self::punctuation => "punctuation",
-            Self::attribute => "attribute",
-            Self::text => "ui.text",
+            Self::attribute | Self::attribute_item => "attribute",
+            Self::text | Self::root | Self::block_item => "ui.text",
         }
     }
 }

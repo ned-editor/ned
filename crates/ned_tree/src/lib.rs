@@ -6,13 +6,17 @@
 pub mod grammars;
 pub mod highlighters;
 pub mod lexers;
+pub mod parsers;
 pub mod spans;
 pub mod states;
 pub mod tokens;
+pub mod tree;
 
 pub use grammars::grammar_def;
 pub use highlighters::syntax_highlighter;
 pub use lexers::lex_line;
+pub use parsers::parse_document_ast;
 pub use spans::highlight_span;
 pub use states::{line_state, state_cache};
 pub use tokens::syntax_kind;
+pub use tree::{ast_node, syntax_tree};

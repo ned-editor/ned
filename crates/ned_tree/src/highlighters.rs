@@ -1,17 +1,19 @@
-//! Incremental syntax highlighter engine coordinating rope buffers and state caches.
+//! AST syntax highlighter engine coordinating rope buffers and document-level syntax trees.
 
 use ned_rope::rope;
 
 use crate::grammars::grammar_def;
-use crate::lexers::lex_line;
+use crate::parsers::parse_document_ast;
 use crate::spans::highlight_span;
-use crate::states::state_cache;
+use crate::tree::syntax_tree;
 
-/// High-level incremental syntax highlighter for a text document.
+/// High-level AST syntax highlighter for a text document.
 #[derive(Debug, Clone, Default)]
 pub struct syntax_highlighter {
     grammar: Option<grammar_def>,
-    cache: state_cache,
+    tree: Option<syntax_tree>,
+    line_spans: Vec<Vec<highlight_span>>,
+    dirty: bool,
 }
 
 impl syntax_highlighter {
@@ -20,14 +22,18 @@ impl syntax_highlighter {
     pub fn new(grammar: Option<grammar_def>) -> Self {
         Self {
             grammar,
-            cache: state_cache::new(),
+            tree: None,
+            line_spans: Vec::new(),
+            dirty: true,
         }
     }
 
     /// Sets or updates the active grammar definition.
     pub fn set_grammar(&mut self, grammar: Option<grammar_def>) {
         self.grammar = grammar;
-        self.cache.clear();
+        self.tree = None;
+        self.line_spans.clear();
+        self.dirty = true;
     }
 
     /// Returns a reference to the active grammar, if configured.
@@ -36,32 +42,31 @@ impl syntax_highlighter {
         self.grammar.as_ref()
     }
 
-    /// Invalidates cached states starting from `line_idx` following an edit.
-    pub fn invalidate_from(&mut self, line_idx: usize) {
-        self.cache.invalidate_from(line_idx);
+    /// Returns a reference to the parsed AST syntax tree, if available.
+    #[must_use]
+    pub fn syntax_tree(&self) -> Option<&syntax_tree> {
+        self.tree.as_ref()
+    }
+
+    /// Invalidates cached AST and line spans starting from `_line_idx`.
+    pub fn invalidate_from(&mut self, _line_idx: usize) {
+        self.dirty = true;
     }
 
     /// Highlights a single line of text from the buffer, filling `out_spans`.
-    ///
-    /// Automatically synchronizes preceding line states if not already cached.
     pub fn highlight_line(
         &mut self,
         buffer: &rope,
         line_idx: usize,
         out_spans: &mut Vec<highlight_span>,
     ) {
-        let grammar = match self.grammar.as_ref() {
-            Some(g) => g,
-            None => return,
-        };
+        if self.dirty {
+            self.reparse(buffer);
+        }
 
-        // Ensure states up to line_idx are populated
-        Self::sync_states_up_to(grammar, &mut self.cache, buffer, line_idx);
-
-        let line_text = buffer.line(line_idx).unwrap_or_default();
-        let initial_state = self.cache.get(line_idx);
-        let end_state = lex_line(&line_text, grammar, initial_state, out_spans);
-        self.cache.set(line_idx + 1, end_state);
+        if let Some(spans) = self.line_spans.get(line_idx) {
+            out_spans.extend_from_slice(spans);
+        }
     }
 
     /// Highlights a range of visible lines for viewport rendering.
@@ -72,37 +77,125 @@ impl syntax_highlighter {
         start_line: usize,
         end_line: usize,
     ) -> Vec<(usize, Vec<highlight_span>)> {
-        let mut results = Vec::with_capacity(end_line.saturating_sub(start_line) + 1);
-        let mut spans = Vec::new();
+        if self.dirty {
+            self.reparse(buffer);
+        }
 
+        let mut results = Vec::with_capacity(end_line.saturating_sub(start_line) + 1);
         for l in start_line..=end_line {
-            spans.clear();
-            self.highlight_line(buffer, l, &mut spans);
-            results.push((l, spans.clone()));
+            let spans = self.line_spans.get(l).cloned().unwrap_or_default();
+            results.push((l, spans));
         }
 
         results
     }
 
-    /// Synchronizes line states from current cache boundary up to `target_line`.
-    fn sync_states_up_to(
-        grammar: &grammar_def,
-        cache: &mut state_cache,
-        buffer: &rope,
-        target_line: usize,
-    ) {
-        let start = cache.len();
-        if start > target_line {
-            return;
+    /// Reparses the entire document text into an AST and projects spans across lines.
+    fn reparse(&mut self, buffer: &rope) {
+        self.dirty = false;
+        self.line_spans.clear();
+
+        let grammar = match self.grammar.as_ref() {
+            Some(g) => g,
+            None => {
+                self.tree = None;
+                return;
+            }
+        };
+
+        let text = buffer.to_string();
+        let chars: Vec<(usize, char)> = text.char_indices().collect();
+        let num_chars = chars.len();
+
+        // 1. Parse whole document into AST
+        let tree = parse_document_ast(&text, grammar);
+        let leaf_spans = tree.collect_spans();
+        self.tree = Some(tree);
+
+        // 2. Precompute line start offsets and line lengths in char units
+        let mut line_starts: Vec<usize> = Vec::new();
+        line_starts.push(0);
+        for (i, (_, ch)) in chars.iter().enumerate() {
+            if *ch == '\n' {
+                line_starts.push(i + 1);
+            }
         }
 
-        let mut scratch_spans = Vec::new();
-        for l in start..=target_line {
-            let line_text = buffer.line(l).unwrap_or_default();
-            let initial = cache.get(l);
-            scratch_spans.clear();
-            let end_state = lex_line(&line_text, grammar, initial, &mut scratch_spans);
-            cache.set(l + 1, end_state);
+        let num_lines = line_starts.len();
+        let mut line_bounds: Vec<(usize, usize)> = Vec::with_capacity(num_lines);
+        for l in 0..num_lines {
+            let s = line_starts[l];
+            let e = if l + 1 < num_lines {
+                let mut end = line_starts[l + 1] - 1;
+                if end > s && chars[end - 1].1 == '\r' {
+                    end -= 1;
+                }
+                end
+            } else {
+                num_chars
+            };
+            line_bounds.push((s, e));
+        }
+
+        self.line_spans = vec![Vec::new(); num_lines];
+
+        // 3. Project global leaf spans onto lines
+        for span in leaf_spans {
+            if span.start >= span.end {
+                continue;
+            }
+
+            let l1 = match line_starts.binary_search(&span.start) {
+                Ok(i) => i,
+                Err(i) => i.saturating_sub(1),
+            };
+            let l2 = match line_starts.binary_search(&span.end.saturating_sub(1)) {
+                Ok(i) => i,
+                Err(i) => i.saturating_sub(1),
+            };
+
+            if l1 == l2 {
+                let (line_s, line_e) = line_bounds[l1];
+                let start_in_line = span.start.saturating_sub(line_s);
+                let end_in_line =
+                    (span.end.saturating_sub(line_s)).min(line_e.saturating_sub(line_s));
+                if start_in_line < end_in_line {
+                    self.line_spans[l1].push(highlight_span::new(
+                        start_in_line,
+                        end_in_line,
+                        span.kind,
+                    ));
+                }
+            } else {
+                // First line
+                let (line_s, line_e) = line_bounds[l1];
+                let start_in_line = span.start.saturating_sub(line_s);
+                let end_in_line = line_e.saturating_sub(line_s);
+                if start_in_line < end_in_line {
+                    self.line_spans[l1].push(highlight_span::new(
+                        start_in_line,
+                        end_in_line,
+                        span.kind,
+                    ));
+                }
+
+                // Intermediate lines
+                for l in (l1 + 1)..l2 {
+                    let (ls, le) = line_bounds[l];
+                    let line_len = le.saturating_sub(ls);
+                    if line_len > 0 {
+                        self.line_spans[l].push(highlight_span::new(0, line_len, span.kind));
+                    }
+                }
+
+                // Last line
+                let (line_s, line_e) = line_bounds[l2];
+                let end_in_line =
+                    (span.end.saturating_sub(line_s)).min(line_e.saturating_sub(line_s));
+                if end_in_line > 0 {
+                    self.line_spans[l2].push(highlight_span::new(0, end_in_line, span.kind));
+                }
+            }
         }
     }
 }
