@@ -33,5 +33,5 @@
 
 ## 8. Strict Casing Conventions
 
-- Only PascalCase and camelCase are permitted for identifiers, types, files, and code constructs.
-- Do not use snake_case, kebab-case, or alternative casing styles unless strictly required by an external standard or protocol.
+- Only snake_case is permitted for identifiers, types, files, and code constructs.
+- Do not use camelCase, PascalCase, kebab-case, or alternative casing styles unless strictly required by an external standard or protocol.
