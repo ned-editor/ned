@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/ned_git",
     "crates/ned_rope",
+    "crates/ned_tui",
 ]
 exclude = [
     "fork",
@@ -32,3 +33,5 @@ doc_markdown = "warn"
 
 [workspace.dependencies]
 yokio = "0.1.2"
+libc = "0.2"
+windows-sys = "0.59"

@@ -20,6 +20,15 @@ name = "ned_rope"
 version = "0.1.0"
 
 [[package]]
+name = "ned_tui"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "windows-sys",
+ "yokio",
+]
+
+[[package]]
 name = "windows-sys"
 version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
