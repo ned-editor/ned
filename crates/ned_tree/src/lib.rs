@@ -12,7 +12,7 @@ pub mod states;
 pub mod tokens;
 pub mod tree;
 
-pub use grammars::grammar_def;
+pub use grammars::{char_class, grammar_def, grammar_rule};
 pub use highlighters::syntax_highlighter;
 pub use lexers::lex_line;
 pub use parsers::parse_document_ast;

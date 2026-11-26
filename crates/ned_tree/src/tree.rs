@@ -113,6 +113,7 @@ impl syntax_tree {
         Self::find_innermost(&self.root, offset)
     }
 
+    /// Recursively searches child nodes for the innermost node enclosing `offset`.
     fn find_innermost(node: &ast_node, offset: usize) -> Option<&ast_node> {
         if offset < node.start || offset >= node.end {
             return None;

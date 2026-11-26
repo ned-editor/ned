@@ -10,9 +10,13 @@ use crate::tree::syntax_tree;
 /// High-level AST syntax highlighter for a text document.
 #[derive(Debug, Clone, Default)]
 pub struct syntax_highlighter {
+    /// Active grammar definition.
     grammar: Option<grammar_def>,
+    /// Cached concrete syntax tree for the document.
     tree: Option<syntax_tree>,
+    /// Line-indexed highlight spans projected from the AST.
     line_spans: Vec<Vec<highlight_span>>,
+    /// Dirty flag indicating document edits require reparsing.
     dirty: bool,
 }
 
@@ -95,12 +99,9 @@ impl syntax_highlighter {
         self.dirty = false;
         self.line_spans.clear();
 
-        let grammar = match self.grammar.as_ref() {
-            Some(g) => g,
-            None => {
-                self.tree = None;
-                return;
-            }
+        let Some(grammar) = self.grammar.as_ref() else {
+            self.tree = None;
+            return;
         };
 
         let text = buffer.to_string();

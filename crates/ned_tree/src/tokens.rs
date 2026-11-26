@@ -1,7 +1,10 @@
 //! Syntax token kinds and theme scope mappings.
 
+use serde::{Deserialize, Serialize};
+
 /// Classification of a syntax token matching standard theme highlighting scopes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum syntax_kind {
     /// Generic language keyword (e.g. `let`, `pub`, `def`, `class`).
     keyword,

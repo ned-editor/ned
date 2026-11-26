@@ -38,5 +38,5 @@ pub fn discover_grammar_file(lang_name: &str) -> Option<PathBuf> {
 pub fn load_grammar(lang_name: &str) -> Option<grammar_def> {
     let path = discover_grammar_file(lang_name)?;
     let content = fs::read_to_string(path).ok()?;
-    serde_json::from_str(&content).ok()
+    grammar_def::from_json(&content).ok()
 }
