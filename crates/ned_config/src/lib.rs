@@ -5,6 +5,7 @@
 
 pub mod dirs;
 pub mod keys;
+pub mod languages;
 pub mod merge;
 pub mod styles;
 pub mod themes;
@@ -17,6 +18,7 @@ pub use keys::{
     action, default_keymaps, key_code, key_event, key_modifiers, key_trie, key_trie_node, mode,
     parse_keymaps_from_toml,
 };
+pub use languages::{language_config, language_registry, lsp_server_config};
 pub use merge::merge_toml;
 pub use styles::{color, modifier, style};
 pub use themes::{theme, theme_error};
