@@ -358,48 +358,137 @@ pub fn render_frame(
         draw_str(screen, 0, cmdline_row, &prompt_display, &cmdline_style, width);
 
         if p.prefix == ":" {
-            let completions = p.completions();
-            if !completions.is_empty() {
-                let menu_items_count = completions.len().min(8);
-                let menu_height = menu_items_count as u16;
-                let menu_width = 54.min(width.saturating_sub(4)).max(25);
-                let menu_start_row = cmdline_row.saturating_sub(menu_height);
-                let menu_start_col = 1u16;
+            let completions = &p.completion;
+            let base_width = 30u16;
 
+            let completion_height = if completions.is_empty() {
+                0
+            } else {
+                let max_len = completions
+                    .iter()
+                    .map(|c| c.name.len() as u16)
+                    .max()
+                    .unwrap_or(base_width)
+                    .max(base_width);
+
+                let cols = (width / max_len).max(1);
+                let col_width = (width.saturating_sub(cols)) / cols;
+                let height = (completions.len() as u16)
+                    .div_ceil(cols)
+                    .min(10)
+                    .min(cmdline_row);
+
+                let completion_start_row = cmdline_row.saturating_sub(height);
                 let menu_style = merge_style(default_style, style_for_scope(theme, "ui.menu"));
                 let menu_sel_style =
                     merge_style(default_style, style_for_scope(theme, "ui.menu.selected"));
 
-                for (i, item) in completions.iter().take(menu_items_count).enumerate() {
-                    let r = menu_start_row + (i as u16);
-                    let is_sel = p.completion_idx == Some(i);
+                let items = (height as usize) * (cols as usize);
+                let offset = p
+                    .selection
+                    .map(|idx| (idx / items) * items)
+                    .unwrap_or(0);
+
+                // Clear completion grid area
+                for r in 0..height {
+                    for c in 0..width {
+                        screen.set(point(c, completion_start_row + r), &menu_style, " ");
+                    }
+                }
+
+                // Render grid items column by column
+                let mut row = 0u16;
+                let mut col = 0u16;
+
+                for (i, item) in completions.iter().enumerate().skip(offset).take(items) {
+                    let is_sel = p.selection == Some(i);
                     let item_style = if is_sel {
                         &menu_sel_style
                     } else {
                         &menu_style
                     };
 
-                    for c in 0..menu_width {
-                        screen.set(point(menu_start_col + c, r), item_style, " ");
+                    let x = col * (1 + col_width);
+                    let y = completion_start_row + row;
+
+                    if is_sel {
+                        for c_offset in 0..col_width {
+                            screen.set(point(x + c_offset, y), item_style, " ");
+                        }
                     }
 
-                    let name_display = format!(" {:<7} ", item.name);
-                    let doc_col = draw_str(
-                        screen,
-                        menu_start_col,
-                        r,
-                        &name_display,
-                        item_style,
-                        menu_start_col + menu_width,
-                    );
-                    draw_str(
-                        screen,
-                        doc_col,
-                        r,
-                        item.doc,
-                        item_style,
-                        menu_start_col + menu_width,
-                    );
+                    draw_str(screen, x, y, item.name, item_style, x + col_width);
+
+                    row += 1;
+                    if row >= height {
+                        row = 0;
+                        col += 1;
+                    }
+                }
+
+                height
+            };
+
+            // Render documentation box directly above completion area
+            if let Some((cmd_name, doc_text)) = p.active_doc() {
+                let max_box_width = ((base_width * 3) as usize).min((width as usize).saturating_sub(2));
+                let inner_text_width = max_box_width.saturating_sub(4).max(10);
+                let full_doc = format!("{cmd_name}: {doc_text}");
+                let wrapped_lines = wrap_text(&full_doc, inner_text_width);
+
+                let doc_box_width = ((wrapped_lines.iter().map(String::len).max().unwrap_or(20) + 4) as u16)
+                    .min(width)
+                    .max(25);
+                let doc_box_height = (wrapped_lines.len() as u16 + 2).min(cmdline_row.saturating_sub(completion_height));
+
+                if doc_box_height >= 3 {
+                    let doc_box_row = cmdline_row
+                        .saturating_sub(completion_height)
+                        .saturating_sub(doc_box_height);
+                    let doc_box_col = 0u16;
+
+                    let help_style = merge_style(default_style, style_for_scope(theme, "ui.help"));
+
+                    // Clear doc box area
+                    for r in 0..doc_box_height {
+                        for c in 0..doc_box_width {
+                            screen.set(point(doc_box_col + c, doc_box_row + r), &help_style, " ");
+                        }
+                    }
+
+                    // Render border
+                    let last_c = doc_box_width.saturating_sub(1);
+                    let last_r = doc_box_height.saturating_sub(1);
+
+                    screen.set(point(0, doc_box_row), &help_style, "┌");
+                    screen.set(point(last_c, doc_box_row), &help_style, "┐");
+                    screen.set(point(0, doc_box_row + last_r), &help_style, "└");
+                    screen.set(point(last_c, doc_box_row + last_r), &help_style, "┘");
+
+                    for c in 1..last_c {
+                        screen.set(point(c, doc_box_row), &help_style, "─");
+                        screen.set(point(c, doc_box_row + last_r), &help_style, "─");
+                    }
+                    for r in 1..last_r {
+                        screen.set(point(0, doc_box_row + r), &help_style, "│");
+                        screen.set(point(last_c, doc_box_row + r), &help_style, "│");
+                    }
+
+                    // Render wrapped documentation text
+                    for (line_idx, line) in wrapped_lines
+                        .iter()
+                        .take((last_r.saturating_sub(1)) as usize)
+                        .enumerate()
+                    {
+                        draw_str(
+                            screen,
+                            doc_box_col + 2,
+                            doc_box_row + 1 + (line_idx as u16),
+                            line,
+                            &help_style,
+                            doc_box_col + last_c,
+                        );
+                    }
                 }
             }
         }
@@ -645,4 +734,28 @@ fn format_line_number(
             }
         }
     }
+}
+
+/// Wraps text into lines that do not exceed `max_width`.
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        if current.is_empty() {
+            current.push_str(word);
+        } else if current.len() + 1 + word.len() <= max_width {
+            current.push(' ');
+            current.push_str(word);
+        } else {
+            lines.push(current);
+            current = word.to_string();
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
 }
