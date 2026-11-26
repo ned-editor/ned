@@ -10,12 +10,13 @@ use ned_tui::Screen;
 
 use crate::theme_bridge::{merge_style, style_for_scope};
 
-/// Computes the dynamic width of the gutter for `line_count`.
+/// Computes the dynamic width of the gutter for `line_count` matching Helix layout:
+/// `[diagnostic (1)] [line_digits] [space (1)] [diff indicator (1)]`.
 #[must_use]
 pub fn calculate_gutter_width(line_count: usize) -> u16 {
     let digits = line_count.max(1).to_string().len().max(2);
-    // Git diff symbol (1) + LSP diagnostic symbol (1) + Line digits + Space separator (1)
-    (1 + 1 + digits + 1) as u16
+    // LSP diagnostic symbol (1) + Line digits + Space separator (1) + Git diff indicator (1)
+    (1 + digits + 1 + 1) as u16
 }
 
 /// Renders the editor lines, gutter, syntax tokens, and selection overlays.
@@ -94,19 +95,8 @@ pub fn render_editor(
         };
 
         if line_idx < total_lines {
-            // --- Gutter rendering ---
-            // Column 0: Git diff symbol
-            let (diff_sym, diff_style) = get_diff_indicator(
-                doc.diff_hunks(),
-                line_idx,
-                gutter_style,
-                diff_plus_style,
-                diff_delta_style,
-                diff_minus_style,
-            );
-            screen.set(point(0, row), &diff_style, diff_sym);
-
-            // Column 1: LSP diagnostic indicator
+            // --- Gutter rendering (Helix layout: [diag] [line-numbers] [space] [diff]) ---
+            // Column 0: LSP diagnostic indicator
             let (diag_sym, diag_style) = get_diagnostic_indicator(
                 doc.diagnostics(),
                 line_idx,
@@ -116,9 +106,9 @@ pub fn render_editor(
                 diag_info_style,
                 diag_hint_style,
             );
-            screen.set(point(1, row), &diag_style, diag_sym);
+            screen.set(point(0, row), &diag_style, diag_sym);
 
-            // Columns 2..gutter_width-1: Line number
+            // Columns 1..gutter_width-2: Line number
             let digits_width = (gutter_width as usize).saturating_sub(3);
             let num_str =
                 format_line_number(line_idx, active_line_idx, line_style_cfg, digits_width);
@@ -129,12 +119,25 @@ pub fn render_editor(
             };
 
             for (i, ch) in num_str.chars().enumerate() {
-                let col = (2 + i) as u16;
+                let col = (1 + i) as u16;
                 let s = ch.to_string();
                 screen.set(point(col, row), &num_style, &s);
             }
-            // Gutter trailing spacer
-            screen.set(point(gutter_width - 1, row), &num_style, " ");
+
+            // Column gutter_width - 2: Space separator on left side of diff bar
+            screen.set(point(gutter_width - 2, row), &num_style, " ");
+
+            // Column gutter_width - 1: Git diff indicator (adjacent to code area)
+            let (diff_sym, diff_style) = get_diff_indicator(
+                doc.diff_hunks(),
+                line_idx,
+                total_lines,
+                gutter_style,
+                diff_plus_style,
+                diff_delta_style,
+                diff_minus_style,
+            );
+            screen.set(point(gutter_width - 1, row), &diff_style, diff_sym);
 
             // --- Text Area rendering ---
             // Fill line background
@@ -199,17 +202,26 @@ pub fn render_editor(
             // Beyond EOF: Helix virtual line indicator `~`
             screen.set(point(0, row), &gutter_style, " ");
             screen.set(point(1, row), &gutter_style, "~");
-            for c in 2..width {
+            for c in 2..gutter_width {
+                screen.set(point(c, row), &gutter_style, " ");
+            }
+            for c in gutter_width..width {
                 screen.set(point(c, row), &default_style, " ");
             }
         }
     }
 }
 
-/// Computes the diff indicator and style for a given line index.
+/// Computes the diff indicator and style for a given line index matching Helix parity.
+///
+/// Symbols:
+/// - Added: `▎` (left 1/4 block) with `diff.plus` (green)
+/// - Modified: `▍` (left 3/8 block) with `diff.delta` (yellow)
+/// - Deleted: `▔` (upper 1/8 block) with `diff.minus` (red)
 fn get_diff_indicator(
     hunks: &[ned_git::hunk],
     line_idx: usize,
+    total_lines: usize,
     gutter_style: Style,
     plus_style: Style,
     delta_style: Style,
@@ -217,13 +229,24 @@ fn get_diff_indicator(
 ) -> (&'static str, Style) {
     for h in hunks {
         let start = h.after_start as usize;
-        let count = h.after_count.max(1) as usize;
-        if line_idx >= start && line_idx < start + count {
-            return match h.kind {
-                diff_tag::added => ("+", plus_style),
-                diff_tag::modified => ("~", delta_style),
-                diff_tag::deleted => ("-", minus_style),
-            };
+        let count = h.after_count as usize;
+
+        match h.kind {
+            diff_tag::added => {
+                if count > 0 && line_idx >= start && line_idx < start + count {
+                    return ("▎", plus_style);
+                }
+            }
+            diff_tag::modified => {
+                if count > 0 && line_idx >= start && line_idx < start + count {
+                    return ("▍", delta_style);
+                }
+            }
+            diff_tag::deleted => {
+                if line_idx == start || (start >= total_lines && line_idx + 1 == total_lines) {
+                    return ("▔", minus_style);
+                }
+            }
         }
     }
     (" ", gutter_style)
