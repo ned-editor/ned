@@ -964,7 +964,7 @@ impl editor {
             let root_path = ned_git::discover_repo(&doc_path).map(|p| p.to_string_lossy().to_string());
             let srv_cfg = ned_lsp::server_config::new(&lang_name, &srv_cmd, srv_args, root_path);
             if let Ok(c) = ned_lsp::client::start(srv_cfg) {
-                let _ = c.initialize(std::time::Duration::from_millis(300));
+                let _ = c.initialize(std::time::Duration::from_millis(50));
                 self.lsp_clients.insert(lang_name.clone(), c);
             }
         }
