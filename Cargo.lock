@@ -43,6 +43,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
+name = "ned"
+version = "0.1.0"
+dependencies = [
+ "ned_config",
+ "ned_core",
+ "ned_git",
+ "ned_lsp",
+ "ned_rope",
+ "ned_text",
+ "ned_tree",
+ "ned_tui",
+ "yokio",
+]
+
+[[package]]
 name = "ned_config"
 version = "0.1.0"
 dependencies = [

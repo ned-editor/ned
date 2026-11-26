@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/ned",
     "crates/ned_config",
     "crates/ned_core",
     "crates/ned_git",
@@ -23,7 +24,7 @@ license = "MIT"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
-rust_2018_idioms = "deny"
+rust_2018_idioms = { level = "deny", priority = -1 }
 missing_docs = "warn"
 non_camel_case_types = "allow"
 non_upper_case_globals = "allow"
