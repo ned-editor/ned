@@ -139,6 +139,8 @@ impl theme {
         t.insert("ui.popup", style::new().fg(fg).bg(mantle));
         t.insert("ui.menu", style::new().fg(fg).bg(mantle));
         t.insert("ui.menu.selected", style::new().fg(bg).bg(c_blue));
+        t.insert("ui.help", style::new().fg(fg).bg(surface0));
+        t.insert("ui.text.inactive", style::new().fg(overlay0));
 
         // Git diff scopes
         t.insert("diff.plus", style::new().fg(c_green));
