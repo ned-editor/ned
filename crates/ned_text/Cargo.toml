@@ -1,0 +1,13 @@
+[package]
+name = "ned_text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+ned_rope = { path = "../ned_rope" }
+
+[lints]
+workspace = true
