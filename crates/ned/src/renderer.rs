@@ -9,7 +9,7 @@ use ned_tui::geometry::{point, Point};
 use ned_tui::output::style::Style;
 use ned_tui::Screen;
 
-use crate::picker::picker_state;
+use crate::picker::{min_area_width_for_preview, picker_state, preview_content};
 use crate::prompt::prompt_state;
 use crate::theme_bridge::{merge_style, style_for_scope};
 
@@ -501,98 +501,276 @@ pub fn render_frame(
             visible: true,
         }
     } else if let Some(p) = picker {
-        // 6. Modal Picker Overlay Window (File picker / Buffer picker)
-        let p_width = (width * 7 / 10).max(40).min(width.saturating_sub(4));
-        let p_height = (height * 6 / 10).max(10).min(height.saturating_sub(2));
-        let p_col = (width.saturating_sub(p_width)) / 2;
-        let p_row = (height.saturating_sub(p_height)) / 2;
-
+        // 6. Modal Picker Overlay Window (File picker / Buffer picker) with live split preview
         let popup_style = merge_style(default_style, style_for_scope(theme, "ui.menu"));
         let popup_sel_style =
             merge_style(default_style, style_for_scope(theme, "ui.menu.selected"));
         let border_style = merge_style(popup_style, style_for_scope(theme, "ui.window"));
+        let text_style = merge_style(default_style, style_for_scope(theme, "ui.text"));
+        let linenr_style = merge_style(default_style, style_for_scope(theme, "ui.linenr"));
+        let sep_style =
+            merge_style(border_style, style_for_scope(theme, "ui.background.separator"));
+        let inactive_style =
+            merge_style(default_style, style_for_scope(theme, "ui.text.inactive"));
+        let match_style = merge_style(
+            style_for_scope(theme, "special"),
+            style_for_scope(theme, "ui.text.focus"),
+        );
 
-        // Clear popup area
-        for r in 0..p_height {
-            for c in 0..p_width {
-                screen.set(point(p_col + c, p_row + r), &popup_style, " ");
+        let fits_beside = width > min_area_width_for_preview && p.show_preview;
+        let picker_width = if fits_beside { width / 2 } else { width };
+        let preview_width = if fits_beside { width - picker_width } else { 0 };
+
+        // --- Render Left Pane (Picker candidate list & search query) ---
+        // Clear picker area
+        for r in 0..height {
+            for c in 0..picker_width {
+                screen.set(point(c, r), &popup_style, " ");
             }
         }
 
-        // Header line: title & match count
-        let header_text = format!(" {} ({} matches) ", p.title, p.filtered.len());
+        // Picker top border
+        screen.set(point(0, 0), &border_style, "┌");
+        screen.set(point(picker_width - 1, 0), &border_style, "┐");
+        for c in 1..picker_width - 1 {
+            screen.set(point(c, 0), &border_style, "─");
+        }
+
+        // Picker prompt line (row 1)
+        screen.set(point(0, 1), &border_style, "│");
+        screen.set(point(picker_width - 1, 1), &border_style, "│");
+        let query_prompt = format!("> {}", p.query);
         draw_str(
             screen,
-            p_col + 1,
-            p_row,
-            &header_text,
-            &border_style,
-            p_col + p_width - 1,
+            2,
+            1,
+            &query_prompt,
+            &text_style,
+            picker_width.saturating_sub(12),
         );
 
-        // Query line
-        let query_display = format!("> {}", p.query);
-        draw_str(
-            screen,
-            p_col + 1,
-            p_row + 1,
-            &query_display,
-            &popup_style,
-            p_col + p_width - 1,
-        );
+        let count_str = format!("{}/{}", p.filtered.len(), p.items.len());
+        let count_col = (picker_width - 1).saturating_sub(count_str.len() as u16 + 1);
+        if count_col > 4 + p.query.chars().count() as u16 {
+            draw_str(screen, count_col, 1, &count_str, &text_style, picker_width - 1);
+        }
 
-        // Divider
-        let divider = "─".repeat(p_width.saturating_sub(2) as usize);
-        draw_str(
-            screen,
-            p_col + 1,
-            p_row + 2,
-            &divider,
-            &border_style,
-            p_col + p_width - 1,
-        );
+        // Picker separator line (row 2)
+        screen.set(point(0, 2), &border_style, "├");
+        screen.set(point(picker_width - 1, 2), &border_style, "┤");
+        for c in 1..picker_width - 1 {
+            screen.set(point(c, 2), &sep_style, "─");
+        }
 
-        // Items list
-        let list_rows = (p_height.saturating_sub(3)) as usize;
-        let scroll_offset = if p.selected >= list_rows {
-            p.selected - list_rows + 1
+        // Picker items list (rows 3 .. height - 1)
+        let list_height = height.saturating_sub(4) as usize;
+        let scroll_offset = if p.selected >= list_height {
+            p.selected - list_height + 1
         } else {
             0
         };
 
-        for i in 0..list_rows {
-            let item_filter_idx = scroll_offset + i;
-            if item_filter_idx >= p.filtered.len() {
-                break;
-            }
-            let item_idx = p.filtered[item_filter_idx];
-            let item_text = &p.items[item_idx];
-            let is_selected = item_filter_idx == p.selected;
-            let item_style = if is_selected {
-                &popup_sel_style
-            } else {
-                &popup_style
-            };
+        for i in 0..list_height {
+            let row_y = 3 + i as u16;
+            screen.set(point(0, row_y), &border_style, "│");
+            screen.set(point(picker_width - 1, row_y), &border_style, "│");
 
-            let row_y = p_row + 3 + (i as u16);
-            for c in 1..p_width - 1 {
-                screen.set(point(p_col + c, row_y), item_style, " ");
-            }
+            let filter_idx = scroll_offset + i;
+            if filter_idx < p.filtered.len() {
+                let item_idx = p.filtered[filter_idx];
+                let item_text = &p.items[item_idx];
+                let is_selected = filter_idx == p.selected;
+                let row_style = if is_selected {
+                    &popup_sel_style
+                } else {
+                    &popup_style
+                };
 
-            let display = format!(" {item_text}");
-            draw_str(
-                screen,
-                p_col + 1,
-                row_y,
-                &display,
-                item_style,
-                p_col + p_width - 1,
-            );
+                for c in 1..picker_width - 1 {
+                    screen.set(point(c, row_y), row_style, " ");
+                }
+
+                let prefix = if is_selected { " > " } else { "   " };
+                draw_str(screen, 1, row_y, prefix, row_style, picker_width - 1);
+
+                let text_start_x = 1 + prefix.len() as u16;
+                let max_text_x = picker_width.saturating_sub(1);
+                let match_indices = find_subsequence_matches(item_text, &p.query);
+
+                for (char_idx, ch) in item_text.chars().enumerate() {
+                    let char_x = text_start_x + char_idx as u16;
+                    if char_x >= max_text_x {
+                        break;
+                    }
+                    let is_match = match_indices.contains(&char_idx);
+                    let char_style = if is_match {
+                        merge_style(*row_style, match_style)
+                    } else {
+                        *row_style
+                    };
+                    screen.set(point(char_x, row_y), &char_style, &ch.to_string());
+                }
+            }
         }
 
+        // Picker bottom border
+        let bottom_y = height.saturating_sub(1);
+        screen.set(point(0, bottom_y), &border_style, "└");
+        screen.set(point(picker_width - 1, bottom_y), &border_style, "┘");
+        for c in 1..picker_width - 1 {
+            screen.set(point(c, bottom_y), &border_style, "─");
+        }
+
+        // --- Render Right Pane (Live file preview) ---
+        if fits_beside && preview_width > 4 {
+            let prev_start = picker_width;
+            let prev_end = width.saturating_sub(1);
+
+            // Clear preview area
+            for r in 0..height {
+                for c in prev_start..=prev_end {
+                    screen.set(point(c, r), &popup_style, " ");
+                }
+            }
+
+            // Preview top border
+            screen.set(point(prev_start, 0), &border_style, "┌");
+            screen.set(point(prev_end, 0), &border_style, "┐");
+            for c in prev_start + 1..prev_end {
+                screen.set(point(c, 0), &border_style, "─");
+            }
+
+            // Preview side borders
+            for r in 1..bottom_y {
+                screen.set(point(prev_start, r), &border_style, "│");
+                screen.set(point(prev_end, r), &border_style, "│");
+            }
+
+            // Preview bottom border
+            screen.set(point(prev_start, bottom_y), &border_style, "└");
+            screen.set(point(prev_end, bottom_y), &border_style, "┘");
+            for c in prev_start + 1..prev_end {
+                screen.set(point(c, bottom_y), &border_style, "─");
+            }
+
+            // Preview content
+            let inner_x = prev_start + 2;
+            let inner_w = prev_end.saturating_sub(prev_start + 2);
+            let inner_h = height.saturating_sub(2);
+
+            if let Some(preview) = p.get_preview() {
+                if let Some(placeholder) = preview.placeholder() {
+                    let px = inner_x + (inner_w.saturating_sub(placeholder.len() as u16)) / 2;
+                    let py = 1 + inner_h / 2;
+                    draw_str(screen, px, py, placeholder, &inactive_style, prev_end);
+                } else {
+                    match preview {
+                        preview_content::directory(entries) => {
+                            for (i, (name, is_dir)) in
+                                entries.iter().take(inner_h as usize).enumerate()
+                            {
+                                let y = 1 + i as u16;
+                                let display =
+                                    if *is_dir { format!("{name}/") } else { name.clone() };
+                                let style = if *is_dir {
+                                    &popup_sel_style
+                                } else {
+                                    &text_style
+                                };
+                                draw_str(screen, inner_x, y, &display, style, prev_end - 1);
+                            }
+                        }
+                        preview_content::text(lines) => {
+                            if lines.is_empty() {
+                                let empty_msg = "<Empty file>";
+                                let px =
+                                    inner_x + (inner_w.saturating_sub(empty_msg.len() as u16)) / 2;
+                                let py = 1 + inner_h / 2;
+                                draw_str(screen, px, py, empty_msg, &inactive_style, prev_end);
+                            } else {
+                                let preview_path = p.selected_item().map(|item| {
+                                    if let Some(root) = &p.root_dir {
+                                        root.join(item)
+                                    } else {
+                                        std::path::PathBuf::from(item)
+                                    }
+                                });
+
+                                let lang_cfg = preview_path
+                                    .as_deref()
+                                    .and_then(|path| ed.config.languages.detect_by_path(path));
+                                let grammar = lang_cfg
+                                    .and_then(|cfg| ned_core::load_grammar(&cfg.name));
+
+                                let highlighted_preview = if let Some(grammar) = grammar {
+                                    let mut highlighter =
+                                        ned_tree::syntax_highlighter::new(Some(grammar));
+                                    let preview_text = lines.join("\n");
+                                    let rope_buf = ned_rope::rope::from_str(&preview_text);
+                                    highlighter
+                                        .highlight_viewport(&rope_buf, 0, lines.len().min(inner_h as usize))
+                                } else {
+                                    Vec::new()
+                                };
+
+                                for (i, line) in lines.iter().take(inner_h as usize).enumerate() {
+                                    let y = 1 + i as u16;
+                                    let line_nr_str = format!("{:>4} │ ", i + 1);
+                                    draw_str(
+                                        screen,
+                                        inner_x,
+                                        y,
+                                        &line_nr_str,
+                                        &linenr_style,
+                                        prev_end - 1,
+                                    );
+                                    let text_x = inner_x + line_nr_str.len() as u16;
+                                    let max_code_x = prev_end.saturating_sub(1);
+
+                                    let line_spans = highlighted_preview
+                                        .iter()
+                                        .find(|(l, _)| *l == i)
+                                        .map_or(&[][..], |(_, spans)| spans.as_slice());
+
+                                    for (char_idx, ch) in line.chars().enumerate() {
+                                        let char_col = text_x + char_idx as u16;
+                                        if char_col >= max_code_x {
+                                            break;
+                                        }
+
+                                        let mut char_style = text_style;
+                                        if let Some(span) = line_spans
+                                            .iter()
+                                            .find(|s| char_idx >= s.start && char_idx < s.end)
+                                        {
+                                            let scope_style = style_for_scope(theme, span.scope());
+                                            char_style = merge_style(char_style, scope_style);
+                                        }
+
+                                        screen.set(
+                                            point(char_col, y),
+                                            &char_style,
+                                            &ch.to_string(),
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            } else {
+                let no_prev = "<No preview>";
+                let px = inner_x + (inner_w.saturating_sub(no_prev.len() as u16)) / 2;
+                let py = 1 + inner_h / 2;
+                draw_str(screen, px, py, no_prev, &inactive_style, prev_end);
+            }
+        }
+
+        let cursor_col = (4 + p.query.chars().count() as u16).min(picker_width.saturating_sub(2));
         cursor_render_info {
-            col: p_col + 3 + (p.query.chars().count() as u16),
-            row: p_row + 1,
+            col: cursor_col,
+            row: 1,
             shape: cursor_shape::bar,
             visible: true,
         }
@@ -758,4 +936,26 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
         lines.push(String::new());
     }
     lines
+}
+
+/// Finds the character indices in `text` that match the subsequence `query`.
+fn find_subsequence_matches(text: &str, query: &str) -> Vec<usize> {
+    if query.is_empty() {
+        return Vec::new();
+    }
+    let q_chars: Vec<char> = query.to_lowercase().chars().collect();
+    let t_chars: Vec<char> = text.to_lowercase().chars().collect();
+    let mut indices = Vec::with_capacity(q_chars.len());
+    let mut q_idx = 0;
+    for (t_idx, &t_ch) in t_chars.iter().enumerate() {
+        if q_idx < q_chars.len() && t_ch == q_chars[q_idx] {
+            indices.push(t_idx);
+            q_idx += 1;
+        }
+    }
+    if q_idx == q_chars.len() {
+        indices
+    } else {
+        Vec::new()
+    }
 }
