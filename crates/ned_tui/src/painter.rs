@@ -349,7 +349,7 @@ fn display_width() {
 
 #[test]
 fn graphemeis() {
-    assert_eq!("❤️".graphemes(true).count(), 1);
-    assert_eq!("✅".graphemes(true).count(), 1);
-    assert_eq!("\u{1F469}\u{200D}\u{1F52C}".graphemes(true).count(), 1);
+    assert_eq!(str_graphemes("❤️").count(), 1);
+    assert_eq!(str_graphemes("✅").count(), 1);
+    assert_eq!(str_graphemes("\u{1F469}\u{200D}\u{1F52C}").count(), 1);
 }

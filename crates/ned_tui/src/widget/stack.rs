@@ -202,7 +202,7 @@ mod tests {
         let painter = painter.with_scope(window(point(65530, 65530), point(65530, 65530)));
 
         let mut screen = Screen::default();
-        let event = Event::<NoAppEvent>::Refresh(1);
+        let event = Event::<()>::Refresh(1);
 
         for mut s in stacks {
             s.update(&mut (), &event, &mut screen, &painter);
@@ -223,7 +223,7 @@ mod tests {
         let painter = painter.with_scope(window(point(5, 3), point(4, 2)));
 
         let mut screen = Screen::default();
-        let event = Event::<NoAppEvent>::Refresh(1);
+        let event = Event::<()>::Refresh(1);
 
         for mut s in stacks {
             s.update_asserted(&mut (), &event, &mut screen, &painter);
