@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/ned_git",
+    "crates/ned_rope",
 ]
 exclude = [
     "fork",
@@ -19,6 +20,7 @@ unsafe_code = "deny"
 rust_2018_idioms = "deny"
 missing_docs = "warn"
 non_camel_case_types = "allow"
+non_upper_case_globals = "allow"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
