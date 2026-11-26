@@ -190,6 +190,26 @@ impl rope {
         self.root.collect_string(&mut buf);
         buf
     }
+
+    /// returns the character at the specified 0-based character index.
+    #[must_use]
+    pub fn char_at(&self, char_idx: usize) -> Option<char> {
+        if char_idx >= self.char_len() {
+            return None;
+        }
+        let start_byte = self.char_to_byte(char_idx);
+        let end_byte = self.char_to_byte(char_idx + 1);
+        let s = self.slice_to_string(start_byte..end_byte);
+        s.chars().next()
+    }
+
+    /// extracts a character range into an owned String.
+    #[must_use]
+    pub fn slice_chars(&self, range: Range<usize>) -> String {
+        let start_byte = self.char_to_byte(range.start);
+        let end_byte = self.char_to_byte(range.end);
+        self.slice_to_string(start_byte..end_byte)
+    }
 }
 
 impl fmt::Display for rope {
