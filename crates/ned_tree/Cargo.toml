@@ -8,6 +8,8 @@ license.workspace = true
 
 [dependencies]
 ned_rope = { path = "../ned_rope" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [lints]
 workspace = true
