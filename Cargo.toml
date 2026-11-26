@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/ned_config",
     "crates/ned_git",
     "crates/ned_lsp",
     "crates/ned_rope",
