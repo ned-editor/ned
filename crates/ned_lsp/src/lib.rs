@@ -3,9 +3,12 @@
 //! Provides JSON-RPC 2.0 stdio framing, asynchronous subprocess transport,
 //! and protocol message types without hardcoded server binaries or language assumptions.
 
+pub mod clients;
 pub mod jsonrpc;
 pub mod protocol;
+pub mod transports;
 
+pub use clients::{client, server_config};
 pub use jsonrpc::{
     encode_payload, error_code, incoming_message, notification, read_message, request, response,
     rpc_error,
@@ -17,3 +20,4 @@ pub use protocol::{
     text_document_content_change_event, text_document_identifier, text_document_item,
     text_document_position_params, versioned_text_document_identifier,
 };
+pub use transports::transport;
