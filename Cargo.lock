@@ -79,6 +79,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ned_tree"
+version = "0.1.0"
+dependencies = [
+ "ned_rope",
+]
+
+[[package]]
 name = "ned_tui"
 version = "0.1.0"
 dependencies = [
