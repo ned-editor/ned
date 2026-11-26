@@ -20,6 +20,13 @@ name = "ned_rope"
 version = "0.1.0"
 
 [[package]]
+name = "ned_text"
+version = "0.1.0"
+dependencies = [
+ "ned_rope",
+]
+
+[[package]]
 name = "ned_tui"
 version = "0.1.0"
 dependencies = [
