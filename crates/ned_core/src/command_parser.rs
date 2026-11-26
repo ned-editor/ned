@@ -3,17 +3,17 @@
 /// Executable command parsed from editor command prompt.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum editor_command {
-    /// Save document (:w [filename]).
+    /// Save document (`:w [filename]`).
     write(Option<String>),
-    /// Quit editor (:q).
+    /// Quit editor (`:q`).
     quit,
-    /// Force quit without saving (:q!).
+    /// Force quit without saving (`:q!`).
     force_quit,
-    /// Save document and quit (:wq, :x).
+    /// Save document and quit (`:wq`, `:x`).
     write_and_quit(Option<String>),
-    /// Open file (:e <path>, :open <path>).
+    /// Open file (`:e <path>`, `:open <path>`).
     open(String),
-    /// Set editor configuration option (:set <key> <value>).
+    /// Set editor configuration option (`:set <key> <value>`).
     set_option(String, String),
 }
 
