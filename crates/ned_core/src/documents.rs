@@ -8,7 +8,7 @@ use ned_config::language_config;
 use ned_git::{compute_diff, discover_repo, fetch_file_base, hunk};
 use ned_rope::rope;
 use ned_text::{change_set, detect_line_ending, line_ending, selection};
-use ned_tree::syntax_highlighter;
+use ned_tree::{highlight_span, syntax_highlighter};
 
 use crate::histories::history;
 use crate::runtime_loader::load_grammar;
@@ -274,5 +274,16 @@ impl document {
     #[must_use]
     pub fn highlighter(&self) -> &syntax_highlighter {
         &self.highlighter
+    }
+
+    /// Highlights viewport lines and returns line-indexed highlight spans.
+    #[must_use]
+    pub fn highlight_viewport(
+        &mut self,
+        start_line: usize,
+        end_line: usize,
+    ) -> Vec<(usize, Vec<highlight_span>)> {
+        self.highlighter
+            .highlight_viewport(&self.text, start_line, end_line)
     }
 }
