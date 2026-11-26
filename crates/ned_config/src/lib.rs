@@ -6,6 +6,7 @@
 pub mod dirs;
 pub mod merge;
 pub mod styles;
+pub mod themes;
 
 pub use dirs::{
     config_dir, find_theme_file, find_workspace_root, global_config_file, global_languages_file,
@@ -13,3 +14,4 @@ pub use dirs::{
 };
 pub use merge::merge_toml;
 pub use styles::{color, modifier, style};
+pub use themes::{theme, theme_error};
