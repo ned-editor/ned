@@ -492,7 +492,7 @@ impl editor {
 
             // --- Insert mode primitives ---
             action::insert_newline => {
-                self.insert_char('\n');
+                self.insert_newline();
             }
             action::insert_tab => {
                 let tab_str = " ".repeat(self.config.editor.tab_width);
@@ -600,6 +600,52 @@ impl editor {
 
         doc.set_selection(new_sel);
         self.ensure_active_cursor_visible();
+    }
+
+    /// Inserts a newline with auto-indentation and comment continuation.
+    pub fn insert_newline(&mut self) {
+        let (indent, comment_prefix, is_empty_comment) = {
+            let doc = self.active_doc();
+            let cursor_char = doc.selection().primary().cursor(doc.text());
+            let cursor_byte = doc.text().char_to_byte(cursor_char);
+            let line_idx = doc.text().byte_to_line(cursor_byte);
+            let line_str = doc.text().line(line_idx).unwrap_or_default();
+            let line_start_byte = doc.text().line_to_byte(line_idx).unwrap_or(0);
+            let col_byte = cursor_byte.saturating_sub(line_start_byte);
+            let prefix_before = &line_str[..col_byte.min(line_str.len())];
+
+            let indent: String = line_str
+                .chars()
+                .take_while(|&c| c == ' ' || c == '\t')
+                .collect();
+            let trimmed = prefix_before.trim();
+
+            if trimmed == "//" || trimmed == "#" || trimmed == "*" {
+                (indent, None, true)
+            } else if trimmed.starts_with("//") {
+                (indent, Some("// "), false)
+            } else if trimmed.starts_with('#') {
+                (indent, Some("# "), false)
+            } else if trimmed.starts_with("/*") || trimmed.starts_with('*') {
+                (indent, Some("* "), false)
+            } else {
+                (indent, None, false)
+            }
+        };
+
+        if is_empty_comment {
+            let mut newline_str = String::from("\n");
+            newline_str.push_str(&indent);
+            self.delete_backward();
+            self.insert_string(&newline_str);
+        } else {
+            let mut newline_str = String::from("\n");
+            newline_str.push_str(&indent);
+            if let Some(cp) = comment_prefix {
+                newline_str.push_str(cp);
+            }
+            self.insert_string(&newline_str);
+        }
     }
 
     /// Inserts a single character literal at all active selection heads.
