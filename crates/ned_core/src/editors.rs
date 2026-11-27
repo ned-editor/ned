@@ -6,9 +6,9 @@ use std::path::Path;
 use ::ned_config::{action, key_event, key_trie_node, mode, ned_config};
 use ned_lsp::client;
 use ned_text::{
-    apply_motion, change_set, direction, extend_line, move_first_non_whitespace,
-    move_horizontally, move_line_end, move_line_start, move_vertically, move_word_backward,
-    move_word_end, move_word_forward, movement, prev_grapheme_boundary, range, selection,
+    apply_motion, direction, extend_line, move_first_non_whitespace, move_horizontally,
+    move_line_end, move_line_start, move_vertically, move_word_backward, move_word_end,
+    move_word_forward, movement, range, selection,
 };
 
 use crate::command_parser::{editor_command, parse_command};
@@ -16,6 +16,7 @@ use crate::documents::{document, document_id};
 use crate::registers::register_storage;
 use crate::views::{view, view_id};
 
+pub mod edit_ops;
 pub mod mode_dispatch;
 
 /// Central editor runtime coordinating documents, views, registers, and modal input.
@@ -647,289 +648,57 @@ impl editor {
     }
 
     /// Inserts a newline with auto-indentation and comment continuation.
+    #[inline]
     pub fn insert_newline(&mut self) {
-        let (indent, comment_prefix, is_empty_comment) = {
-            let doc = self.active_doc();
-            let cursor_char = doc.selection().primary().cursor(doc.text());
-            let cursor_byte = doc.text().char_to_byte(cursor_char);
-            let line_idx = doc.text().byte_to_line(cursor_byte);
-            let line_str = doc.text().line(line_idx).unwrap_or_default();
-            let line_start_byte = doc.text().line_to_byte(line_idx).unwrap_or(0);
-            let col_byte = cursor_byte.saturating_sub(line_start_byte);
-            let prefix_before = &line_str[..col_byte.min(line_str.len())];
-
-            let indent: String = line_str
-                .chars()
-                .take_while(|&c| c == ' ' || c == '\t')
-                .collect();
-            let trimmed = prefix_before.trim();
-
-            if trimmed == "//" || trimmed == "#" || trimmed == "*" {
-                (indent, None, true)
-            } else if trimmed.starts_with("//") {
-                (indent, Some("// "), false)
-            } else if trimmed.starts_with('#') {
-                (indent, Some("# "), false)
-            } else if trimmed.starts_with("/*") || trimmed.starts_with('*') {
-                (indent, Some("* "), false)
-            } else {
-                (indent, None, false)
-            }
-        };
-
-        if is_empty_comment {
-            let mut newline_str = String::from("\n");
-            newline_str.push_str(&indent);
-            self.delete_backward();
-            self.insert_string(&newline_str);
-        } else {
-            let mut newline_str = String::from("\n");
-            newline_str.push_str(&indent);
-            if let Some(cp) = comment_prefix {
-                newline_str.push_str(cp);
-            }
-            self.insert_string(&newline_str);
-        }
+        edit_ops::insert_newline(self);
     }
 
     /// Inserts a single character literal at all active selection heads.
+    #[inline]
     pub fn insert_char(&mut self, ch: char) {
-        let mut s = String::new();
-        s.push(ch);
-        self.insert_string(&s);
+        edit_ops::insert_char(self, ch);
     }
 
     /// Inserts a string at all active selection ranges.
+    #[inline]
     pub fn insert_string(&mut self, s: &str) {
-        let doc = self.active_doc_mut();
-        let doc_len = doc.text().char_len();
-        let mut cs = change_set::new(doc_len);
-        let mut last_pos = 0;
-
-        for r in doc.selection().ranges() {
-            let from = r.from();
-            let to = r.to();
-            if from > last_pos {
-                cs.retain(from - last_pos);
-            }
-            if to > from {
-                cs.delete(to - from);
-            }
-            cs.insert(s);
-            last_pos = to;
-        }
-        if last_pos < doc_len {
-            cs.retain(doc_len - last_pos);
-        }
-
-        let new_sel = cs.map_selection(doc.selection().clone());
-        doc.apply(cs, Some(new_sel));
-        self.ensure_active_cursor_visible();
-        self.notify_lsp_did_change(self.active_doc_id);
+        edit_ops::insert_string(self, s);
     }
 
     /// Deletes character backward from each selection head.
+    #[inline]
     fn delete_backward(&mut self) {
-        let doc = self.active_doc_mut();
-        let doc_len = doc.text().char_len();
-        let mut cs = change_set::new(doc_len);
-        let mut last_pos = 0;
-
-        for r in doc.selection().ranges() {
-            let from = r.from();
-            let to = r.to();
-            if to > from {
-                if from > last_pos {
-                    cs.retain(from - last_pos);
-                }
-                cs.delete(to - from);
-                last_pos = to;
-            } else if from > 0 {
-                let prev = prev_grapheme_boundary(doc.text(), from);
-                if prev > last_pos {
-                    cs.retain(prev - last_pos);
-                }
-                cs.delete(from - prev);
-                last_pos = from;
-            }
-        }
-        if last_pos < doc_len {
-            cs.retain(doc_len - last_pos);
-        }
-
-        let new_sel = cs.map_selection(doc.selection().clone());
-        doc.apply(cs, Some(new_sel));
-        self.ensure_active_cursor_visible();
-        self.notify_lsp_did_change(self.active_doc_id);
+        edit_ops::delete_backward(self);
     }
 
     /// Deletes text covered by all selections and collapses selections to point cursors.
+    #[inline]
     fn delete_selected_text(&mut self) {
-        let doc = self.active_doc_mut();
-        let doc_len = doc.text().char_len();
-        let mut cs = change_set::new(doc_len);
-        let mut last_pos = 0;
-
-        for r in doc.selection().ranges() {
-            let from = r.from();
-            let to = r.to().max(from + 1).min(doc_len);
-            if from > last_pos {
-                cs.retain(from - last_pos);
-            }
-            if to > from {
-                cs.delete(to - from);
-            }
-            last_pos = to;
-        }
-        if last_pos < doc_len {
-            cs.retain(doc_len - last_pos);
-        }
-
-        let new_sel = cs.map_selection(doc.selection().clone());
-        doc.apply(cs, Some(new_sel));
-        self.ensure_active_cursor_visible();
-        self.notify_lsp_did_change(self.active_doc_id);
+        edit_ops::delete_selected_text(self);
     }
 
     /// Yanks text from active selection ranges into the chosen register.
+    #[inline]
     fn yank_selection(&mut self) {
-        let reg = self.selected_register.take().unwrap_or('"');
-        let doc = self.active_doc();
-        let mut values = Vec::new();
-
-        for r in doc.selection().ranges() {
-            let from = r.from();
-            let to = r.to().max(from + 1).min(doc.text().char_len());
-            values.push(doc.text().slice_chars(from..to));
-        }
-
-        self.registers.write(reg, values);
+        edit_ops::yank_selection(self);
     }
 
     /// Pastes text from active register after or before cursor.
+    #[inline]
     fn paste_register(&mut self, after: bool) {
-        let reg = self.selected_register.take().unwrap_or('"');
-        let strings = match self.registers.read(reg) {
-            Some(vals) => vals.to_vec(),
-            None => return,
-        };
-        if strings.is_empty() {
-            return;
-        }
-
-        let text_to_paste = strings.join("\n");
-        if after {
-            let doc = self.active_doc_mut();
-            let sel = apply_motion(doc.text(), doc.selection(), |r| {
-                move_horizontally(doc.text(), r, direction::forward, 1, movement::move_)
-            });
-            doc.set_selection(sel);
-        }
-        self.insert_string(&text_to_paste);
+        edit_ops::paste_register(self, after);
     }
 
     /// Applies casing transformations (lowercase, uppercase, switch case) to selections.
+    #[inline]
     fn transform_selection_case(&mut self, act: action) {
-        let doc = self.active_doc_mut();
-        let doc_len = doc.text().char_len();
-        let mut cs = change_set::new(doc_len);
-        let mut last_pos = 0;
-
-        for r in doc.selection().ranges() {
-            let from = r.from();
-            let to = r.to().max(from + 1).min(doc_len);
-            if from > last_pos {
-                cs.retain(from - last_pos);
-            }
-            let original = doc.text().slice_chars(from..to);
-            let transformed: String = original
-                .chars()
-                .map(|ch| match act {
-                    action::switch_case => {
-                        if ch.is_lowercase() {
-                            ch.to_uppercase().collect::<String>()
-                        } else {
-                            ch.to_lowercase().collect::<String>()
-                        }
-                    }
-                    action::switch_to_lowercase => ch.to_lowercase().collect::<String>(),
-                    action::switch_to_uppercase => ch.to_uppercase().collect::<String>(),
-                    _ => ch.to_string(),
-                })
-                .collect();
-            cs.delete(to - from);
-            cs.insert(&transformed);
-            last_pos = to;
-        }
-        if last_pos < doc_len {
-            cs.retain(doc_len - last_pos);
-        }
-
-        let new_sel = cs.map_selection(doc.selection().clone());
-        doc.apply(cs, Some(new_sel));
-        self.ensure_active_cursor_visible();
+        edit_ops::transform_selection_case(self, act);
     }
 
     /// Indents or unindents the lines intersecting selections.
+    #[inline]
     fn indent_lines(&mut self, unindent: bool) {
-        let tab_width = self.config.editor.tab_width;
-        let tab_str = " ".repeat(tab_width);
-        let doc = self.active_doc_mut();
-        let buffer = doc.text();
-        let mut lines = Vec::new();
-
-        for r in doc.selection().ranges() {
-            let start_line = buffer.byte_to_line(buffer.char_to_byte(r.from()));
-            let end_line = buffer.byte_to_line(buffer.char_to_byte(r.to()));
-            for line in start_line..=end_line {
-                if !lines.contains(&line) {
-                    lines.push(line);
-                }
-            }
-        }
-        lines.sort_unstable();
-
-        let doc_len = buffer.char_len();
-        let mut cs = change_set::new(doc_len);
-        let mut last_pos = 0;
-
-        for line in lines {
-            let line_start_byte = buffer.line_to_byte(line).unwrap_or(0);
-            let line_start_char = buffer.byte_to_char(line_start_byte);
-            if line_start_char > last_pos {
-                cs.retain(line_start_char - last_pos);
-            }
-
-            if unindent {
-                let mut spaces_to_remove = 0;
-                for i in 0..tab_width {
-                    if let Some(ch) = buffer.char_at(line_start_char + i) {
-                        if ch == ' ' {
-                            spaces_to_remove += 1;
-                        } else if ch == '\t' && spaces_to_remove == 0 {
-                            spaces_to_remove = 1;
-                            break;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                if spaces_to_remove > 0 {
-                    cs.delete(spaces_to_remove);
-                }
-                last_pos = line_start_char + spaces_to_remove;
-            } else {
-                cs.insert(&tab_str);
-                last_pos = line_start_char;
-            }
-        }
-        if last_pos < doc_len {
-            cs.retain(doc_len - last_pos);
-        }
-
-        let new_sel = cs.map_selection(doc.selection().clone());
-        doc.apply(cs, Some(new_sel));
-        self.ensure_active_cursor_visible();
+        edit_ops::indent_lines(self, unindent);
     }
 
     /// Jumps to next or previous match of `self.search_query`.
