@@ -11,11 +11,11 @@ use ned_text::{
     move_word_forward, movement, range, selection,
 };
 
-use crate::command_parser::{editor_command, parse_command};
 use crate::documents::{document, document_id};
 use crate::registers::register_storage;
 use crate::views::{view, view_id};
 
+pub mod command_exec;
 pub mod edit_ops;
 pub mod mode_dispatch;
 
@@ -742,61 +742,9 @@ impl editor {
     }
 
     /// Executes an ex-command parsed from user input.
+    #[inline]
     pub fn execute_command(&mut self, cmd_str: &str) {
-        match parse_command(cmd_str) {
-            Ok(editor_command::write(path_opt)) => {
-                let res = {
-                    let doc = self.active_doc_mut();
-                    if let Some(path) = path_opt {
-                        doc.save_to(path)
-                    } else {
-                        doc.save()
-                    }
-                };
-                match res {
-                    Ok(()) => {
-                        self.status_message = Some("written".to_string());
-                        self.notify_lsp_did_save(self.active_doc_id);
-                    }
-                    Err(e) => self.status_message = Some(format!("write error: {e}")),
-                }
-            }
-            Ok(editor_command::quit) => {
-                let doc = self.active_doc();
-                if doc.is_modified() {
-                    self.status_message = Some("unsaved changes (use :q! to force)".to_string());
-                } else {
-                    self.should_quit = true;
-                }
-            }
-            Ok(editor_command::force_quit) => {
-                self.should_quit = true;
-            }
-            Ok(editor_command::write_and_quit(path_opt)) => {
-                let doc = self.active_doc_mut();
-                let res = if let Some(path) = path_opt {
-                    doc.save_to(path)
-                } else {
-                    doc.save()
-                };
-                if res.is_ok() {
-                    self.should_quit = true;
-                } else if let Err(e) = res {
-                    self.status_message = Some(format!("write error: {e}"));
-                }
-            }
-            Ok(editor_command::open(path)) => {
-                if let Err(e) = self.open_file(&path) {
-                    self.status_message = Some(format!("error opening file: {e}"));
-                }
-            }
-            Ok(editor_command::set_option(key, val)) => {
-                self.status_message = Some(format!("set {key} = {val}"));
-            }
-            Err(e) => {
-                self.status_message = Some(e);
-            }
-        }
+        command_exec::execute_command(self, cmd_str);
     }
 
     /// Starts or connects the language server for `doc_id`.
