@@ -78,6 +78,26 @@ impl view {
         }
     }
 
+    /// Converts relative view coordinates `(text_col, text_row)` to a document character position.
+    #[must_use]
+    pub fn pos_at_coords(&self, doc: &document, text_col: u16, text_row: u16) -> usize {
+        let buffer = doc.text();
+        let total_lines = buffer.line_count().max(1);
+        let target_line = (self.row_offset + (text_row as usize)).min(total_lines.saturating_sub(1));
+
+        let line_start_byte = buffer.line_to_byte(target_line).unwrap_or(0);
+        let line_start_char = buffer.byte_to_char(line_start_byte);
+        let line_len_chars = if let Some(line_str) = buffer.line(target_line) {
+            let trimmed = line_str.trim_end_matches(['\r', '\n']);
+            trimmed.chars().count()
+        } else {
+            0
+        };
+
+        let target_col = (self.col_offset + (text_col as usize)).min(line_len_chars);
+        line_start_char + target_col
+    }
+
     /// Returns the range of line indices currently visible in this view.
     #[must_use]
     pub fn visible_lines(&self) -> Range<usize> {

@@ -214,6 +214,10 @@ fn default_scrolloff() -> usize {
     5
 }
 
+fn default_scroll_lines() -> usize {
+    3
+}
+
 /// Complete configuration for the Ned editor core.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -236,6 +240,9 @@ pub struct editor_config {
     /// Number of lines of margin preserved above/below cursor when scrolling.
     #[serde(default = "default_scrolloff")]
     pub scrolloff: usize,
+    /// Number of lines to scroll with scrollwheel (default: 3).
+    #[serde(default = "default_scroll_lines")]
+    pub scroll_lines: usize,
     /// Cursor shapes per mode.
     #[serde(default)]
     pub cursor_shape: cursor_shape_config,
@@ -248,6 +255,9 @@ pub struct editor_config {
     /// Search behavior.
     #[serde(default)]
     pub search: search_config,
+    /// Enable mouse click and scroll navigation.
+    #[serde(default = "default_true")]
+    pub mouse: bool,
 }
 
 impl Default for editor_config {
@@ -259,10 +269,12 @@ impl Default for editor_config {
             true_color: true,
             tab_width: default_tab_width(),
             scrolloff: default_scrolloff(),
+            scroll_lines: default_scroll_lines(),
             cursor_shape: cursor_shape_config::default(),
             statusline: statusline_config::default(),
             gutters: gutters_config::default(),
             search: search_config::default(),
+            mouse: true,
         }
     }
 }

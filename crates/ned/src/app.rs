@@ -6,9 +6,13 @@ use std::rc::Rc;
 
 use ::ned_config::{cursor_shape, mode, ned_config};
 use ned_core::editor;
-use ned_tui::input::events::{Event, KeyCode, KeyEvent, KeyModifier};
+use ned_tui::input::events::{
+    Event, KeyCode, KeyEvent, KeyModifier, MouseButton, MouseEvent, MouseEventKind,
+};
 use ned_tui::input::InputWatcher;
-use ned_tui::output::command::{EnterRawMode, TerminalCommander, UseAlternateScreen, WrapLines};
+use ned_tui::output::command::{
+    CaptureMouse, EnterRawMode, TerminalCommander, UseAlternateScreen, WrapLines,
+};
 use ned_tui::Control;
 use ned_tui::Terminal;
 use ned_tui::Termit;
@@ -80,9 +84,15 @@ fn sync_cursor(info: cursor_render_info) -> io::Result<()> {
 /// Returns an `io::Error` if terminal initialization, Yokio setup, or file I/O fails.
 pub fn run(paths: &[String]) -> io::Result<()> {
     let mut terminal = Terminal::try_system_default()?;
+    let config = ned_config::load();
+    let mouse_enabled = config.editor.mouse;
+
     terminal.send(EnterRawMode)?;
     terminal.send(UseAlternateScreen(true))?;
     terminal.send(WrapLines(false))?;
+    if mouse_enabled {
+        let _ = terminal.send(CaptureMouse(true));
+    }
 
     let size = terminal.control.get_size().unwrap_or_default();
     let width = size.col;
@@ -90,7 +100,6 @@ pub fn run(paths: &[String]) -> io::Result<()> {
 
     let termit: Termit<'static, ()> = Termit::from(terminal).true_color(true);
 
-    let config = ned_config::load();
     let mut ed = editor::new(config, width, height);
 
     for path in paths {
@@ -133,6 +142,9 @@ pub fn run(paths: &[String]) -> io::Result<()> {
                 }
                 Event::Key(key_ev) => {
                     handle_key_event(&mut app, &key_ev);
+                }
+                Event::Mouse(mouse_ev) => {
+                    handle_mouse_event(&mut app, &mouse_ev);
                 }
                 Event::InputClosed => {
                     app.keep_alive.take();
@@ -293,5 +305,51 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                 app.ed.status_message = Some(msg);
             }
         }
+    }
+}
+
+/// Processes a single mouse event and navigates the cursor or scrolls viewport.
+fn handle_mouse_event(app: &mut app_state, mouse_ev: &MouseEvent) {
+    if !app.ed.config.editor.mouse {
+        return;
+    }
+    if app.prompt.is_some() || app.picker.is_some() {
+        return;
+    }
+
+    let size = app.termit.screen_mut().size();
+    let width = size.col;
+    let height = size.row;
+    if width < 5 || height < 2 {
+        return;
+    }
+
+    let editor_height = height.saturating_sub(2);
+    let doc_id = app.ed.active_doc_id;
+    let total_lines = app
+        .ed
+        .documents
+        .get(&doc_id)
+        .map_or(1, |d| d.text().line_count().max(1));
+    let gutter_width = crate::ui::calculate_gutter_width(total_lines);
+
+    match mouse_ev.kind {
+        MouseEventKind::Down(MouseButton::Left) => {
+            app.ed
+                .handle_mouse_click(mouse_ev.column, mouse_ev.row, gutter_width, editor_height, false);
+        }
+        MouseEventKind::Drag(MouseButton::Left) => {
+            app.ed
+                .handle_mouse_click(mouse_ev.column, mouse_ev.row, gutter_width, editor_height, true);
+        }
+        MouseEventKind::ScrollUp => {
+            let lines = app.ed.config.editor.scroll_lines as isize;
+            app.ed.scroll_view_by(-lines);
+        }
+        MouseEventKind::ScrollDown => {
+            let lines = app.ed.config.editor.scroll_lines as isize;
+            app.ed.scroll_view_by(lines);
+        }
+        _ => {}
     }
 }
