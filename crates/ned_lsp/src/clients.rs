@@ -16,15 +16,12 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::jsonrpc::{notification, request, rpc_error};
-use crate::protocol::{
-    did_change_text_document_params, did_close_text_document_params, did_open_text_document_params,
-    did_save_text_document_params, hover, location, publish_diagnostics_params,
-    text_document_content_change_event, text_document_identifier, text_document_item,
-    text_document_position_params, versioned_text_document_identifier,
-};
+use crate::protocol::{hover, location, publish_diagnostics_params, text_document_position_params};
 use crate::transports::transport;
 
 pub mod lifecycle;
+pub mod sync;
+
 pub use lifecycle::server_config;
 
 /// Generic LSP client driving a single language server instance.
@@ -164,6 +161,7 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on transport failure.
+    #[inline]
     pub fn notify_did_open(
         &self,
         uri: &str,
@@ -171,15 +169,7 @@ impl client {
         version: i32,
         text: &str,
     ) -> io::Result<()> {
-        let params = did_open_text_document_params {
-            text_document: text_document_item {
-                uri: uri.to_string(),
-                language_id: language_id.to_string(),
-                version,
-                text: text.to_string(),
-            },
-        };
-        self.send_notification("textDocument/didOpen", Some(params))
+        sync::notify_did_open(self, uri, language_id, version, text)
     }
 
     /// Notifies the language server of document changes (`textDocument/didChange`).
@@ -187,18 +177,9 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on transport failure.
+    #[inline]
     pub fn notify_did_change(&self, uri: &str, version: i32, text: &str) -> io::Result<()> {
-        let params = did_change_text_document_params {
-            text_document: versioned_text_document_identifier {
-                uri: uri.to_string(),
-                version,
-            },
-            content_changes: vec![text_document_content_change_event {
-                range: None,
-                text: text.to_string(),
-            }],
-        };
-        self.send_notification("textDocument/didChange", Some(params))
+        sync::notify_did_change(self, uri, version, text)
     }
 
     /// Notifies the language server that a document was saved (`textDocument/didSave`).
@@ -206,12 +187,9 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on transport failure.
+    #[inline]
     pub fn notify_did_save(&self, uri: &str) -> io::Result<()> {
-        let params = did_save_text_document_params {
-            text_document: text_document_identifier::new(uri),
-            text: None,
-        };
-        self.send_notification("textDocument/didSave", Some(params))
+        sync::notify_did_save(self, uri)
     }
 
     /// Notifies the language server that a document was closed (`textDocument/didClose`).
@@ -219,11 +197,9 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on transport failure.
+    #[inline]
     pub fn notify_did_close(&self, uri: &str) -> io::Result<()> {
-        let params = did_close_text_document_params {
-            text_document: text_document_identifier::new(uri),
-        };
-        self.send_notification("textDocument/didClose", Some(params))
+        sync::notify_did_close(self, uri)
     }
 
     /// Polls for newly arrived diagnostics from the server without blocking.
