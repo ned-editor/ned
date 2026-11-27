@@ -82,7 +82,7 @@ fn sync_cursor(info: cursor_render_info) -> io::Result<()> {
 /// # Errors
 ///
 /// Returns an `io::Error` if terminal initialization, Yokio setup, or file I/O fails.
-pub fn run(paths: &[String]) -> io::Result<()> {
+pub fn run<P: AsRef<std::path::Path>>(paths: &[P]) -> io::Result<()> {
     let mut terminal = Terminal::try_system_default()?;
     let config = ned_config::load();
     let mouse_enabled = config.editor.mouse;
@@ -103,8 +103,9 @@ pub fn run(paths: &[String]) -> io::Result<()> {
     let mut ed = editor::new(config, width, height);
 
     for path in paths {
-        if let Err(e) = ed.open_file(path) {
-            ed.status_message = Some(format!("error opening {path}: {e}"));
+        let p = path.as_ref();
+        if let Err(e) = ed.open_file(p) {
+            ed.status_message = Some(format!("error opening {}: {e}", p.display()));
         }
     }
 

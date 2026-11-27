@@ -8,6 +8,7 @@
 )]
 
 pub mod app;
+pub mod cli;
 pub mod input_mapping;
 pub mod picker;
 pub mod prompt;
@@ -15,3 +16,4 @@ pub mod theme_bridge;
 pub mod ui;
 
 pub use app::run;
+pub use cli::{cli_args, cli_error};
