@@ -130,6 +130,6 @@ impl prompt_state {
 
     /// Handles a raw keyboard event with exact Helix readline and completion behavior.
     pub fn handle_key(&mut self, ev: &KeyEvent) -> prompt_action {
-        super::handle_key_internal(self, ev)
+        super::editing::handle_key(self, ev)
     }
 }
