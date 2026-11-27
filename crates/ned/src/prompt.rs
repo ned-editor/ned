@@ -624,271 +624,148 @@ pub enum completion_direction {
     backward,
 }
 
-/// Result of processing a key event in prompt mode.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum prompt_action {
-    /// No prompt state change or pending input.
-    none,
-    /// Prompt was cancelled (e.g. Esc pressed).
-    cancel,
-    /// Command or query was submitted with the given input.
-    submit(String),
-}
+pub mod state;
+pub use state::{prompt_action, prompt_state};
 
-/// State of an active bottom-line interactive prompt matching Helix Prompt parity.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct prompt_state {
-    /// Prompt prefix symbol (e.g. `":"` or `"/"`).
-    pub prefix: String,
-    /// User input text buffer.
-    pub input: String,
-    /// Cursor character index within `input`.
-    pub cursor: usize,
-    /// Matching candidate items.
-    pub completion: Vec<&'static command_doc>,
-    /// Selected completion candidate index if active.
-    pub selection: Option<usize>,
-}
+pub(crate) fn handle_key_internal(prompt: &mut prompt_state, ev: &KeyEvent) -> prompt_action {
+    let ctrl = ev.modifiers.contains(&KeyModifier::Control);
+    let alt = ev.modifiers.contains(&KeyModifier::Alt);
+    let shift = ev.modifiers.contains(&KeyModifier::Shift);
 
-impl prompt_state {
-    /// Creates a new prompt with the specified prefix symbol and calculates initial completions.
-    #[must_use]
-    pub fn new(prefix: impl Into<String>) -> Self {
-        let pfx = prefix.into();
-        let mut prompt = Self {
-            prefix: pfx,
-            input: String::new(),
-            cursor: 0,
-            completion: Vec::new(),
-            selection: None,
-        };
-        prompt.recalculate_completion();
-        prompt
-    }
-
-    /// Recalculates matching completions based on the currently typed command prefix.
-    pub fn recalculate_completion(&mut self) {
-        self.selection = None;
-        if self.prefix != ":" {
-            self.completion = Vec::new();
-            return;
+    match ev.keycode {
+        // Esc: First press dismisses completion selection; second press cancels prompt
+        KeyCode::Esc => {
+            if prompt.selection.is_some() {
+                prompt.exit_selection();
+                prompt_action::none
+            } else {
+                prompt_action::cancel
+            }
         }
 
-        let trimmed = self.input.trim_start();
-        let cmd_token = trimmed.split_whitespace().next().unwrap_or("");
+        // Enter: Submits current prompt input
+        KeyCode::Enter => prompt_action::submit(prompt.input.clone()),
 
-        let mut matches: Vec<&'static command_doc> = COMMANDS
-            .iter()
-            .filter(|c| c.name.starts_with(cmd_token))
-            .collect();
-
-        // Sort alphabetically matching Helix TYPABLE_COMMAND_LIST
-        matches.sort_by_key(|c| c.name);
-        self.completion = matches;
-    }
-
-    /// Cycles the active completion candidate selection forward or backward.
-    pub fn change_completion_selection(&mut self, direction: completion_direction) {
-        if self.completion.is_empty() {
-            return;
+        // Tab / Down: Cycle completion forward
+        KeyCode::Tab if !shift => {
+            prompt.change_completion_selection(completion_direction::forward);
+            prompt_action::none
+        }
+        KeyCode::BackTab | KeyCode::Tab if shift => {
+            prompt.change_completion_selection(completion_direction::backward);
+            prompt_action::none
+        }
+        KeyCode::Down => {
+            prompt.change_completion_selection(completion_direction::forward);
+            prompt_action::none
+        }
+        KeyCode::Up => {
+            prompt.change_completion_selection(completion_direction::backward);
+            prompt_action::none
         }
 
-        let len = self.completion.len();
-        let next_idx = match direction {
-            completion_direction::forward => match self.selection {
-                Some(i) => (i + 1) % len,
-                None => 0,
-            },
-            completion_direction::backward => match self.selection {
-                Some(i) => {
-                    if i == 0 {
-                        len - 1
-                    } else {
-                        i - 1
+        // Readline navigation
+        KeyCode::Home => {
+            prompt.cursor = 0;
+            prompt_action::none
+        }
+        KeyCode::End => {
+            prompt.cursor = prompt.input.chars().count();
+            prompt_action::none
+        }
+        KeyCode::Left => {
+            if prompt.cursor > 0 {
+                prompt.cursor -= 1;
+            }
+            prompt_action::none
+        }
+        KeyCode::Right => {
+            if prompt.cursor < prompt.input.chars().count() {
+                prompt.cursor += 1;
+            }
+            prompt_action::none
+        }
+
+        // Deletions
+        KeyCode::Backspace => {
+            if ctrl || alt {
+                // Delete word backward
+                while prompt.cursor > 0 && prompt.input.chars().nth(prompt.cursor - 1) == Some(' ') {
+                    prompt.cursor -= 1;
+                    prompt.input.remove(prompt.cursor);
+                }
+                while prompt.cursor > 0 && prompt.input.chars().nth(prompt.cursor - 1) != Some(' ') {
+                    prompt.cursor -= 1;
+                    prompt.input.remove(prompt.cursor);
+                }
+                prompt.recalculate_completion();
+                prompt_action::none
+            } else if prompt.cursor > 0 {
+                prompt.cursor -= 1;
+                prompt.input.remove(prompt.cursor);
+                prompt.recalculate_completion();
+                prompt_action::none
+            } else {
+                prompt_action::cancel
+            }
+        }
+        KeyCode::Delete => {
+            if prompt.cursor < prompt.input.chars().count() {
+                prompt.input.remove(prompt.cursor);
+                prompt.recalculate_completion();
+            }
+            prompt_action::none
+        }
+
+        // Character input & Ctrl readline shortcuts
+        KeyCode::Char(ch) => {
+            if ctrl {
+                match ch {
+                    'a' => {
+                        prompt.cursor = 0;
+                        prompt_action::none
                     }
-                }
-                None => len - 1,
-            },
-        };
-
-        self.selection = Some(next_idx);
-        let selected_item = self.completion[next_idx];
-
-        // Replace command token with selected item
-        let trimmed = self.input.trim_start();
-        let parts: Vec<&str> = trimmed.splitn(2, ' ').collect();
-        if parts.len() > 1 {
-            self.input = format!("{} {}", selected_item.name, parts[1]);
-        } else {
-            self.input = selected_item.name.to_string();
-        }
-        self.cursor = self.input.chars().count();
-    }
-
-    /// Clears the active completion selection.
-    pub fn exit_selection(&mut self) {
-        self.selection = None;
-    }
-
-    /// Returns the currently active documentation (from selected completion candidate or typed command).
-    #[must_use]
-    pub fn active_doc(&self) -> Option<(&'static str, &'static str)> {
-        if let Some(idx) = self.selection {
-            if let Some(cmd) = self.completion.get(idx) {
-                return Some((cmd.name, cmd.doc));
-            }
-        }
-        let token = self.input.trim_start().split_whitespace().next().unwrap_or("");
-        if token.is_empty() {
-            return None;
-        }
-        COMMANDS
-            .iter()
-            .find(|c| c.name == token)
-            .map(|c| (c.name, c.doc))
-    }
-
-    /// Handles a raw keyboard event with exact Helix readline and completion behavior.
-    pub fn handle_key(&mut self, ev: &KeyEvent) -> prompt_action {
-        let ctrl = ev.modifiers.contains(&KeyModifier::Control);
-        let alt = ev.modifiers.contains(&KeyModifier::Alt);
-        let shift = ev.modifiers.contains(&KeyModifier::Shift);
-
-        match ev.keycode {
-            // Esc: First press dismisses completion selection; second press cancels prompt
-            KeyCode::Esc => {
-                if self.selection.is_some() {
-                    self.exit_selection();
-                    prompt_action::none
-                } else {
-                    prompt_action::cancel
-                }
-            }
-
-            // Enter: Submits current prompt input
-            KeyCode::Enter => prompt_action::submit(self.input.clone()),
-
-            // Tab / Down: Cycle completion forward
-            KeyCode::Tab if !shift => {
-                self.change_completion_selection(completion_direction::forward);
-                prompt_action::none
-            }
-            KeyCode::BackTab | KeyCode::Tab if shift => {
-                self.change_completion_selection(completion_direction::backward);
-                prompt_action::none
-            }
-            KeyCode::Down => {
-                self.change_completion_selection(completion_direction::forward);
-                prompt_action::none
-            }
-            KeyCode::Up => {
-                self.change_completion_selection(completion_direction::backward);
-                prompt_action::none
-            }
-
-            // Readline navigation
-            KeyCode::Home => {
-                self.cursor = 0;
-                prompt_action::none
-            }
-            KeyCode::End => {
-                self.cursor = self.input.chars().count();
-                prompt_action::none
-            }
-            KeyCode::Left => {
-                if self.cursor > 0 {
-                    self.cursor -= 1;
-                }
-                prompt_action::none
-            }
-            KeyCode::Right => {
-                if self.cursor < self.input.chars().count() {
-                    self.cursor += 1;
-                }
-                prompt_action::none
-            }
-
-            // Deletions
-            KeyCode::Backspace => {
-                if ctrl || alt {
-                    // Delete word backward
-                    while self.cursor > 0 && self.input.chars().nth(self.cursor - 1) == Some(' ') {
-                        self.cursor -= 1;
-                        self.input.remove(self.cursor);
+                    'e' => {
+                        prompt.cursor = prompt.input.chars().count();
+                        prompt_action::none
                     }
-                    while self.cursor > 0 && self.input.chars().nth(self.cursor - 1) != Some(' ') {
-                        self.cursor -= 1;
-                        self.input.remove(self.cursor);
+                    'u' => {
+                        prompt.input.drain(..prompt.cursor);
+                        prompt.cursor = 0;
+                        prompt.recalculate_completion();
+                        prompt_action::none
                     }
-                    self.recalculate_completion();
-                    prompt_action::none
-                } else if self.cursor > 0 {
-                    self.cursor -= 1;
-                    self.input.remove(self.cursor);
-                    self.recalculate_completion();
-                    prompt_action::none
-                } else {
-                    prompt_action::cancel
+                    'k' => {
+                        prompt.input.truncate(prompt.cursor);
+                        prompt.recalculate_completion();
+                        prompt_action::none
+                    }
+                    'w' => {
+                        while prompt.cursor > 0
+                            && prompt.input.chars().nth(prompt.cursor - 1) == Some(' ')
+                        {
+                            prompt.cursor -= 1;
+                            prompt.input.remove(prompt.cursor);
+                        }
+                        while prompt.cursor > 0
+                            && prompt.input.chars().nth(prompt.cursor - 1) != Some(' ')
+                        {
+                            prompt.cursor -= 1;
+                            prompt.input.remove(prompt.cursor);
+                        }
+                        prompt.recalculate_completion();
+                        prompt_action::none
+                    }
+                    'c' => prompt_action::cancel,
+                    _ => prompt_action::none,
                 }
-            }
-            KeyCode::Delete => {
-                if self.cursor < self.input.chars().count() {
-                    self.input.remove(self.cursor);
-                    self.recalculate_completion();
-                }
+            } else {
+                prompt.input.insert(prompt.cursor, ch);
+                prompt.cursor += 1;
+                prompt.recalculate_completion();
                 prompt_action::none
             }
-
-            // Character input & Ctrl readline shortcuts
-            KeyCode::Char(ch) => {
-                if ctrl {
-                    match ch {
-                        'a' => {
-                            self.cursor = 0;
-                            prompt_action::none
-                        }
-                        'e' => {
-                            self.cursor = self.input.chars().count();
-                            prompt_action::none
-                        }
-                        'u' => {
-                            self.input.drain(..self.cursor);
-                            self.cursor = 0;
-                            self.recalculate_completion();
-                            prompt_action::none
-                        }
-                        'k' => {
-                            self.input.truncate(self.cursor);
-                            self.recalculate_completion();
-                            prompt_action::none
-                        }
-                        'w' => {
-                            while self.cursor > 0
-                                && self.input.chars().nth(self.cursor - 1) == Some(' ')
-                            {
-                                self.cursor -= 1;
-                                self.input.remove(self.cursor);
-                            }
-                            while self.cursor > 0
-                                && self.input.chars().nth(self.cursor - 1) != Some(' ')
-                            {
-                                self.cursor -= 1;
-                                self.input.remove(self.cursor);
-                            }
-                            self.recalculate_completion();
-                            prompt_action::none
-                        }
-                        'c' => prompt_action::cancel,
-                        _ => prompt_action::none,
-                    }
-                } else {
-                    self.input.insert(self.cursor, ch);
-                    self.cursor += 1;
-                    self.recalculate_completion();
-                    prompt_action::none
-                }
-            }
-            _ => prompt_action::none,
         }
+        _ => prompt_action::none,
     }
 }
