@@ -1,3 +1,4 @@
+#![allow(unsafe_code)]
 //! yokio-based terminal input watcher with zero-dependency ansi tokenization.
 
 use super::events::{AppEvent, Event};
