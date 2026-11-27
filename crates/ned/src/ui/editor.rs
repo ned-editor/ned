@@ -3,9 +3,7 @@
 use ned_config::line_number_style;
 use ned_core::editor;
 use ned_git::diff_tag;
-use ned_lsp::diagnostic_severity;
 use ned_tui::geometry::point;
-use ned_tui::output::color::Color;
 use ned_tui::output::style::Style;
 use ned_tui::Screen;
 
@@ -13,6 +11,7 @@ use crate::theme_bridge::{merge_style, style_for_scope};
 use crate::ui::draw_str;
 
 pub mod buffer;
+pub mod diagnostics;
 pub mod selection;
 
 /// Computes the dynamic width of the gutter for `line_count` matching Helix layout:
@@ -102,7 +101,7 @@ pub fn render_editor(
         if line_idx < total_lines {
             // --- Gutter rendering (Helix layout: [diag] [line-numbers] [space] [diff]) ---
             // Column 0: LSP diagnostic indicator
-            let (diag_sym, diag_style) = get_diagnostic_indicator(
+            let (diag_sym, diag_style) = diagnostics::get_diagnostic_indicator(
                 doc.diagnostics(),
                 line_idx,
                 gutter_style,
@@ -183,7 +182,7 @@ pub fn render_editor(
                 );
 
                 // Inline diagnostic underline
-                if let Some(ul_color) = diag_underline_color(
+                if let Some(ul_color) = diagnostics::diag_underline_color(
                     doc.diagnostics(),
                     line_idx,
                     char_idx_in_line,
@@ -211,7 +210,7 @@ pub fn render_editor(
             }
 
             // Inline end-of-line diagnostic message (Helix inline-diagnostics parity)
-            if let Some((diag_msg, diag_fg_style)) = get_line_inline_diagnostic(
+            if let Some((diag_msg, diag_fg_style)) = diagnostics::get_line_inline_diagnostic(
                 doc.diagnostics(),
                 line_idx,
                 diag_error_style,
@@ -281,124 +280,6 @@ fn get_diff_indicator(
         }
     }
     (" ", gutter_style)
-}
-
-/// Computes the LSP diagnostic indicator and style for a given line index.
-fn get_diagnostic_indicator(
-    diags: &[ned_lsp::diagnostic],
-    line_idx: usize,
-    gutter_style: Style,
-    error_style: Style,
-    warning_style: Style,
-    info_style: Style,
-    hint_style: Style,
-) -> (&'static str, Style) {
-    let mut highest_severity: Option<diagnostic_severity> = None;
-
-    for d in diags {
-        if d.range.start.line as usize == line_idx {
-            match d.severity {
-                Some(diagnostic_severity::error) => {
-                    return ("●", error_style);
-                }
-                Some(diagnostic_severity::warning) => {
-                    highest_severity = Some(diagnostic_severity::warning);
-                }
-                Some(diagnostic_severity::information) => {
-                    if highest_severity.is_none()
-                        || highest_severity == Some(diagnostic_severity::hint)
-                    {
-                        highest_severity = Some(diagnostic_severity::information);
-                    }
-                }
-                Some(diagnostic_severity::hint) => {
-                    if highest_severity.is_none() {
-                        highest_severity = Some(diagnostic_severity::hint);
-                    }
-                }
-                None => {}
-            }
-        }
-    }
-
-    match highest_severity {
-        Some(diagnostic_severity::error) => ("●", error_style),
-        Some(diagnostic_severity::warning) => ("●", warning_style),
-        Some(diagnostic_severity::information) => ("●", info_style),
-        Some(diagnostic_severity::hint) => ("●", hint_style),
-        None => (" ", gutter_style),
-    }
-}
-
-/// Returns the underline color for a character inside a diagnostic range, prioritizing errors.
-fn diag_underline_color(
-    diags: &[ned_lsp::diagnostic],
-    line_idx: usize,
-    col_idx: usize,
-    error_style: Style,
-    warning_style: Style,
-    info_style: Style,
-    hint_style: Style,
-) -> Option<Color> {
-    let l = line_idx as u32;
-    let c = col_idx as u32;
-    let mut best: Option<(u8, Style)> = None;
-
-    for d in diags {
-        let s = &d.range.start;
-        let e = &d.range.end;
-        let in_range = if s.line == e.line {
-            l == s.line
-                && c >= s.character
-                && (c < e.character || (s.character == e.character && c == s.character))
-        } else {
-            (l == s.line && c >= s.character)
-                || (l > s.line && l < e.line)
-                || (l == e.line && c < e.character)
-        };
-
-        if in_range {
-            let (prio, st) = match d.severity {
-                Some(diagnostic_severity::error) => (4, error_style),
-                Some(diagnostic_severity::warning) => (3, warning_style),
-                Some(diagnostic_severity::information) => (2, info_style),
-                Some(diagnostic_severity::hint) | None => (1, hint_style),
-            };
-            if best.is_none_or(|(bp, _)| prio > bp) {
-                best = Some((prio, st));
-            }
-        }
-    }
-
-    best.and_then(|(_, st)| st.front_color)
-}
-
-/// Returns the highest-severity diagnostic message and style for inline end-of-line display.
-fn get_line_inline_diagnostic(
-    diags: &[ned_lsp::diagnostic],
-    line_idx: usize,
-    error_style: Style,
-    warning_style: Style,
-    info_style: Style,
-    hint_style: Style,
-) -> Option<(&str, Style)> {
-    let mut best: Option<(u8, &str, Style)> = None;
-
-    for d in diags {
-        if d.range.start.line as usize == line_idx {
-            let (prio, st) = match d.severity {
-                Some(diagnostic_severity::error) => (4, error_style),
-                Some(diagnostic_severity::warning) => (3, warning_style),
-                Some(diagnostic_severity::information) => (2, info_style),
-                Some(diagnostic_severity::hint) | None => (1, hint_style),
-            };
-            if best.is_none_or(|(bp, _, _)| prio > bp) {
-                best = Some((prio, d.message.as_str(), st));
-            }
-        }
-    }
-
-    best.map(|(_, msg, st)| (msg, st))
 }
 
 /// Formats the line number string respecting relative and absolute settings.
