@@ -92,21 +92,36 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     goto.insert("h", action::goto_line_start);
     goto.insert("l", action::goto_line_end);
     goto.insert("s", action::goto_first_nonwhitespace);
+    goto.insert("t", action::goto_window_top);
+    goto.insert("c", action::goto_window_center);
+    goto.insert("b", action::goto_window_bottom);
+    goto.insert("n", action::goto_next_buffer);
+    goto.insert("p", action::goto_previous_buffer);
     goto.insert("d", action::goto_definition);
     goto.insert("r", action::goto_reference);
     goto.insert("k", action::move_line_up);
     goto.insert("j", action::move_line_down);
     normal.insert_node("g", goto.clone());
 
-    // 'z' view sub-layer
+    // 'z' and 'Z' view sub-layer
     let mut view = key_trie_node::new("View");
     view.insert("c", action::align_view_center);
     view.insert("z", action::align_view_center);
+    view.insert("m", action::align_view_center);
     view.insert("t", action::align_view_top);
     view.insert("b", action::align_view_bottom);
     view.insert("j", action::scroll_down);
+    view.insert("down", action::scroll_down);
     view.insert("k", action::scroll_up);
+    view.insert("up", action::scroll_up);
+    view.insert("C-d", action::scroll_down);
+    view.insert("C-u", action::scroll_up);
+    view.insert("C-f", action::scroll_down);
+    view.insert("pagedown", action::scroll_down);
+    view.insert("C-b", action::scroll_up);
+    view.insert("pageup", action::scroll_up);
     normal.insert_node("z", view.clone());
+    normal.insert_node("Z", view.clone());
 
     // 'm' match sub-layer
     let mut match_trie = key_trie_node::new("Match");
@@ -151,10 +166,14 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     // Space leader keymap
     let mut space = key_trie_node::new("Space");
     space.insert("f", action::file_picker);
+    space.insert("F", action::file_picker);
     space.insert("b", action::buffer_picker);
     space.insert("d", action::diagnostics_picker);
+    space.insert("D", action::diagnostics_picker);
     space.insert("k", action::hover);
     space.insert("y", action::yank);
+    space.insert("p", action::paste_after);
+    space.insert("P", action::paste_before);
     space.insert_node("w", window.clone());
     normal.insert_node("space", space.clone());
 
@@ -238,7 +257,8 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     select.insert("N", action::search_prev);
     select.insert("K", action::hover);
     select.insert_node("g", goto);
-    select.insert_node("z", view);
+    select.insert_node("z", view.clone());
+    select.insert_node("Z", view);
     select.insert_node("m", match_trie);
     select.insert_node("C-w", window);
     select.insert_node("[", left_bracket);

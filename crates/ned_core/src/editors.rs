@@ -74,7 +74,10 @@ impl editor {
             view::new(initial_view_id, initial_doc_id, width, height),
         );
 
-        let status_message = config.warnings.first().map(|w| format!("Config warning: {w}"));
+        let status_message = config
+            .warnings
+            .first()
+            .map(|w| format!("Config warning: {w}"));
 
         Self {
             documents: docs,
@@ -497,6 +500,77 @@ impl editor {
                 view_ops::scroll_view_by(self, -lines);
             }
 
+            // --- Window and buffer navigation ---
+            action::goto_window_top => {
+                let view_id = self.active_view_id;
+                let row_offset = self.views.get(&view_id).map_or(0, |v| v.row_offset);
+                let doc = self.active_doc_mut();
+                let buffer = doc.text();
+                let byte = buffer.line_to_byte(row_offset).unwrap_or(0);
+                doc.set_selection(selection::point(buffer.byte_to_char(byte)));
+                self.ensure_active_cursor_visible();
+            }
+            action::goto_window_center => {
+                let view_id = self.active_view_id;
+                let (row_offset, height) = self
+                    .views
+                    .get(&view_id)
+                    .map_or((0, 24), |v| (v.row_offset, v.height));
+                let doc = self.active_doc_mut();
+                let buffer = doc.text();
+                let max_line = buffer.line_count().saturating_sub(1);
+                let target_line = (row_offset + (height as usize / 2)).min(max_line);
+                let byte = buffer.line_to_byte(target_line).unwrap_or(0);
+                doc.set_selection(selection::point(buffer.byte_to_char(byte)));
+                self.ensure_active_cursor_visible();
+            }
+            action::goto_window_bottom => {
+                let view_id = self.active_view_id;
+                let (row_offset, height) = self
+                    .views
+                    .get(&view_id)
+                    .map_or((0, 24), |v| (v.row_offset, v.height));
+                let doc = self.active_doc_mut();
+                let buffer = doc.text();
+                let max_line = buffer.line_count().saturating_sub(1);
+                let target_line = (row_offset + (height as usize).saturating_sub(1)).min(max_line);
+                let byte = buffer.line_to_byte(target_line).unwrap_or(0);
+                doc.set_selection(selection::point(buffer.byte_to_char(byte)));
+                self.ensure_active_cursor_visible();
+            }
+            action::goto_next_buffer => {
+                let doc_ids: Vec<document_id> = self.documents.keys().copied().collect();
+                if doc_ids.len() > 1 {
+                    if let Some(pos) = doc_ids.iter().position(|&id| id == self.active_doc_id) {
+                        let next_pos = (pos + 1) % doc_ids.len();
+                        let next_id = doc_ids[next_pos];
+                        self.active_doc_id = next_id;
+                        if let Some(v) = self.views.get_mut(&self.active_view_id) {
+                            v.doc_id = next_id;
+                        }
+                        self.ensure_active_cursor_visible();
+                    }
+                }
+            }
+            action::goto_previous_buffer => {
+                let doc_ids: Vec<document_id> = self.documents.keys().copied().collect();
+                if doc_ids.len() > 1 {
+                    if let Some(pos) = doc_ids.iter().position(|&id| id == self.active_doc_id) {
+                        let prev_pos = if pos == 0 {
+                            doc_ids.len() - 1
+                        } else {
+                            pos - 1
+                        };
+                        let prev_id = doc_ids[prev_pos];
+                        self.active_doc_id = prev_id;
+                        if let Some(v) = self.views.get_mut(&self.active_view_id) {
+                            v.doc_id = prev_id;
+                        }
+                        self.ensure_active_cursor_visible();
+                    }
+                }
+            }
+
             // --- Match & Surround ---
             action::match_brackets => {
                 // Brackets matching
@@ -580,7 +654,9 @@ impl editor {
             action::goto_line => {
                 let target_line = count.saturating_sub(1);
                 apply_motion(buffer, doc.selection(), |_| {
-                    let byte = buffer.line_to_byte(target_line).unwrap_or_else(|| buffer.byte_len());
+                    let byte = buffer
+                        .line_to_byte(target_line)
+                        .unwrap_or_else(|| buffer.byte_len());
                     range::point(buffer.byte_to_char(byte))
                 })
             }

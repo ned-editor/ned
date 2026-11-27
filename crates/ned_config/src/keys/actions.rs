@@ -39,6 +39,16 @@ pub enum action {
     goto_file_end,
     /// Prompt or jump to line number (`G`).
     goto_line,
+    /// Move cursor to top of window (`gt`).
+    goto_window_top,
+    /// Move cursor to center of window (`gc`).
+    goto_window_center,
+    /// Move cursor to bottom of window (`gb`).
+    goto_window_bottom,
+    /// Switch to next open buffer (`gn`).
+    goto_next_buffer,
+    /// Switch to previous open buffer (`gp`).
+    goto_previous_buffer,
 
     // --- Line selection ---
     /// Select current line or extend selection downward (`x`).
