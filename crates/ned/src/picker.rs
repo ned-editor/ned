@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use ned_tui::input::events::{KeyCode, KeyEvent, KeyModifier};
 
 pub mod filesystem;
+pub mod filter;
 pub mod preview;
 
 pub use preview::{max_file_size_for_preview, min_area_width_for_preview, preview_content};
@@ -271,20 +272,7 @@ impl picker_state {
 
     /// Re-evaluates matches against `self.query`.
     fn refilter(&mut self) {
-        let q = self.query.to_lowercase();
-        self.filtered = self
-            .items
-            .iter()
-            .enumerate()
-            .filter(|(_, item)| {
-                if q.is_empty() {
-                    return true;
-                }
-                item.to_lowercase().contains(&q)
-            })
-            .map(|(i, _)| i)
-            .collect();
-
+        self.filtered = filter::filter_candidates(&self.query, &self.items);
         self.selected = 0;
         self.ensure_preview_loaded();
     }
