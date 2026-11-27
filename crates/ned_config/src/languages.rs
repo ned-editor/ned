@@ -161,68 +161,8 @@ impl language_registry {
         reg
     }
 
-    /// Built-in TOML value providing standard definitions for common programming languages with zero language server defaults.
+    /// Zero built-in defaults; languages and servers are loaded strictly from runtime/ and user configs.
     fn default_toml() -> Value {
-        let toml_str = r##"
-[[language]]
-name = "rust"
-scope = "source.rust"
-file-types = ["rs"]
-comment-token = "//"
-
-[[language]]
-name = "python"
-scope = "source.python"
-file-types = ["py", "pyi"]
-comment-token = "#"
-
-[[language]]
-name = "go"
-scope = "source.go"
-file-types = ["go"]
-comment-token = "//"
-
-[[language]]
-name = "c"
-scope = "source.c"
-file-types = ["c", "h"]
-comment-token = "//"
-
-[[language]]
-name = "cpp"
-scope = "source.cpp"
-file-types = ["cpp", "cc", "cxx", "hpp", "hh", "hxx"]
-comment-token = "//"
-
-[[language]]
-name = "javascript"
-scope = "source.js"
-file-types = ["js", "mjs", "cjs"]
-comment-token = "//"
-
-[[language]]
-name = "typescript"
-scope = "source.ts"
-file-types = ["ts", "mts", "cts"]
-comment-token = "//"
-
-[[language]]
-name = "toml"
-scope = "source.toml"
-file-types = ["toml"]
-comment-token = "#"
-
-[[language]]
-name = "json"
-scope = "source.json"
-file-types = ["json"]
-
-[[language]]
-name = "markdown"
-scope = "source.md"
-file-types = ["md", "markdown"]
-comment-token = "<!--"
-"##;
-        toml::from_str(toml_str).unwrap_or(Value::Table(toml::map::Map::new()))
+        Value::Table(toml::map::Map::new())
     }
 }
