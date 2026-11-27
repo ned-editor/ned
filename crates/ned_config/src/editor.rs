@@ -1,6 +1,9 @@
 //! Editor options, statusline, gutter layout, and cursor shape configuration.
 
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
+use toml::Value;
 
 /// Display mode for line numbers in the gutter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,6 +35,24 @@ fn default_block_cursor() -> cursor_shape {
 
 fn default_bar_cursor() -> cursor_shape {
     cursor_shape::bar
+}
+
+/// Display mode for the top bufferline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum bufferline_style {
+    /// Never show bufferline.
+    never,
+    /// Always show bufferline.
+    always,
+    /// Show bufferline only when multiple buffers are open.
+    multiple,
+}
+
+impl Default for bufferline_style {
+    fn default() -> Self {
+        Self::never
+    }
 }
 
 /// Configuration for cursor shape per editor mode.
@@ -81,6 +102,12 @@ pub enum statusline_element {
     /// Line ending format (e.g. "LF", "CRLF").
     #[serde(alias = "fileLineEnding")]
     file_line_ending,
+    /// Active selection count.
+    #[serde(alias = "selectionCount")]
+    selection_count,
+    /// Current Git branch.
+    #[serde(alias = "gitBranch")]
+    git_branch,
     /// Elastic spacer filling remaining width.
     spacer,
     /// Explicit separator element.
@@ -98,6 +125,7 @@ fn default_statusline_left() -> Vec<statusline_element> {
 fn default_statusline_right() -> Vec<statusline_element> {
     vec![
         statusline_element::diagnostics,
+        statusline_element::selection_count,
         statusline_element::position,
         statusline_element::file_encoding,
         statusline_element::file_line_ending,
@@ -203,6 +231,126 @@ impl Default for search_config {
     }
 }
 
+/// Soft wrap configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub struct soft_wrap_config {
+    /// Whether soft-wrapping is enabled.
+    #[serde(default)]
+    pub enable: bool,
+}
+
+/// Whitespace rendering configuration.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct whitespace_config {
+    /// Render policy: "none", "all", etc.
+    #[serde(default = "default_whitespace_render")]
+    pub render: String,
+}
+
+fn default_whitespace_render() -> String {
+    "none".to_string()
+}
+
+impl Default for whitespace_config {
+    fn default() -> Self {
+        Self {
+            render: default_whitespace_render(),
+        }
+    }
+}
+
+/// Indent guides rendering configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub struct indent_guides_config {
+    /// Whether indent guides are displayed.
+    #[serde(default)]
+    pub render: bool,
+}
+
+/// Picker behavior configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct picker_config {
+    /// Maximum candidate items to collect.
+    #[serde(default = "default_picker_max_items")]
+    pub max_items: usize,
+    /// Maximum bytes to preview.
+    #[serde(default = "default_picker_preview_bytes")]
+    pub preview_max_bytes: usize,
+}
+
+fn default_picker_max_items() -> usize {
+    50000
+}
+
+fn default_picker_preview_bytes() -> usize {
+    1048576
+}
+
+impl Default for picker_config {
+    fn default() -> Self {
+        Self {
+            max_items: default_picker_max_items(),
+            preview_max_bytes: default_picker_preview_bytes(),
+        }
+    }
+}
+
+/// Language Server Protocol integration options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct lsp_config {
+    /// Whether LSP client integration is enabled.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Display diagnostics published by server.
+    #[serde(default = "default_true")]
+    pub show_diagnostics: bool,
+    /// Show automatic code completion.
+    #[serde(default = "default_true")]
+    pub show_completion: bool,
+    /// Show signature help during parameter typing.
+    #[serde(default = "default_true")]
+    pub show_signature_help: bool,
+    /// Display inline parameter and type hints.
+    #[serde(default = "default_true")]
+    pub display_inlay_hints: bool,
+    /// Request and render semantic tokens.
+    #[serde(default = "default_true")]
+    pub semantic_tokens: bool,
+}
+
+impl Default for lsp_config {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            show_diagnostics: true,
+            show_completion: true,
+            show_signature_help: true,
+            display_inlay_hints: true,
+            semantic_tokens: true,
+        }
+    }
+}
+
+/// Git version control integration options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct git_config {
+    /// Whether Git diff tracking and gutter marks are enabled.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+impl Default for git_config {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
+
 fn default_theme_name() -> String {
     "dacctal".to_string()
 }
@@ -223,11 +371,34 @@ fn default_scroll_lines() -> usize {
     3
 }
 
+/// Warning emitted during configuration parsing or validation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct config_warning {
+    /// Human-readable warning description.
+    pub message: String,
+}
+
+impl fmt::Display for config_warning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl config_warning {
+    /// Constructs a new config warning.
+    #[must_use]
+    pub fn new(msg: impl Into<String>) -> Self {
+        Self {
+            message: msg.into(),
+        }
+    }
+}
+
 /// Complete configuration for the Ned editor core.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct editor_config {
-    /// Active theme name (default: "default").
+    /// Active theme name (default: "dacctal").
     #[serde(default = "default_theme_name")]
     pub theme: String,
     /// Gutter line number style (default: relative).
@@ -236,18 +407,51 @@ pub struct editor_config {
     /// Highlight line containing active cursor.
     #[serde(default = "default_true")]
     pub cursor_line: bool,
+    /// Highlight column containing active cursor.
+    #[serde(default)]
+    pub cursor_column: bool,
     /// Enable 24-bit true color rendering.
     #[serde(default = "default_true")]
     pub true_color: bool,
-    /// Default tab width.
+    /// Default tab width (1..=16).
     #[serde(default = "default_tab_width")]
     pub tab_width: usize,
+    /// Indentation width (1..=16).
+    #[serde(default = "default_tab_width")]
+    pub indent_width: usize,
+    /// Insert spaces instead of hard tabs.
+    #[serde(default = "default_true")]
+    pub insert_spaces: bool,
     /// Number of lines of margin preserved above/below cursor when scrolling.
     #[serde(default = "default_scrolloff")]
     pub scrolloff: usize,
     /// Number of lines to scroll with scrollwheel (default: 3).
     #[serde(default = "default_scroll_lines")]
     pub scroll_lines: usize,
+    /// Enable mouse click and scroll navigation.
+    #[serde(default = "default_true")]
+    pub mouse: bool,
+    /// Top bufferline display policy.
+    #[serde(default)]
+    pub bufferline: bufferline_style,
+    /// Visual ruler column indicators.
+    #[serde(default)]
+    pub rulers: Vec<usize>,
+    /// Automatic closing pair insertion.
+    #[serde(default = "default_true")]
+    pub auto_pairs: bool,
+    /// Automatic buffer saving.
+    #[serde(default)]
+    pub auto_save: bool,
+    /// Soft-wrapping settings.
+    #[serde(default)]
+    pub soft_wrap: soft_wrap_config,
+    /// Whitespace rendering options.
+    #[serde(default)]
+    pub whitespace: whitespace_config,
+    /// Indent guide rendering options.
+    #[serde(default)]
+    pub indent_guides: indent_guides_config,
     /// Cursor shapes per mode.
     #[serde(default)]
     pub cursor_shape: cursor_shape_config,
@@ -260,9 +464,15 @@ pub struct editor_config {
     /// Search behavior.
     #[serde(default)]
     pub search: search_config,
-    /// Enable mouse click and scroll navigation.
-    #[serde(default = "default_true")]
-    pub mouse: bool,
+    /// Picker bounds.
+    #[serde(default)]
+    pub picker: picker_config,
+    /// LSP settings.
+    #[serde(default)]
+    pub lsp: lsp_config,
+    /// Git settings.
+    #[serde(default)]
+    pub git: git_config,
 }
 
 impl Default for editor_config {
@@ -271,15 +481,346 @@ impl Default for editor_config {
             theme: default_theme_name(),
             line_number: default_line_number_style(),
             cursor_line: true,
+            cursor_column: false,
             true_color: true,
             tab_width: default_tab_width(),
+            indent_width: default_tab_width(),
+            insert_spaces: true,
             scrolloff: default_scrolloff(),
             scroll_lines: default_scroll_lines(),
+            mouse: true,
+            bufferline: bufferline_style::default(),
+            rulers: Vec::new(),
+            auto_pairs: true,
+            auto_save: false,
+            soft_wrap: soft_wrap_config::default(),
+            whitespace: whitespace_config::default(),
+            indent_guides: indent_guides_config::default(),
             cursor_shape: cursor_shape_config::default(),
             statusline: statusline_config::default(),
             gutters: gutters_config::default(),
             search: search_config::default(),
-            mouse: true,
+            picker: picker_config::default(),
+            lsp: lsp_config::default(),
+            git: git_config::default(),
+        }
+    }
+}
+
+impl editor_config {
+    /// Applies a layer of raw TOML configuration onto self, validating fields,
+    /// enforcing bounds, and recording warnings for unknown or invalid values.
+    pub fn apply_toml_layer(&mut self, val: &Value, warnings: &mut Vec<config_warning>) {
+        let tbl = match val {
+            Value::Table(t) => t,
+            _ => {
+                warnings.push(config_warning::new("Expected table for [editor] config"));
+                return;
+            }
+        };
+
+        for (k, v) in tbl {
+            match k.as_str() {
+                "theme" => {
+                    if let Some(s) = v.as_str() {
+                        if !s.is_empty()
+                            && s.chars()
+                                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+                        {
+                            self.theme = s.to_string();
+                        } else {
+                            warnings.push(config_warning::new(format!(
+                                "Invalid editor.theme '{s}'; using default"
+                            )));
+                        }
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.theme; expected string",
+                        ));
+                    }
+                }
+                "line-number" | "line_number" => {
+                    if let Some(s) = v.as_str() {
+                        match s {
+                            "relative" => self.line_number = line_number_style::relative,
+                            "absolute" => self.line_number = line_number_style::absolute,
+                            "none" => self.line_number = line_number_style::none,
+                            other => warnings.push(config_warning::new(format!(
+                                "Unknown editor.line-number style '{other}'"
+                            ))),
+                        }
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.line-number; expected string",
+                        ));
+                    }
+                }
+                "cursor-line" | "cursor_line" => {
+                    if let Some(b) = v.as_bool() {
+                        self.cursor_line = b;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.cursor-line; expected bool",
+                        ));
+                    }
+                }
+                "cursor-column" | "cursor_column" => {
+                    if let Some(b) = v.as_bool() {
+                        self.cursor_column = b;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.cursor-column; expected bool",
+                        ));
+                    }
+                }
+                "true-color" | "true_color" => {
+                    if let Some(b) = v.as_bool() {
+                        self.true_color = b;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.true-color; expected bool",
+                        ));
+                    }
+                }
+                "tab-width" | "tab_width" => {
+                    if let Some(i) = v.as_integer() {
+                        if (1..=16).contains(&i) {
+                            self.tab_width = i as usize;
+                        } else {
+                            warnings.push(config_warning::new(format!(
+                                "editor.tab-width {i} out of range (1..=16)"
+                            )));
+                        }
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.tab-width; expected integer",
+                        ));
+                    }
+                }
+                "indent-width" | "indent_width" => {
+                    if let Some(i) = v.as_integer() {
+                        if (1..=16).contains(&i) {
+                            self.indent_width = i as usize;
+                        } else {
+                            warnings.push(config_warning::new(format!(
+                                "editor.indent-width {i} out of range (1..=16)"
+                            )));
+                        }
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.indent-width; expected integer",
+                        ));
+                    }
+                }
+                "insert-spaces" | "insert_spaces" => {
+                    if let Some(b) = v.as_bool() {
+                        self.insert_spaces = b;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.insert-spaces; expected bool",
+                        ));
+                    }
+                }
+                "scrolloff" => {
+                    if let Some(i) = v.as_integer() {
+                        if (0..=100).contains(&i) {
+                            self.scrolloff = i as usize;
+                        } else {
+                            warnings.push(config_warning::new(format!(
+                                "editor.scrolloff {i} out of range (0..=100)"
+                            )));
+                        }
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.scrolloff; expected integer",
+                        ));
+                    }
+                }
+                "scroll-lines" | "scroll_lines" => {
+                    if let Some(i) = v.as_integer() {
+                        if (1..=100).contains(&i) {
+                            self.scroll_lines = i as usize;
+                        } else {
+                            warnings.push(config_warning::new(format!(
+                                "editor.scroll-lines {i} out of range (1..=100)"
+                            )));
+                        }
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.scroll-lines; expected integer",
+                        ));
+                    }
+                }
+                "mouse" => {
+                    if let Some(b) = v.as_bool() {
+                        self.mouse = b;
+                    } else {
+                        warnings.push(config_warning::new("Invalid editor.mouse; expected bool"));
+                    }
+                }
+                "bufferline" => {
+                    if let Some(s) = v.as_str() {
+                        match s {
+                            "never" => self.bufferline = bufferline_style::never,
+                            "always" => self.bufferline = bufferline_style::always,
+                            "multiple" => self.bufferline = bufferline_style::multiple,
+                            other => warnings.push(config_warning::new(format!(
+                                "Unknown editor.bufferline '{other}'"
+                            ))),
+                        }
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.bufferline; expected string",
+                        ));
+                    }
+                }
+                "rulers" => {
+                    if let Some(arr) = v.as_array() {
+                        let mut r_vec = Vec::new();
+                        for item in arr {
+                            if let Some(i) = item.as_integer() {
+                                if i > 0 {
+                                    r_vec.push(i as usize);
+                                }
+                            }
+                        }
+                        self.rulers = r_vec;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.rulers; expected array of integers",
+                        ));
+                    }
+                }
+                "auto-pairs" | "auto_pairs" => {
+                    if let Some(b) = v.as_bool() {
+                        self.auto_pairs = b;
+                    } else if v.is_table() {
+                        self.auto_pairs = true;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.auto-pairs; expected bool",
+                        ));
+                    }
+                }
+                "auto-save" | "auto_save" => {
+                    if let Some(b) = v.as_bool() {
+                        self.auto_save = b;
+                    } else if v.is_table() {
+                        self.auto_save = true;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.auto-save; expected bool",
+                        ));
+                    }
+                }
+                "soft-wrap" | "soft_wrap" => {
+                    if let Some(sub) = v.as_table() {
+                        if let Some(b) = sub.get("enable").and_then(Value::as_bool) {
+                            self.soft_wrap.enable = b;
+                        }
+                    } else if let Some(b) = v.as_bool() {
+                        self.soft_wrap.enable = b;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.soft-wrap; expected table or bool",
+                        ));
+                    }
+                }
+                "whitespace" => {
+                    if let Some(sub) = v.as_table() {
+                        if let Some(s) = sub.get("render").and_then(Value::as_str) {
+                            self.whitespace.render = s.to_string();
+                        }
+                    } else if let Some(s) = v.as_str() {
+                        self.whitespace.render = s.to_string();
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.whitespace; expected table or string",
+                        ));
+                    }
+                }
+                "indent-guides" | "indent_guides" => {
+                    if let Some(sub) = v.as_table() {
+                        if let Some(b) = sub.get("render").and_then(Value::as_bool) {
+                            self.indent_guides.render = b;
+                        }
+                    } else if let Some(b) = v.as_bool() {
+                        self.indent_guides.render = b;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.indent-guides; expected table or bool",
+                        ));
+                    }
+                }
+                "cursor-shape" | "cursor_shape" => {
+                    if let Ok(c) = v.clone().try_into::<cursor_shape_config>() {
+                        self.cursor_shape = c;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.cursor-shape configuration",
+                        ));
+                    }
+                }
+                "statusline" => {
+                    if let Ok(s) = v.clone().try_into::<statusline_config>() {
+                        self.statusline = s;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.statusline configuration",
+                        ));
+                    }
+                }
+                "gutters" => {
+                    if let Ok(g) = v.clone().try_into::<gutters_config>() {
+                        self.gutters = g;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.gutters configuration",
+                        ));
+                    }
+                }
+                "search" => {
+                    if let Ok(s) = v.clone().try_into::<search_config>() {
+                        self.search = s;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.search configuration",
+                        ));
+                    }
+                }
+                "picker" => {
+                    if let Ok(p) = v.clone().try_into::<picker_config>() {
+                        self.picker = p;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.picker configuration",
+                        ));
+                    }
+                }
+                "lsp" => {
+                    if let Ok(l) = v.clone().try_into::<lsp_config>() {
+                        self.lsp = l;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.lsp configuration",
+                        ));
+                    }
+                }
+                "git" => {
+                    if let Ok(g) = v.clone().try_into::<git_config>() {
+                        self.git = g;
+                    } else {
+                        warnings.push(config_warning::new(
+                            "Invalid editor.git configuration",
+                        ));
+                    }
+                }
+                other => {
+                    warnings.push(config_warning::new(format!(
+                        "Unknown configuration key 'editor.{other}'"
+                    )));
+                }
+            }
         }
     }
 }

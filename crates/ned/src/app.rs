@@ -83,8 +83,20 @@ fn sync_cursor(info: cursor_render_info) -> io::Result<()> {
 ///
 /// Returns an `io::Error` if terminal initialization, Yokio setup, or file I/O fails.
 pub fn run<P: AsRef<std::path::Path>>(paths: &[P]) -> io::Result<()> {
+    run_with_config(paths, None)
+}
+
+/// Runs the Ned editor application to completion with an optional configuration path override.
+///
+/// # Errors
+///
+/// Returns an `io::Error` if terminal initialization, Yokio setup, or file I/O fails.
+pub fn run_with_config<P: AsRef<std::path::Path>>(
+    paths: &[P],
+    config_path: Option<&std::path::Path>,
+) -> io::Result<()> {
     let mut terminal = Terminal::try_system_default()?;
-    let config = ned_config::load();
+    let config = ned_config::load_with_paths(config_path, None);
     let mouse_enabled = config.editor.mouse;
 
     terminal.send(EnterRawMode)?;

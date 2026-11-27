@@ -9,6 +9,8 @@ pub struct cli_args {
     pub help: bool,
     /// Whether to display version text and exit.
     pub version: bool,
+    /// Path to an alternative configuration file.
+    pub config: Option<PathBuf>,
     /// List of file paths to open into editor buffers.
     pub files: Vec<PathBuf>,
 }
@@ -52,6 +54,16 @@ impl cli_args {
                 parsed.help = true;
             } else if s == "-v" || s == "--version" {
                 parsed.version = true;
+            } else if s == "-c" || s == "--config" {
+                if let Some(cfg_path) = iter.next() {
+                    parsed.config = Some(PathBuf::from(cfg_path.as_ref()));
+                } else {
+                    return Err(cli_error::unknown_option(
+                        "expected path after --config".to_string(),
+                    ));
+                }
+            } else if let Some(stripped) = s.strip_prefix("--config=") {
+                parsed.config = Some(PathBuf::from(stripped));
             } else if s.starts_with('-') && s != "-" {
                 return Err(cli_error::unknown_option(s.to_string()));
             } else {
@@ -71,8 +83,9 @@ impl cli_args {
             "Arguments:\n",
             "  [FILES]...  Files to open in editor buffers\n\n",
             "Options:\n",
-            "  -h, --help     Print help information\n",
-            "  -v, --version  Print version information\n"
+            "  -c, --config <FILE>  Specify path to config file\n",
+            "  -h, --help           Print help information\n",
+            "  -v, --version        Print version information\n"
         )
     }
 

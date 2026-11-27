@@ -15,5 +15,5 @@ pub mod prompt;
 pub mod theme_bridge;
 pub mod ui;
 
-pub use app::run;
+pub use app::{run, run_with_config};
 pub use cli::{cli_args, cli_error};

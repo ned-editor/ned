@@ -71,6 +71,8 @@ impl editor {
             view::new(initial_view_id, initial_doc_id, width, height),
         );
 
+        let status_message = config.warnings.first().map(|w| format!("Config warning: {w}"));
+
         Self {
             documents: docs,
             active_doc_id: initial_doc_id,
@@ -81,7 +83,7 @@ impl editor {
             registers: register_storage::new(),
             selected_register: None,
             key_prefix: None,
-            status_message: None,
+            status_message,
             hover_popup: None,
             search_query: None,
             lsp_clients: HashMap::new(),

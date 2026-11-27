@@ -27,7 +27,7 @@ fn main() {
         return;
     }
 
-    if let Err(e) = ned::run(&parsed.files) {
+    if let Err(e) = ned::run_with_config(&parsed.files, parsed.config.as_deref()) {
         eprintln!("ned error: {e}");
         process::exit(1);
     }
