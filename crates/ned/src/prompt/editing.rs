@@ -2,7 +2,7 @@
 
 use ned_tui::input::events::{KeyCode, KeyEvent, KeyModifier};
 
-use super::completion_direction;
+use super::completion::completion_direction;
 use super::state::{prompt_action, prompt_state};
 
 /// Handles prompt key events coordinating navigation, line editing, and completions.
