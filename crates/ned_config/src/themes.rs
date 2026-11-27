@@ -80,14 +80,14 @@ impl theme {
 
     /// Loads a theme by name from the configured theme directories (`.ned/themes/` then `~/.ned/themes/`).
     ///
-    /// Falls back to the built-in dark theme if `name` is `"default"` or if the file cannot be located.
+    /// Falls back to the built-in default theme `dacctal` if `name` is `"default"`, `"dacctal"`, or if the file cannot be located.
     #[must_use]
     pub fn load_or_default(name: &str) -> Self {
-        if name == "default" || name == "ned_dark" {
-            return Self::default_dark();
+        if name == "default" || name == "dacctal" || name == "ned_dark" {
+            return Self::default_dacctal();
         }
 
-        Self::load(name).unwrap_or_else(|_| Self::default_dark())
+        Self::load(name).unwrap_or_else(|_| Self::default_dacctal())
     }
 
     /// Loads a theme by name with inheritance support.
@@ -101,117 +101,144 @@ impl theme {
         parse_theme_from_value(name, value)
     }
 
-    /// Built-in modern dark theme providing complete coverage for UI, Git diffs, and diagnostics.
+    /// Built-in `dacctal` theme: organic, minimalist, and premium dark aesthetic.
     #[must_use]
-    pub fn default_dark() -> Self {
-        let mut t = Self::new("ned_dark");
+    pub fn default_dacctal() -> Self {
+        let mut t = Self::new("dacctal");
 
-        let bg = color::rgb(0x1e, 0x1e, 0x2e); // Catppuccin Base
-        let fg = color::rgb(0xcd, 0xd6, 0xf4); // Catppuccin Text
-        let mantle = color::rgb(0x18, 0x18, 0x25);
-        let surface0 = color::rgb(0x31, 0x32, 0x44);
-        let surface1 = color::rgb(0x45, 0x47, 0x5a);
-        let overlay0 = color::rgb(0x6c, 0x70, 0x86);
+        // Named palette derived from dacctal custom stylesheet
+        let obsidian = color::rgb(15, 15, 15);     // #0f0f0f - --cl-black
+        let basalt = color::rgb(20, 21, 20);       // #141514 - --cl-gray-0
+        let coal = color::rgb(30, 31, 30);         // #1e1f1e - --cl-gray-1
+        let slate = color::rgb(39, 42, 40);        // #272a28 - --cl-gray-2
+        let pebble = color::rgb(59, 64, 60);       // #3b403c - --cl-gray-3
+        let flint = color::rgb(88, 95, 91);        // #585f5b - --cl-gray-4
+        let ash = color::rgb(108, 117, 111);       // #6c756f - --cl-gray-5
+        let lichen = color::rgb(136, 142, 123);    // #888e7b - --cl-gray-6
+        let moss = color::rgb(154, 156, 139);      // #9a9c8b - --cl-gray-7
+        let sandstone = color::rgb(182, 182, 154); // #b6b69a - --cl-gray-8
+        let clay = color::rgb(227, 214, 201);      // #e3d6c9 - --cl-gray-10
+        let parchment = color::rgb(244, 222, 205); // #f4decd - --cl-white
 
-        let c_red = color::rgb(0xf3, 0x8b, 0xa8);
-        let c_green = color::rgb(0xa6, 0xe3, 0xa1);
-        let c_yellow = color::rgb(0xf9, 0xe2, 0xaf);
-        let c_blue = color::rgb(0x89, 0xb4, 0xfa);
-        let c_mauve = color::rgb(0xcb, 0xa6, 0xf7);
-        let c_cyan = color::rgb(0x94, 0xe2, 0xd5);
+        let cinnabar = color::rgb(241, 110, 101);  // #f16e65 - --cl-red-6
+        let terracotta = color::rgb(239, 147, 77); // #ef934d - --cl-orange-6
+        let apricot = color::rgb(244, 181, 133);   // #f4b585 - --cl-orange-7
+        let amber = color::rgb(239, 191, 113);     // #efbf71 - --cl-yellow
+        let sage = color::rgb(126, 201, 126);      // #7ec97e - --cl-green-6
+        let mint = color::rgb(164, 218, 164);      // #a4daa4 - --cl-green-7
+        let verdigris = color::rgb(126, 201, 176); // #7ec9b0 - --cl-cyan-6
+        let cerulean = color::rgb(113, 180, 214);  // #71b4d6 - --cl-blue-6
+        let glacier = color::rgb(176, 212, 232);   // #b0d4e8 - --cl-blue-8
+        let heather = color::rgb(226, 141, 198);   // #e28dc6 - --cl-magenta-7
 
         // UI scopes
-        t.insert("ui.background", style::new().bg(bg));
-        t.insert("ui.text", style::new().fg(fg));
+        t.insert("ui.background", style::new().bg(obsidian));
+        t.insert("ui.text", style::new().fg(parchment));
         t.insert(
             "ui.text.focus",
-            style::new().fg(fg).modifier(modifier {
+            style::new().fg(parchment).modifier(modifier {
                 bold: true,
                 ..Default::default()
             }),
         );
-        t.insert("ui.cursor", style::new().fg(bg).bg(fg));
-        t.insert("ui.cursor.normal", style::new().fg(bg).bg(fg));
-        t.insert("ui.cursor.insert", style::new().fg(bg).bg(c_blue));
-        t.insert("ui.cursor.select", style::new().fg(bg).bg(c_green));
+        t.insert("ui.cursor", style::new().fg(obsidian).bg(parchment));
+        t.insert("ui.cursor.normal", style::new().fg(obsidian).bg(parchment));
+        t.insert("ui.cursor.insert", style::new().fg(obsidian).bg(mint));
+        t.insert("ui.cursor.select", style::new().fg(obsidian).bg(glacier));
         t.insert(
             "ui.cursor.primary",
-            style::new().fg(bg).bg(fg).modifier(modifier {
+            style::new().fg(obsidian).bg(parchment).modifier(modifier {
                 bold: true,
                 ..Default::default()
             }),
         );
-        t.insert("ui.selection", style::new().bg(surface0));
-        t.insert("ui.selection.primary", style::new().bg(surface1));
-        t.insert("ui.linenr", style::new().fg(overlay0));
+        t.insert("ui.selection", style::new().bg(pebble));
+        t.insert("ui.selection.primary", style::new().bg(flint));
+        t.insert("ui.linenr", style::new().fg(ash));
         t.insert(
             "ui.linenr.selected",
-            style::new().fg(fg).modifier(modifier {
+            style::new().fg(clay).modifier(modifier {
                 bold: true,
                 ..Default::default()
             }),
         );
-        t.insert("ui.statusline", style::new().fg(fg).bg(mantle));
+        t.insert("ui.statusline", style::new().fg(parchment).bg(basalt));
         t.insert(
             "ui.statusline.inactive",
-            style::new().fg(overlay0).bg(mantle),
+            style::new().fg(ash).bg(basalt),
         );
-        t.insert("ui.gutter", style::new().bg(bg));
-        t.insert("ui.popup", style::new().fg(fg).bg(mantle));
-        t.insert("ui.menu", style::new().fg(fg).bg(mantle));
-        t.insert("ui.menu.selected", style::new().fg(bg).bg(c_blue));
-        t.insert("ui.window", style::new().fg(surface1));
-        t.insert("ui.background.separator", style::new().fg(surface1));
-        t.insert("ui.help", style::new().fg(fg).bg(surface0));
-        t.insert("ui.text.inactive", style::new().fg(overlay0));
-        t.insert("ui.highlight", style::new().bg(surface1));
+        t.insert("ui.gutter", style::new().bg(obsidian));
+        t.insert("ui.popup", style::new().fg(parchment).bg(coal));
+        t.insert("ui.menu", style::new().fg(parchment).bg(coal));
+        t.insert("ui.menu.selected", style::new().fg(obsidian).bg(terracotta));
+        t.insert("ui.window", style::new().fg(slate));
+        t.insert("ui.background.separator", style::new().fg(slate));
+        t.insert("ui.help", style::new().fg(parchment).bg(coal));
+        t.insert("ui.text.inactive", style::new().fg(ash));
+        t.insert("ui.highlight", style::new().bg(flint));
         t.insert(
             "special",
-            style::new().fg(c_yellow).modifier(modifier {
+            style::new().fg(amber).modifier(modifier {
                 bold: true,
                 ..Default::default()
             }),
         );
 
         // Git diff scopes
-        t.insert("diff.plus", style::new().fg(c_green));
-        t.insert("diff.minus", style::new().fg(c_red));
-        t.insert("diff.delta", style::new().fg(c_yellow));
+        t.insert("diff.plus", style::new().fg(sage));
+        t.insert("diff.minus", style::new().fg(cinnabar));
+        t.insert("diff.delta", style::new().fg(amber));
 
         // LSP diagnostic scopes
         t.insert(
             "diagnostic.error",
-            style::new().fg(c_red).modifier(modifier {
+            style::new().fg(cinnabar).modifier(modifier {
                 bold: true,
                 ..Default::default()
             }),
         );
-        t.insert("diagnostic.warning", style::new().fg(c_yellow));
-        t.insert("diagnostic.info", style::new().fg(c_blue));
-        t.insert("diagnostic.hint", style::new().fg(c_cyan));
+        t.insert("diagnostic.warning", style::new().fg(amber));
+        t.insert("diagnostic.info", style::new().fg(cerulean));
+        t.insert("diagnostic.hint", style::new().fg(verdigris));
 
-        // Basic syntax highlighting scopes
+        // Syntax highlighting scopes
         t.insert(
             "comment",
-            style::new().fg(overlay0).modifier(modifier {
+            style::new().fg(moss).modifier(modifier {
+                italic: true,
+                ..Default::default()
+            }),
+        );
+        t.insert(
+            "comment.doc",
+            style::new().fg(lichen).modifier(modifier {
                 italic: true,
                 ..Default::default()
             }),
         );
         t.insert(
             "keyword",
-            style::new().fg(c_mauve).modifier(modifier {
+            style::new().fg(terracotta).modifier(modifier {
                 bold: true,
                 ..Default::default()
             }),
         );
-        t.insert("function", style::new().fg(c_blue));
-        t.insert("string", style::new().fg(c_green));
-        t.insert("constant", style::new().fg(c_yellow));
-        t.insert("type", style::new().fg(c_yellow));
-        t.insert("variable", style::new().fg(fg));
+        t.insert("function", style::new().fg(cerulean));
+        t.insert("string", style::new().fg(sage));
+        t.insert("constant", style::new().fg(apricot));
+        t.insert("type", style::new().fg(amber));
+        t.insert("variable", style::new().fg(parchment));
+        t.insert("operator", style::new().fg(heather));
+        t.insert("punctuation", style::new().fg(sandstone));
 
         t
+    }
+
+    /// Default dark theme fallback (aliases to `default_dacctal`).
+    #[inline]
+    #[must_use]
+    pub fn default_dark() -> Self {
+        Self::default_dacctal()
     }
 }
 
@@ -235,7 +262,10 @@ fn load_theme_value(name: &str, visited: &mut HashSet<String>) -> Result<Value, 
 
     if let Some(parent_val) = theme_val.get("inherits") {
         if let Some(parent_name) = parent_val.as_str() {
-            let parent_theme_val = if parent_name == "default" || parent_name == "ned_dark" {
+            let parent_theme_val = if parent_name == "default"
+                || parent_name == "dacctal"
+                || parent_name == "ned_dark"
+            {
                 Value::Table(toml::map::Map::new())
             } else {
                 load_theme_value(parent_name, visited)?

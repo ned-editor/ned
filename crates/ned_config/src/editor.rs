@@ -204,7 +204,7 @@ impl Default for search_config {
 }
 
 fn default_theme_name() -> String {
-    "default".to_string()
+    "dacctal".to_string()
 }
 
 fn default_line_number_style() -> line_number_style {
