@@ -228,8 +228,9 @@ pub fn render_picker(
                             let lang_cfg = preview_path
                                 .as_deref()
                                 .and_then(|path| ed.config.languages.detect_by_path(path));
-                            let grammar =
-                                lang_cfg.and_then(|cfg| ned_core::load_grammar(&cfg.name));
+                            let grammar = lang_cfg.and_then(|cfg| {
+                                ned_core::load_grammar(cfg.grammar.as_deref().unwrap_or(&cfg.name))
+                            });
 
                             let highlighted_preview = if let Some(grammar) = grammar {
                                 let mut highlighter =

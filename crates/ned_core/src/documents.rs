@@ -77,7 +77,9 @@ impl document {
         let buffer = rope::from_str(&content);
         let line_end = detect_line_ending(&buffer);
 
-        let grammar = lang_cfg.as_ref().and_then(|cfg| load_grammar(&cfg.name));
+        let grammar = lang_cfg
+            .as_ref()
+            .and_then(|cfg| load_grammar(cfg.grammar.as_deref().unwrap_or(&cfg.name)));
         let highlighter = syntax_highlighter::new(grammar);
 
         let mut doc = Self {
@@ -269,7 +271,9 @@ impl document {
 
     /// Updates language configuration and re-initializes syntax highlighter.
     pub fn set_language(&mut self, lang_cfg: Option<language_config>) {
-        let grammar = lang_cfg.as_ref().and_then(|cfg| load_grammar(&cfg.name));
+        let grammar = lang_cfg
+            .as_ref()
+            .and_then(|cfg| load_grammar(cfg.grammar.as_deref().unwrap_or(&cfg.name)));
         self.highlighter.set_grammar(grammar);
         self.language = lang_cfg;
     }

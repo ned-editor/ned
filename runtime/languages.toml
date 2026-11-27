@@ -4,64 +4,97 @@
 name = "rust"
 scope = "source.rust"
 file-types = ["rs"]
+grammar = "rust"
 comment-token = "//"
+block-comment-tokens = ["/*", "*/"]
+indent = { tab-width = 4, unit = "    ", increase = ["{"], decrease = ["}"] }
+roots = ["Cargo.toml", "rust-project.json", ".git"]
 language-server = { command = "rust-analyzer", args = [] }
 
 [[language]]
 name = "python"
 scope = "source.python"
 file-types = ["py", "pyi"]
+grammar = "python"
 comment-token = "#"
+indent = { tab-width = 4, unit = "    ", increase = [":"], decrease = [] }
+roots = ["pyproject.toml", "setup.py", "requirements.txt", ".git"]
 language-server = { command = "pylsp", args = [] }
 
 [[language]]
 name = "go"
 scope = "source.go"
 file-types = ["go"]
+grammar = "go"
 comment-token = "//"
+block-comment-tokens = ["/*", "*/"]
+indent = { tab-width = 4, unit = "    ", increase = ["{"], decrease = ["}"] }
+roots = ["go.mod", "go.work", ".git"]
 language-server = { command = "gopls", args = [] }
 
 [[language]]
 name = "c"
 scope = "source.c"
 file-types = ["c", "h"]
+grammar = "c"
 comment-token = "//"
+block-comment-tokens = ["/*", "*/"]
+indent = { tab-width = 4, unit = "    ", increase = ["{"], decrease = ["}"] }
+roots = ["compile_commands.json", "Makefile", "CMakeLists.txt", ".git"]
 language-server = { command = "clangd", args = [] }
 
 [[language]]
 name = "cpp"
 scope = "source.cpp"
 file-types = ["cpp", "cc", "cxx", "hpp", "hh", "hxx"]
+grammar = "cpp"
 comment-token = "//"
+block-comment-tokens = ["/*", "*/"]
+indent = { tab-width = 4, unit = "    ", increase = ["{"], decrease = ["}"] }
+roots = ["compile_commands.json", "CMakeLists.txt", "Makefile", ".git"]
 language-server = { command = "clangd", args = [] }
 
 [[language]]
 name = "javascript"
 scope = "source.js"
 file-types = ["js", "mjs", "cjs"]
+grammar = "javascript"
 comment-token = "//"
+block-comment-tokens = ["/*", "*/"]
+indent = { tab-width = 2, unit = "  ", increase = ["{"], decrease = ["}"] }
+roots = ["package.json", "tsconfig.json", "jsconfig.json", ".git"]
 language-server = { command = "typescript-language-server", args = ["--stdio"] }
 
 [[language]]
 name = "typescript"
 scope = "source.ts"
 file-types = ["ts", "mts", "cts"]
+grammar = "typescript"
 comment-token = "//"
+block-comment-tokens = ["/*", "*/"]
+indent = { tab-width = 2, unit = "  ", increase = ["{"], decrease = ["}"] }
+roots = ["tsconfig.json", "package.json", ".git"]
 language-server = { command = "typescript-language-server", args = ["--stdio"] }
 
 [[language]]
 name = "toml"
 scope = "source.toml"
 file-types = ["toml"]
+grammar = "toml"
 comment-token = "#"
+roots = [".git"]
 
 [[language]]
 name = "json"
 scope = "source.json"
 file-types = ["json"]
+grammar = "json"
+roots = [".git"]
 
 [[language]]
 name = "markdown"
 scope = "source.md"
 file-types = ["md", "markdown"]
+grammar = "markdown"
 comment-token = "<!--"
+roots = [".git"]

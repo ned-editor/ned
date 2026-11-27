@@ -35,8 +35,10 @@ pub fn start_lsp_for_doc(ed: &mut editor, doc_id: document_id) {
     };
 
     if !ed.lsp_clients.contains_key(&lang_name) {
-        let root_path = ned_git::discover_repo(&doc_path)
-            .or_else(|| doc_path.parent().map(std::path::Path::to_path_buf))
+        let root_path = ed
+            .config
+            .languages
+            .find_root_for_path(&doc_path)
             .map(|p| p.to_string_lossy().to_string());
         let srv_cfg = ned_lsp::server_config::new(&lang_name, &srv_cmd, srv_args, root_path);
         if let Ok(c) = ned_lsp::client::start(srv_cfg) {
