@@ -19,6 +19,7 @@ pub mod command_exec;
 pub mod edit_ops;
 pub mod lsp_actions;
 pub mod mode_dispatch;
+pub mod view_ops;
 
 /// Central editor runtime coordinating documents, views, registers, and modal input.
 pub struct editor {
@@ -50,8 +51,8 @@ pub struct editor {
     pub lsp_clients: HashMap<String, client>,
     /// Termination flag signaling editor exit.
     pub should_quit: bool,
-    next_doc_id: usize,
-    next_view_id: usize,
+    pub(crate) next_doc_id: usize,
+    pub(crate) next_view_id: usize,
 }
 
 impl editor {
@@ -125,11 +126,9 @@ impl editor {
     }
 
     /// Creates a new view displaying `doc_id` with specified dimensions.
+    #[inline]
     pub fn create_view(&mut self, doc_id: document_id, width: u16, height: u16) -> view_id {
-        let vid = self.next_view_id;
-        self.next_view_id += 1;
-        self.views.insert(vid, view::new(vid, doc_id, width, height));
-        vid
+        view_ops::create_view(self, doc_id, width, height)
     }
 
     /// Returns a reference to the active document.
@@ -153,30 +152,23 @@ impl editor {
     #[inline]
     #[must_use]
     pub fn active_view(&self) -> &view {
-        self.views
-            .get(&self.active_view_id)
-            .expect("active view must exist")
+        view_ops::active_view(self)
     }
 
     /// Returns a mutable reference to the active view.
     #[inline]
     pub fn active_view_mut(&mut self) -> &mut view {
-        self.views
-            .get_mut(&self.active_view_id)
-            .expect("active view must exist")
+        view_ops::active_view_mut(self)
     }
 
     /// Ensures the active cursor is within the viewport margins.
+    #[inline]
     pub fn ensure_active_cursor_visible(&mut self) {
-        let scrolloff = self.config.editor.scrolloff;
-        let doc_id = self.active_doc_id;
-        let view_id = self.active_view_id;
-        if let (Some(doc), Some(view)) = (self.documents.get(&doc_id), self.views.get_mut(&view_id)) {
-            view.ensure_cursor_visible(doc, scrolloff);
-        }
+        view_ops::ensure_active_cursor_visible(self);
     }
 
     /// Handles a mouse click event at screen coordinates `(col, row)`.
+    #[inline]
     pub fn handle_mouse_click(
         &mut self,
         col: u16,
@@ -185,111 +177,15 @@ impl editor {
         editor_height: u16,
         extend: bool,
     ) {
-        self.hover_popup = None;
-        if row >= editor_height {
-            return;
-        }
-
-        let doc_id = self.active_doc_id;
-        let view_id = self.active_view_id;
-
-        let (target_pos, scrolloff) = {
-            let doc = self.documents.get(&doc_id).expect("active doc must exist");
-            let view = self.views.get(&view_id).expect("active view must exist");
-            let text_col = col.saturating_sub(gutter_width);
-            let pos = view.pos_at_coords(doc, text_col, row);
-            (pos, self.config.editor.scrolloff)
-        };
-
-        let doc = self.documents.get_mut(&doc_id).expect("active doc must exist");
-        if extend || self.mode == mode::select {
-            let primary = doc.selection().primary();
-            let new_range = primary.put_cursor(doc.text(), target_pos, true);
-            doc.set_selection(selection::single(new_range.anchor, new_range.head));
-        } else {
-            doc.set_selection(selection::point(target_pos));
-        }
-
-        let view = self.views.get_mut(&view_id).expect("active view must exist");
-        view.ensure_cursor_visible(doc, scrolloff);
+        view_ops::handle_mouse_click(self, col, row, gutter_width, editor_height, extend);
     }
 
     /// Scrolls the active view vertically by `delta` lines matching Helix scroll behavior.
     ///
     /// Preserves primary cursor position unless scrolled past the viewport margins (scrolloff).
+    #[inline]
     pub fn scroll_view_by(&mut self, delta: isize) {
-        let doc_id = self.active_doc_id;
-        let view_id = self.active_view_id;
-
-        let total_lines = self
-            .documents
-            .get(&doc_id)
-            .map_or(1, |d| d.text().line_count().max(1));
-
-        let view = match self.views.get_mut(&view_id) {
-            Some(v) => v,
-            None => return,
-        };
-
-        let height = view.height as usize;
-        if height == 0 {
-            return;
-        }
-
-        let scrolloff = self.config.editor.scrolloff.min(height.saturating_sub(1) / 2);
-        let max_row_offset = total_lines.saturating_sub(1);
-
-        if delta > 0 {
-            let offset = delta as usize;
-            view.row_offset = (view.row_offset + offset).min(max_row_offset);
-        } else if delta < 0 {
-            let offset = delta.unsigned_abs();
-            view.row_offset = view.row_offset.saturating_sub(offset);
-        }
-
-        let new_row_offset = view.row_offset;
-
-        // Keep cursor within [new_row_offset + scrolloff, new_row_offset + height - scrolloff - 1]
-        let min_cursor_line = (new_row_offset + scrolloff).min(total_lines.saturating_sub(1));
-        let max_cursor_line = (new_row_offset + height)
-            .saturating_sub(scrolloff + 1)
-            .min(total_lines.saturating_sub(1));
-
-        let doc = self.documents.get_mut(&doc_id).expect("active doc must exist");
-        let buffer = doc.text();
-        let primary_cursor = doc.selection().primary().cursor(buffer);
-        let cursor_byte = buffer.char_to_byte(primary_cursor);
-        let cursor_line = buffer.byte_to_line(cursor_byte);
-        let line_start_byte = buffer.line_to_byte(cursor_line).unwrap_or(0);
-        let line_start_char = buffer.byte_to_char(line_start_byte);
-        let cursor_col = primary_cursor.saturating_sub(line_start_char);
-
-        let target_line = if cursor_line < min_cursor_line {
-            Some(min_cursor_line)
-        } else if cursor_line > max_cursor_line {
-            Some(max_cursor_line)
-        } else {
-            None
-        };
-
-        if let Some(new_line) = target_line {
-            let target_line_byte = buffer.line_to_byte(new_line).unwrap_or(0);
-            let target_line_char = buffer.byte_to_char(target_line_byte);
-            let target_line_len = if let Some(line_str) = buffer.line(new_line) {
-                line_str.trim_end_matches(['\r', '\n']).chars().count()
-            } else {
-                0
-            };
-            let target_col = cursor_col.min(target_line_len);
-            let target_pos = target_line_char + target_col;
-
-            if self.mode == mode::select {
-                let primary = doc.selection().primary();
-                doc.set_selection(selection::single(primary.anchor, target_pos));
-            } else {
-                doc.set_selection(selection::point(target_pos));
-            }
-        }
+        view_ops::scroll_view_by(self, delta);
     }
 
     /// Processes an incoming keyboard key event.
