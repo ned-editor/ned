@@ -53,16 +53,21 @@ pub fn render_statusline(screen: &mut Screen, ed: &editor, width: u16, statuslin
 
     let file_title = doc
         .path()
-        .and_then(|p| p.file_name())
-        .and_then(|s| s.to_str())
-        .unwrap_or("[scratch]");
+        .and_then(|p| {
+            if let Ok(cwd) = std::env::current_dir() {
+                if let Ok(rel) = p.strip_prefix(&cwd) {
+                    return Some(rel.to_string_lossy().into_owned());
+                }
+            }
+            p.file_name()
+                .and_then(|s| s.to_str())
+                .map(ToString::to_string)
+        })
+        .unwrap_or_else(|| "[scratch]".to_string());
 
-    let file_display = if doc.is_modified() {
-        format!(" {file_title} [+] ")
-    } else {
-        format!(" {file_title} ")
-    };
-    left_col = draw_str(
+    let mod_indicator = if doc.is_modified() { "[+]" } else { "   " };
+    let file_display = format!(" {file_title} {mod_indicator} ");
+    draw_str(
         screen,
         left_col,
         statusline_row,
@@ -71,7 +76,50 @@ pub fn render_statusline(screen: &mut Screen, ed: &editor, width: u16, statuslin
         width,
     );
 
-    // Diagnostic summary in statusline
+    // Right elements matching Helix layout: [Diagnostics] [Selections] [Position]
+    let mut right_col = width;
+
+    // 1. Position: " line:col "
+    let primary_cursor_char = doc.selection().primary().cursor(doc.text());
+    let primary_cursor_byte = doc.text().char_to_byte(primary_cursor_char);
+    let active_line_idx = doc.text().byte_to_line(primary_cursor_byte);
+
+    let line_start_byte = doc.text().line_to_byte(active_line_idx).unwrap_or(0);
+    let line_start_char = doc.text().byte_to_char(line_start_byte);
+    let active_col_idx = primary_cursor_char.saturating_sub(line_start_char);
+
+    let pos_text = format!(" {}:{} ", active_line_idx + 1, active_col_idx + 1);
+    let pos_width = pos_text.chars().count() as u16;
+    right_col = right_col.saturating_sub(pos_width);
+    draw_str(
+        screen,
+        right_col,
+        statusline_row,
+        &pos_text,
+        &statusline_style,
+        width,
+    );
+
+    // 2. Selections: " 1 sel " or " 1/2 sels "
+    let sel_count = doc.selection().len();
+    let sel_text = if sel_count == 1 {
+        " 1 sel ".to_string()
+    } else {
+        let primary_idx = doc.selection().primary_index() + 1;
+        format!(" {primary_idx}/{sel_count} sels ")
+    };
+    let sel_width = sel_text.chars().count() as u16;
+    right_col = right_col.saturating_sub(sel_width);
+    draw_str(
+        screen,
+        right_col,
+        statusline_row,
+        &sel_text,
+        &statusline_style,
+        width,
+    );
+
+    // 3. Diagnostics: "● {warnings} ● {errors}"
     let mut err_count = 0usize;
     let mut warn_count = 0usize;
     for d in doc.diagnostics() {
@@ -81,56 +129,54 @@ pub fn render_statusline(screen: &mut Screen, ed: &editor, width: u16, statuslin
             _ => {}
         }
     }
-    if err_count > 0 || warn_count > 0 {
-        let diag_error_style = style_for_scope(theme, "diagnostic.error");
-        let diag_warning_style = style_for_scope(theme, "diagnostic.warning");
-        let diag_str = format!(" ● {err_count}E {warn_count}W ");
-        let diag_style = if err_count > 0 {
-            merge_style(statusline_style, diag_error_style)
-        } else {
-            merge_style(statusline_style, diag_warning_style)
-        };
+
+    if err_count > 0 {
+        let err_text = format!(" {err_count} ");
+        let err_width = err_text.chars().count() as u16 + 1;
+        right_col = right_col.saturating_sub(err_width);
+        let diag_err_style =
+            merge_style(statusline_style, style_for_scope(theme, "diagnostic.error"));
+        let col = draw_str(
+            screen,
+            right_col,
+            statusline_row,
+            "●",
+            &diag_err_style,
+            width,
+        );
         draw_str(
             screen,
-            left_col,
+            col,
             statusline_row,
-            &diag_str,
-            &diag_style,
+            &err_text,
+            &statusline_style,
             width,
         );
     }
 
-    // Right elements (line:col, encoding, line ending, multi-selection)
-    let primary_cursor_char = doc.selection().primary().cursor(doc.text());
-    let primary_cursor_byte = doc.text().char_to_byte(primary_cursor_char);
-    let active_line_idx = doc.text().byte_to_line(primary_cursor_byte);
-
-    let line_start_byte = doc.text().line_to_byte(active_line_idx).unwrap_or(0);
-    let line_start_char = doc.text().byte_to_char(line_start_byte);
-    let active_col_idx = primary_cursor_char.saturating_sub(line_start_char);
-
-    let sel_info = if doc.selection().len() > 1 {
-        format!("{} sel ", doc.selection().len())
-    } else {
-        String::new()
-    };
-    let line_end_str = match doc.line_ending() {
-        ned_text::line_ending::crlf => "CRLF",
-        ned_text::line_ending::lf => "LF",
-    };
-    let right_text = format!(
-        "{sel_info}{}:{}  utf-8  {line_end_str} ",
-        active_line_idx + 1,
-        active_col_idx + 1
-    );
-    let right_width = right_text.chars().count() as u16;
-    let right_col = width.saturating_sub(right_width);
-    draw_str(
-        screen,
-        right_col,
-        statusline_row,
-        &right_text,
-        &statusline_style,
-        width,
-    );
+    if warn_count > 0 {
+        let warn_text = format!(" {warn_count} ");
+        let warn_width = warn_text.chars().count() as u16 + 1;
+        right_col = right_col.saturating_sub(warn_width);
+        let diag_warn_style = merge_style(
+            statusline_style,
+            style_for_scope(theme, "diagnostic.warning"),
+        );
+        let col = draw_str(
+            screen,
+            right_col,
+            statusline_row,
+            "●",
+            &diag_warn_style,
+            width,
+        );
+        draw_str(
+            screen,
+            col,
+            statusline_row,
+            &warn_text,
+            &statusline_style,
+            width,
+        );
+    }
 }
