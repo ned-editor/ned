@@ -24,8 +24,8 @@ pub use graphemes::{
 pub use line_endings::{char_is_line_ending, detect_line_ending, line_ending, line_ending_at};
 pub use motions::{
     apply_motion, extend_line, move_first_non_whitespace, move_horizontally, move_line_end,
-    move_line_start, move_vertically, move_word_backward, move_word_end, move_word_forward,
-    movement,
+    move_line_start, move_long_word_backward, move_long_word_end, move_long_word_forward,
+    move_vertically, move_word_backward, move_word_end, move_word_forward, movement,
 };
 pub use ranges::{direction, range};
 pub use selections::selection;

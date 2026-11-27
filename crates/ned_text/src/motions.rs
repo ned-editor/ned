@@ -95,8 +95,26 @@ pub fn move_vertically(
 /// Moves the cursor forward to the start of the next word.
 #[must_use]
 pub fn move_word_forward(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
-    let mut pos = r.cursor(buffer);
     let len = buffer.char_len();
+    if len == 0 {
+        return range::point(0);
+    }
+
+    let anchor = match behavior {
+        movement::move_ => {
+            if r.head >= r.anchor {
+                r.head
+            } else {
+                r.anchor
+            }
+        }
+        movement::extend => r.anchor,
+    };
+
+    let mut pos = match behavior {
+        movement::move_ => anchor,
+        movement::extend => r.head,
+    };
 
     for _ in 0..count {
         if pos >= len {
@@ -135,13 +153,36 @@ pub fn move_word_forward(buffer: &rope, r: range, count: usize, behavior: moveme
         }
     }
 
-    r.put_cursor(buffer, pos, behavior == movement::extend)
+    if behavior == movement::extend {
+        r.put_cursor(buffer, pos, true)
+    } else {
+        range::new(anchor, pos)
+    }
 }
 
 /// Moves the cursor backward to the start of the previous word.
 #[must_use]
 pub fn move_word_backward(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
-    let mut pos = r.cursor(buffer);
+    let len = buffer.char_len();
+    if len == 0 {
+        return range::point(0);
+    }
+
+    let anchor = match behavior {
+        movement::move_ => {
+            if r.head <= r.anchor {
+                r.head
+            } else {
+                r.anchor
+            }
+        }
+        movement::extend => r.anchor,
+    };
+
+    let mut pos = match behavior {
+        movement::move_ => anchor,
+        movement::extend => r.head,
+    };
 
     for _ in 0..count {
         if pos == 0 {
@@ -188,14 +229,36 @@ pub fn move_word_backward(buffer: &rope, r: range, count: usize, behavior: movem
         }
     }
 
-    r.put_cursor(buffer, pos, behavior == movement::extend)
+    if behavior == movement::extend {
+        r.put_cursor(buffer, pos, true)
+    } else {
+        range::new(anchor, pos)
+    }
 }
 
 /// Moves the cursor to the end of the current or next word.
 #[must_use]
 pub fn move_word_end(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
-    let mut pos = r.cursor(buffer);
     let len = buffer.char_len();
+    if len == 0 {
+        return range::point(0);
+    }
+
+    let anchor = match behavior {
+        movement::move_ => {
+            if r.head >= r.anchor {
+                r.head
+            } else {
+                r.anchor
+            }
+        }
+        movement::extend => r.anchor,
+    };
+
+    let mut pos = match behavior {
+        movement::move_ => anchor,
+        movement::extend => r.head,
+    };
 
     for _ in 0..count {
         pos = next_grapheme_boundary(buffer, pos);
@@ -241,7 +304,194 @@ pub fn move_word_end(buffer: &rope, r: range, count: usize, behavior: movement) 
         }
     }
 
-    r.put_cursor(buffer, pos, behavior == movement::extend)
+    let end_head = next_grapheme_boundary(buffer, pos).min(len);
+    if behavior == movement::extend {
+        r.put_cursor(buffer, end_head, true)
+    } else {
+        range::new(anchor, end_head)
+    }
+}
+
+/// Moves the cursor forward to the start of the next long word (WORD).
+#[must_use]
+pub fn move_long_word_forward(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
+    let len = buffer.char_len();
+    if len == 0 {
+        return range::point(0);
+    }
+
+    let anchor = match behavior {
+        movement::move_ => {
+            if r.head >= r.anchor {
+                r.head
+            } else {
+                r.anchor
+            }
+        }
+        movement::extend => r.anchor,
+    };
+
+    let mut pos = match behavior {
+        movement::move_ => anchor,
+        movement::extend => r.head,
+    };
+
+    for _ in 0..count {
+        if pos >= len {
+            break;
+        }
+
+        // Consume non-whitespace
+        while pos < len {
+            if let Some(ch) = buffer.char_at(pos) {
+                if char_is_whitespace(ch) || char_is_line_ending(ch) {
+                    break;
+                }
+            }
+            pos = next_grapheme_boundary(buffer, pos);
+        }
+
+        // Skip subsequent whitespace
+        while pos < len {
+            if let Some(ch) = buffer.char_at(pos) {
+                if !char_is_whitespace(ch) && !char_is_line_ending(ch) {
+                    break;
+                }
+            }
+            pos = next_grapheme_boundary(buffer, pos);
+        }
+    }
+
+    if behavior == movement::extend {
+        r.put_cursor(buffer, pos, true)
+    } else {
+        range::new(anchor, pos)
+    }
+}
+
+/// Moves the cursor backward to the start of the previous long word (WORD).
+#[must_use]
+pub fn move_long_word_backward(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
+    let len = buffer.char_len();
+    if len == 0 {
+        return range::point(0);
+    }
+
+    let anchor = match behavior {
+        movement::move_ => {
+            if r.head <= r.anchor {
+                r.head
+            } else {
+                r.anchor
+            }
+        }
+        movement::extend => r.anchor,
+    };
+
+    let mut pos = match behavior {
+        movement::move_ => anchor,
+        movement::extend => r.head,
+    };
+
+    for _ in 0..count {
+        if pos == 0 {
+            break;
+        }
+
+        // Skip whitespace backward
+        while pos > 0 {
+            let prev = prev_grapheme_boundary(buffer, pos);
+            if let Some(ch) = buffer.char_at(prev) {
+                if !char_is_whitespace(ch) && !char_is_line_ending(ch) {
+                    break;
+                }
+            }
+            pos = prev;
+        }
+
+        if pos == 0 {
+            break;
+        }
+
+        // Scan non-whitespace backward
+        while pos > 0 {
+            let prev = prev_grapheme_boundary(buffer, pos);
+            if let Some(c) = buffer.char_at(prev) {
+                if char_is_whitespace(c) || char_is_line_ending(c) {
+                    break;
+                }
+            }
+            pos = prev;
+        }
+    }
+
+    if behavior == movement::extend {
+        r.put_cursor(buffer, pos, true)
+    } else {
+        range::new(anchor, pos)
+    }
+}
+
+/// Moves the cursor to the end of the current or next long word (WORD).
+#[must_use]
+pub fn move_long_word_end(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
+    let len = buffer.char_len();
+    if len == 0 {
+        return range::point(0);
+    }
+
+    let anchor = match behavior {
+        movement::move_ => {
+            if r.head >= r.anchor {
+                r.head
+            } else {
+                r.anchor
+            }
+        }
+        movement::extend => r.anchor,
+    };
+
+    let mut pos = match behavior {
+        movement::move_ => anchor,
+        movement::extend => r.head,
+    };
+
+    for _ in 0..count {
+        pos = next_grapheme_boundary(buffer, pos);
+        // Skip whitespace
+        while pos < len {
+            if let Some(ch) = buffer.char_at(pos) {
+                if !char_is_whitespace(ch) && !char_is_line_ending(ch) {
+                    break;
+                }
+            }
+            pos = next_grapheme_boundary(buffer, pos);
+        }
+
+        if pos >= len {
+            break;
+        }
+
+        // Advance to end of non-whitespace
+        while pos < len {
+            let next = next_grapheme_boundary(buffer, pos);
+            if let Some(c) = buffer.char_at(next) {
+                if char_is_whitespace(c) || char_is_line_ending(c) {
+                    break;
+                }
+            } else {
+                break;
+            }
+            pos = next;
+        }
+    }
+
+    let end_head = next_grapheme_boundary(buffer, pos).min(len);
+    if behavior == movement::extend {
+        r.put_cursor(buffer, end_head, true)
+    } else {
+        range::new(anchor, end_head)
+    }
 }
 
 /// Moves the cursor to the start of the current logical line.
@@ -326,7 +576,7 @@ pub fn extend_line(buffer: &rope, r: range, count: usize) -> range {
 
 /// Applies a pure motion transformation to each range in a multi-selection.
 #[must_use]
-pub fn apply_motion(buffer: &rope, sel: &selection, f: impl Fn(range) -> range) -> selection {
+pub fn apply_motion(_buffer: &rope, sel: &selection, f: impl Fn(range) -> range) -> selection {
     let new_ranges: Vec<range> = sel.ranges().iter().map(|&r| f(r)).collect();
-    selection::new(new_ranges, sel.primary_index()).collapse(buffer)
+    selection::new(new_ranges, sel.primary_index())
 }

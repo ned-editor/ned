@@ -33,6 +33,13 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
 
     normal.insert("home", action::goto_line_start);
     normal.insert("end", action::goto_line_end);
+    normal.insert("G", action::goto_line);
+    normal.insert("C-d", action::scroll_down);
+    normal.insert("C-u", action::scroll_up);
+    normal.insert("pagedown", action::scroll_down);
+    normal.insert("pageup", action::scroll_up);
+    normal.insert("C-f", action::scroll_down);
+    normal.insert("C-b", action::scroll_up);
 
     // Modes & insertions
     normal.insert("i", action::insert_mode);
@@ -166,18 +173,70 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     // In select mode, motions extend selections rather than moving them.
     let mut select = key_trie_node::new("Select mode");
     select.insert("h", action::move_char_left);
+    select.insert("left", action::move_char_left);
     select.insert("j", action::move_line_down);
+    select.insert("down", action::move_line_down);
     select.insert("k", action::move_line_up);
+    select.insert("up", action::move_line_up);
     select.insert("l", action::move_char_right);
+    select.insert("right", action::move_char_right);
+
     select.insert("w", action::move_next_word_start);
     select.insert("b", action::move_prev_word_start);
     select.insert("e", action::move_next_word_end);
+    select.insert("W", action::move_next_long_word_start);
+    select.insert("B", action::move_prev_long_word_start);
+    select.insert("E", action::move_next_long_word_end);
+
+    select.insert("home", action::goto_line_start);
+    select.insert("end", action::goto_line_end);
+    select.insert("G", action::goto_line);
+    select.insert("C-d", action::scroll_down);
+    select.insert("C-u", action::scroll_up);
+    select.insert("pagedown", action::scroll_down);
+    select.insert("pageup", action::scroll_up);
+    select.insert("C-f", action::scroll_down);
+    select.insert("C-b", action::scroll_up);
+
     select.insert("v", action::normal_mode);
     select.insert("esc", action::normal_mode);
-    select.insert(";", action::collapse_selection);
+    select.insert(":", action::command_mode);
+
+    select.insert("i", action::insert_mode);
+    select.insert("I", action::insert_at_line_start);
+    select.insert("a", action::append_mode);
+    select.insert("A", action::insert_at_line_end);
+    select.insert("o", action::open_below);
+    select.insert("O", action::open_above);
+
     select.insert("d", action::delete_selection);
+    select.insert("A-d", action::delete_selection_noyank);
     select.insert("c", action::change_selection);
+    select.insert("A-c", action::change_selection_noyank);
+    select.insert("r", action::replace);
     select.insert("y", action::yank);
+    select.insert("p", action::paste_after);
+    select.insert("P", action::paste_before);
+    select.insert("u", action::undo);
+    select.insert("U", action::redo);
+    select.insert("~", action::switch_case);
+    select.insert("`", action::switch_to_lowercase);
+    select.insert("A-`", action::switch_to_uppercase);
+    select.insert(">", action::indent);
+    select.insert("<", action::unindent);
+
+    select.insert("x", action::extend_line_below);
+    select.insert("X", action::extend_to_line_bounds);
+    select.insert("%", action::select_all);
+    select.insert(";", action::collapse_selection);
+    select.insert("A-;", action::flip_selections);
+    select.insert(",", action::keep_primary_selection);
+
+    select.insert("/", action::search);
+    select.insert("?", action::rsearch);
+    select.insert("n", action::search_next);
+    select.insert("N", action::search_prev);
+    select.insert("K", action::hover);
     select.insert_node("g", goto);
     select.insert_node("z", view);
     select.insert_node("m", match_trie);

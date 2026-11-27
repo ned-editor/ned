@@ -7,8 +7,9 @@ use ::ned_config::{action, key_event, key_trie_node, mode, ned_config};
 use ned_lsp::client;
 use ned_text::{
     apply_motion, direction, extend_line, move_first_non_whitespace, move_horizontally,
-    move_line_end, move_line_start, move_vertically, move_word_backward, move_word_end,
-    move_word_forward, movement, range, selection,
+    move_line_end, move_line_start, move_long_word_backward, move_long_word_end,
+    move_long_word_forward, move_vertically, move_word_backward, move_word_end, move_word_forward,
+    movement, range, selection,
 };
 
 use crate::documents::{document, document_id};
@@ -545,21 +546,24 @@ impl editor {
             action::move_line_down => apply_motion(buffer, doc.selection(), |r| {
                 move_vertically(buffer, r, direction::forward, count, mov)
             }),
-            action::move_next_word_start | action::move_next_long_word_start => {
-                apply_motion(buffer, doc.selection(), |r| {
-                    move_word_forward(buffer, r, count, mov)
-                })
-            }
-            action::move_prev_word_start | action::move_prev_long_word_start => {
-                apply_motion(buffer, doc.selection(), |r| {
-                    move_word_backward(buffer, r, count, mov)
-                })
-            }
-            action::move_next_word_end | action::move_next_long_word_end => {
-                apply_motion(buffer, doc.selection(), |r| {
-                    move_word_end(buffer, r, count, mov)
-                })
-            }
+            action::move_next_word_start => apply_motion(buffer, doc.selection(), |r| {
+                move_word_forward(buffer, r, count, mov)
+            }),
+            action::move_next_long_word_start => apply_motion(buffer, doc.selection(), |r| {
+                move_long_word_forward(buffer, r, count, mov)
+            }),
+            action::move_prev_word_start => apply_motion(buffer, doc.selection(), |r| {
+                move_word_backward(buffer, r, count, mov)
+            }),
+            action::move_prev_long_word_start => apply_motion(buffer, doc.selection(), |r| {
+                move_long_word_backward(buffer, r, count, mov)
+            }),
+            action::move_next_word_end => apply_motion(buffer, doc.selection(), |r| {
+                move_word_end(buffer, r, count, mov)
+            }),
+            action::move_next_long_word_end => apply_motion(buffer, doc.selection(), |r| {
+                move_long_word_end(buffer, r, count, mov)
+            }),
             action::goto_line_start => {
                 apply_motion(buffer, doc.selection(), |r| move_line_start(buffer, r, mov))
             }
