@@ -19,6 +19,7 @@ use crate::jsonrpc::rpc_error;
 use crate::protocol::{hover, location, publish_diagnostics_params};
 use crate::transports::transport;
 
+pub mod diagnostics;
 pub mod lifecycle;
 pub mod requests;
 pub mod sync;
@@ -170,9 +171,10 @@ impl client {
     }
 
     /// Polls for newly arrived diagnostics from the server without blocking.
+    #[inline]
     #[must_use]
     pub fn poll_diagnostics(&self) -> Option<publish_diagnostics_params> {
-        self.diagnostics_rx.try_recv().ok()
+        diagnostics::poll_diagnostics(self)
     }
 
     /// Queries definition location at position (`textDocument/definition`).
