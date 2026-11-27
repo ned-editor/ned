@@ -104,7 +104,22 @@ pub fn theme_dirs() -> Vec<PathBuf> {
         dirs.push(ws_dir.join("themes"));
     }
     dirs.push(config_dir().join("themes"));
+    dirs.push(find_workspace_root().join("runtime").join("themes"));
     dirs
+}
+
+/// Returns the path to runtime `runtime/languages.toml` if present.
+#[must_use]
+pub fn runtime_languages_file() -> Option<PathBuf> {
+    let ws_runtime = find_workspace_root().join("runtime").join("languages.toml");
+    if ws_runtime.is_file() {
+        return Some(ws_runtime);
+    }
+    let global_runtime = config_dir().join("runtime").join("languages.toml");
+    if global_runtime.is_file() {
+        return Some(global_runtime);
+    }
+    None
 }
 
 /// Searches theme directories for a theme file matching `<theme_name>.toml`.

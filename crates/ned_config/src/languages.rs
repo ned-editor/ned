@@ -6,7 +6,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use toml::Value;
 
-use crate::dirs::{global_languages_file, workspace_languages_file};
+use crate::dirs::{global_languages_file, runtime_languages_file, workspace_languages_file};
 use crate::merge::merge_toml;
 
 fn default_tab_width() -> usize {
@@ -110,11 +110,20 @@ impl language_registry {
         ))
     }
 
-    /// Loads language definitions, merging built-in defaults with global `~/.ned/languages.toml`
-    /// and project `.ned/languages.toml`.
+    /// Loads language definitions, merging built-in defaults with runtime `runtime/languages.toml`,
+    /// global `~/.ned/languages.toml`, and project `.ned/languages.toml`.
     #[must_use]
     pub fn load() -> Self {
         let mut base_toml = Self::default_toml();
+
+        // Merge runtime languages.toml if present (runtime/languages.toml)
+        if let Some(runtime_path) = runtime_languages_file() {
+            if let Ok(runtime_content) = fs::read_to_string(&runtime_path) {
+                if let Ok(runtime_val) = toml::from_str::<Value>(&runtime_content) {
+                    base_toml = merge_toml(base_toml, runtime_val, 3);
+                }
+            }
+        }
 
         // Merge global ~/.ned/languages.toml
         let global_path = global_languages_file();
@@ -152,7 +161,7 @@ impl language_registry {
         reg
     }
 
-    /// Built-in TOML value providing standard definitions for common programming languages.
+    /// Built-in TOML value providing standard definitions for common programming languages with zero language server defaults.
     fn default_toml() -> Value {
         let toml_str = r##"
 [[language]]
@@ -160,49 +169,42 @@ name = "rust"
 scope = "source.rust"
 file-types = ["rs"]
 comment-token = "//"
-language-server = { command = "rust-analyzer", args = [] }
 
 [[language]]
 name = "python"
 scope = "source.python"
 file-types = ["py", "pyi"]
 comment-token = "#"
-language-server = { command = "pylsp", args = [] }
 
 [[language]]
 name = "go"
 scope = "source.go"
 file-types = ["go"]
 comment-token = "//"
-language-server = { command = "gopls", args = [] }
 
 [[language]]
 name = "c"
 scope = "source.c"
 file-types = ["c", "h"]
 comment-token = "//"
-language-server = { command = "clangd", args = [] }
 
 [[language]]
 name = "cpp"
 scope = "source.cpp"
 file-types = ["cpp", "cc", "cxx", "hpp", "hh", "hxx"]
 comment-token = "//"
-language-server = { command = "clangd", args = [] }
 
 [[language]]
 name = "javascript"
 scope = "source.js"
 file-types = ["js", "mjs", "cjs"]
 comment-token = "//"
-language-server = { command = "typescript-language-server", args = ["--stdio"] }
 
 [[language]]
 name = "typescript"
 scope = "source.ts"
 file-types = ["ts", "mts", "cts"]
 comment-token = "//"
-language-server = { command = "typescript-language-server", args = ["--stdio"] }
 
 [[language]]
 name = "toml"
