@@ -6,10 +6,11 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use toml::Value;
-
 pub mod key_types;
+pub mod parser;
+
 pub use key_types::{key_code, key_event, key_modifiers, mode};
+pub use parser::parse_keymaps_from_toml;
 
 /// An executable editor action triggered by keybindings or commands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -366,68 +367,4 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     keymaps.insert(mode::select, select);
 
     keymaps
-}
-
-/// Parses user keymap configuration from TOML into [`key_trie_node`] hierarchies.
-#[must_use]
-pub fn parse_keymaps_from_toml(val: &Value) -> HashMap<mode, key_trie_node> {
-    let mut res = HashMap::new();
-    let table = match val.as_table() {
-        Some(t) => t,
-        None => return res,
-    };
-
-    let parse_mode_table = |sub_val: &Value, label: &str| -> key_trie_node {
-        let mut node = key_trie_node::new(label);
-        if let Some(sub_table) = sub_val.as_table() {
-            for (key_str, target) in sub_table {
-                match target {
-                    Value::String(_) => {
-                        if let Ok(act) = target.clone().try_into::<action>() {
-                            node.insert(key_str, act);
-                        }
-                    }
-                    Value::Table(_) => {
-                        let child_node = parse_keymap_node(target, key_str);
-                        node.insert_node(key_str, child_node);
-                    }
-                    _ => {}
-                }
-            }
-        }
-        node
-    };
-
-    if let Some(normal_tbl) = table.get("normal") {
-        res.insert(mode::normal, parse_mode_table(normal_tbl, "Normal mode"));
-    }
-    if let Some(insert_tbl) = table.get("insert") {
-        res.insert(mode::insert, parse_mode_table(insert_tbl, "Insert mode"));
-    }
-    if let Some(select_tbl) = table.get("select") {
-        res.insert(mode::select, parse_mode_table(select_tbl, "Select mode"));
-    }
-
-    res
-}
-
-fn parse_keymap_node(val: &Value, label: &str) -> key_trie_node {
-    let mut node = key_trie_node::new(label);
-    if let Some(tbl) = val.as_table() {
-        for (key_str, target) in tbl {
-            match target {
-                Value::String(_) => {
-                    if let Ok(act) = target.clone().try_into::<action>() {
-                        node.insert(key_str, act);
-                    }
-                }
-                Value::Table(_) => {
-                    let child = parse_keymap_node(target, key_str);
-                    node.insert_node(key_str, child);
-                }
-                _ => {}
-            }
-        }
-    }
-    node
 }

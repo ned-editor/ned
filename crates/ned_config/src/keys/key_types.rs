@@ -92,55 +92,10 @@ impl key_event {
     }
 
     /// Parses a Helix-formatted key string (e.g. `"h"`, `"A-;"`, `"C-s"`, `"space"`, `"ret"`).
+    #[inline]
     #[must_use]
     pub fn parse(s: &str) -> Option<Self> {
-        let mut modifiers = key_modifiers::default();
-        let mut rem = s;
-
-        // Extract modifier prefixes
-        loop {
-            if let Some(rest) = rem.strip_prefix("C-") {
-                modifiers.ctrl = true;
-                rem = rest;
-            } else if let Some(rest) = rem.strip_prefix("A-") {
-                modifiers.alt = true;
-                rem = rest;
-            } else if let Some(rest) = rem.strip_prefix("S-") {
-                modifiers.shift = true;
-                rem = rest;
-            } else {
-                break;
-            }
-        }
-
-        let code = match rem {
-            "space" => key_code::char(' '),
-            "ret" | "return" | "enter" => key_code::enter,
-            "esc" | "escape" => key_code::escape,
-            "tab" => key_code::tab,
-            "backspace" => key_code::backspace,
-            "del" | "delete" => key_code::delete,
-            "left" => key_code::left,
-            "right" => key_code::right,
-            "up" => key_code::up,
-            "down" => key_code::down,
-            "home" => key_code::home,
-            "end" => key_code::end,
-            "pageup" => key_code::page_up,
-            "pagedown" => key_code::page_down,
-            "minus" => key_code::char('-'),
-            s if s.starts_with('F') || s.starts_with('f') => {
-                if let Ok(num) = s[1..].parse::<u8>() {
-                    key_code::f(num)
-                } else {
-                    key_code::char(s.chars().next()?)
-                }
-            }
-            s if s.chars().count() == 1 => key_code::char(s.chars().next()?),
-            _ => return None,
-        };
-
-        Some(Self { code, modifiers })
+        super::parser::parse_key_event(s)
     }
 }
 
