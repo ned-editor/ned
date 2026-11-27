@@ -6,20 +6,21 @@
 
 use std::collections::HashMap;
 use std::io;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU64;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::jsonrpc::{notification, request, rpc_error};
-use crate::protocol::{hover, location, publish_diagnostics_params, text_document_position_params};
+use crate::jsonrpc::rpc_error;
+use crate::protocol::{hover, location, publish_diagnostics_params};
 use crate::transports::transport;
 
 pub mod lifecycle;
+pub mod requests;
 pub mod sync;
 
 pub use lifecycle::server_config;
@@ -64,29 +65,13 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` if serialization or sending fails.
+    #[inline]
     pub fn send_request<P: Serialize>(
         &self,
         method: &str,
         params: Option<P>,
     ) -> io::Result<Receiver<Result<Value, rpc_error>>> {
-        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
-        let params_val = match params {
-            Some(p) => Some(
-                serde_json::to_value(p)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
-            ),
-            None => None,
-        };
-
-        let req = request::new(id, method, params_val);
-        let (tx, rx) = mpsc::channel();
-
-        if let Ok(mut map) = self.pending_requests.lock() {
-            map.insert(id, tx);
-        }
-
-        self.transport.send(&req)?;
-        Ok(rx)
+        requests::send_request(self, method, params)
     }
 
     /// Sends a JSON-RPC request and waits up to `timeout` for the response.
@@ -94,24 +79,14 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on transport failure, timeout, or server error.
+    #[inline]
     pub fn send_request_timeout<P: Serialize>(
         &self,
         method: &str,
         params: Option<P>,
         timeout: Duration,
     ) -> io::Result<Value> {
-        let rx = self.send_request(method, params)?;
-        match rx.recv_timeout(timeout) {
-            Ok(Ok(val)) => Ok(val),
-            Ok(Err(rpc_err)) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("LSP server error: {rpc_err}"),
-            )),
-            Err(_) => Err(io::Error::new(
-                io::ErrorKind::TimedOut,
-                format!("LSP request '{method}' timed out after {timeout:?}"),
-            )),
-        }
+        requests::send_request_timeout(self, method, params, timeout)
     }
 
     /// Sends a JSON-RPC notification (no response expected).
@@ -119,21 +94,13 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` if serialization or sending fails.
+    #[inline]
     pub fn send_notification<P: Serialize>(
         &self,
         method: &str,
         params: Option<P>,
     ) -> io::Result<()> {
-        let params_val = match params {
-            Some(p) => Some(
-                serde_json::to_value(p)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
-            ),
-            None => None,
-        };
-
-        let notif = notification::new(method, params_val);
-        self.transport.send(&notif)
+        requests::send_notification(self, method, params)
     }
 
     /// Sends the standard `initialize` request and waits for capabilities.
@@ -213,6 +180,7 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on request failure or timeout.
+    #[inline]
     pub fn request_definition(
         &self,
         uri: &str,
@@ -220,19 +188,7 @@ impl client {
         character: u32,
         timeout: Duration,
     ) -> io::Result<Option<Vec<location>>> {
-        let params = text_document_position_params::new(uri, line, character);
-        let resp = self.send_request_timeout("textDocument/definition", Some(params), timeout)?;
-        if resp.is_null() {
-            return Ok(None);
-        }
-
-        if let Ok(locs) = serde_json::from_value::<Vec<location>>(resp.clone()) {
-            Ok(Some(locs))
-        } else if let Ok(loc) = serde_json::from_value::<location>(resp) {
-            Ok(Some(vec![loc]))
-        } else {
-            Ok(None)
-        }
+        requests::request_definition(self, uri, line, character, timeout)
     }
 
     /// Queries hover documentation at position (`textDocument/hover`).
@@ -240,6 +196,7 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on request failure or timeout.
+    #[inline]
     pub fn request_hover(
         &self,
         uri: &str,
@@ -247,14 +204,7 @@ impl client {
         character: u32,
         timeout: Duration,
     ) -> io::Result<Option<hover>> {
-        let params = text_document_position_params::new(uri, line, character);
-        let resp = self.send_request_timeout("textDocument/hover", Some(params), timeout)?;
-        if resp.is_null() {
-            return Ok(None);
-        }
-        let parsed = serde_json::from_value::<hover>(resp)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        Ok(Some(parsed))
+        requests::request_hover(self, uri, line, character, timeout)
     }
 
     /// Shuts down the language server cleanly.
