@@ -6,67 +6,35 @@
 
 use std::collections::HashMap;
 use std::io;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::thread;
 use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::jsonrpc::{incoming_message, notification, request, rpc_error};
+use crate::jsonrpc::{notification, request, rpc_error};
 use crate::protocol::{
-    client_info, did_change_text_document_params, did_close_text_document_params,
-    did_open_text_document_params, did_save_text_document_params, hover, initialize_params,
-    location, publish_diagnostics_params, text_document_content_change_event,
-    text_document_identifier, text_document_item, text_document_position_params,
-    versioned_text_document_identifier,
+    did_change_text_document_params, did_close_text_document_params, did_open_text_document_params,
+    did_save_text_document_params, hover, location, publish_diagnostics_params,
+    text_document_content_change_event, text_document_identifier, text_document_item,
+    text_document_position_params, versioned_text_document_identifier,
 };
 use crate::transports::transport;
 
-/// Configuration defining how to spawn a language server.
-///
-/// Contains zero hardcoded defaults; all commands and arguments
-/// are provided dynamically.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct server_config {
-    /// Human-readable label for this server instance.
-    pub name: String,
-    /// Executable binary path or command name.
-    pub command: String,
-    /// Command-line arguments.
-    pub args: Vec<String>,
-    /// Optional root directory path of the workspace.
-    pub root_path: Option<String>,
-}
-
-impl server_config {
-    /// Creates a new server configuration.
-    #[must_use]
-    pub fn new(
-        name: impl Into<String>,
-        command: impl Into<String>,
-        args: Vec<String>,
-        root_path: Option<String>,
-    ) -> Self {
-        Self {
-            name: name.into(),
-            command: command.into(),
-            args,
-            root_path,
-        }
-    }
-}
+pub mod lifecycle;
+pub use lifecycle::server_config;
 
 /// Generic LSP client driving a single language server instance.
 pub struct client {
-    config: server_config,
-    transport: Arc<transport>,
-    next_id: AtomicU64,
-    pending_requests: Arc<Mutex<HashMap<u64, Sender<Result<Value, rpc_error>>>>>,
-    diagnostics_rx: Receiver<publish_diagnostics_params>,
-    is_active: Arc<AtomicBool>,
+    pub(crate) config: server_config,
+    pub(crate) transport: Arc<transport>,
+    pub(crate) next_id: AtomicU64,
+    pub(crate) pending_requests: Arc<Mutex<HashMap<u64, Sender<Result<Value, rpc_error>>>>>,
+    pub(crate) diagnostics_rx: Receiver<publish_diagnostics_params>,
+    pub(crate) is_active: Arc<AtomicBool>,
 }
 
 impl client {
@@ -75,79 +43,23 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` if the subprocess fails to spawn or pipe stdio.
+    #[inline]
     pub fn start(config: server_config) -> io::Result<Self> {
-        let (trans, incoming_rx) =
-            transport::spawn(&config.command, &config.args, config.root_path.as_deref())?;
-        let transport = Arc::new(trans);
-
-        let pending_requests: Arc<Mutex<HashMap<u64, Sender<Result<Value, rpc_error>>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let (diag_tx, diag_rx) = mpsc::channel();
-        let is_active = Arc::new(AtomicBool::new(true));
-
-        let pending_map = Arc::clone(&pending_requests);
-        let active_flag = Arc::clone(&is_active);
-
-        thread::Builder::new()
-            .name(format!("lsp-dispatcher-{}", config.name))
-            .spawn(move || {
-                while active_flag.load(Ordering::Relaxed) {
-                    let msg = match incoming_rx.recv() {
-                        Ok(m) => m,
-                        Err(_) => break,
-                    };
-
-                    match msg {
-                        incoming_message::response(resp) => {
-                            if let Ok(mut map) = pending_map.lock() {
-                                if let Some(tx) = map.remove(&resp.id) {
-                                    if let Some(err) = resp.error {
-                                        let _ = tx.send(Err(err));
-                                    } else {
-                                        let _ = tx.send(Ok(resp.result.unwrap_or(Value::Null)));
-                                    }
-                                }
-                            }
-                        }
-                        incoming_message::notification(notif) => {
-                            if notif.method == "textDocument/publishDiagnostics" {
-                                if let Some(params) = notif.params {
-                                    if let Ok(parsed) =
-                                        serde_json::from_value::<publish_diagnostics_params>(params)
-                                    {
-                                        let _ = diag_tx.send(parsed);
-                                    }
-                                }
-                            }
-                        }
-                        incoming_message::request(_) => {
-                            // Server-to-client request; ignored or acknowledged in core engine
-                        }
-                    }
-                }
-                active_flag.store(false, Ordering::Relaxed);
-            })?;
-
-        Ok(Self {
-            config,
-            transport,
-            next_id: AtomicU64::new(1),
-            pending_requests,
-            diagnostics_rx: diag_rx,
-            is_active,
-        })
+        lifecycle::start(config)
     }
 
     /// Returns the configuration associated with this client.
+    #[inline]
     #[must_use]
     pub fn config(&self) -> &server_config {
         &self.config
     }
 
     /// Checks if the language server process is still alive.
+    #[inline]
     #[must_use]
     pub fn is_alive(&self) -> bool {
-        self.is_active.load(Ordering::Relaxed) && self.transport.is_alive()
+        lifecycle::is_alive(self)
     }
 
     /// Sends a JSON-RPC request and returns a receiver for the asynchronous response.
@@ -232,40 +144,9 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` if server fails to initialize or times out.
+    #[inline]
     pub fn initialize(&self, timeout: Duration) -> io::Result<Value> {
-        let root_uri = self
-            .config
-            .root_path
-            .as_ref()
-            .map(|p| format!("file://{p}"));
-
-        let params = initialize_params {
-            process_id: Some(std::process::id()),
-            root_uri,
-            capabilities: serde_json::json!({
-                "textDocument": {
-                    "synchronization": {
-                        "dynamicRegistration": false,
-                        "willSave": false,
-                        "willSaveWaitUntil": false,
-                        "didSave": true,
-                    },
-                    "hover": {
-                        "dynamicRegistration": false,
-                        "contentFormat": ["markdown", "plaintext"],
-                    },
-                    "definition": {
-                        "dynamicRegistration": false,
-                    },
-                }
-            }),
-            client_info: Some(client_info {
-                name: "ned".to_string(),
-                version: Some("0.1.0".to_string()),
-            }),
-        };
-
-        self.send_request_timeout("initialize", Some(params), timeout)
+        lifecycle::initialize(self, timeout)
     }
 
     /// Sends the standard `initialized` notification after initialization finishes.
@@ -273,8 +154,9 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` if notification fails to send.
+    #[inline]
     pub fn initialized(&self) -> io::Result<()> {
-        self.send_notification::<Value>("initialized", Some(serde_json::json!({})))
+        lifecycle::initialized(self)
     }
 
     /// Notifies the language server that a document was opened (`textDocument/didOpen`).
@@ -404,11 +286,8 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on transport failure or timeout.
+    #[inline]
     pub fn shutdown(&self, timeout: Duration) -> io::Result<()> {
-        let _ = self.send_request_timeout::<Value>("shutdown", None, timeout);
-        let _ = self.send_notification::<Value>("exit", None);
-        self.is_active.store(false, Ordering::Relaxed);
-        let _ = self.transport.terminate();
-        Ok(())
+        lifecycle::shutdown(self, timeout)
     }
 }
