@@ -163,3 +163,51 @@ pub fn scroll_view_by(ed: &mut editor, delta: isize) {
         }
     }
 }
+
+/// Target vertical alignment for view centering and scrolling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum view_align {
+    /// Align cursor line to center of the viewport.
+    center,
+    /// Align cursor line to top of the viewport.
+    top,
+    /// Align cursor line to bottom of the viewport.
+    bottom,
+}
+
+/// Aligns the viewport vertically relative to the primary cursor line.
+pub fn align_view(ed: &mut editor, align: view_align) {
+    let doc_id = ed.active_doc_id;
+    let view_id = ed.active_view_id;
+
+    let doc = match ed.documents.get(&doc_id) {
+        Some(d) => d,
+        None => return,
+    };
+    let view = match ed.views.get_mut(&view_id) {
+        Some(v) => v,
+        None => return,
+    };
+
+    let height = view.height as usize;
+    if height == 0 {
+        return;
+    }
+
+    let buffer = doc.text();
+    let cursor_pos = doc.selection().primary().cursor(buffer);
+    let cursor_byte = buffer.char_to_byte(cursor_pos);
+    let cursor_line = buffer.byte_to_line(cursor_byte);
+
+    match align {
+        view_align::center => {
+            view.row_offset = cursor_line.saturating_sub(height / 2);
+        }
+        view_align::top => {
+            view.row_offset = cursor_line;
+        }
+        view_align::bottom => {
+            view.row_offset = cursor_line.saturating_sub(height.saturating_sub(1));
+        }
+    }
+}

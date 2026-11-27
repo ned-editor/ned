@@ -89,16 +89,57 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     goto.insert("r", action::goto_reference);
     goto.insert("k", action::move_line_up);
     goto.insert("j", action::move_line_down);
-    normal.insert_node("g", goto);
+    normal.insert_node("g", goto.clone());
+
+    // 'z' view sub-layer
+    let mut view = key_trie_node::new("View");
+    view.insert("c", action::align_view_center);
+    view.insert("z", action::align_view_center);
+    view.insert("t", action::align_view_top);
+    view.insert("b", action::align_view_bottom);
+    view.insert("j", action::scroll_down);
+    view.insert("k", action::scroll_up);
+    normal.insert_node("z", view.clone());
+
+    // 'm' match sub-layer
+    let mut match_trie = key_trie_node::new("Match");
+    match_trie.insert("m", action::match_brackets);
+    normal.insert_node("m", match_trie.clone());
+
+    // 'C-w' window sub-layer
+    let mut window = key_trie_node::new("Window");
+    window.insert("v", action::vsplit);
+    window.insert("C-v", action::vsplit);
+    window.insert("s", action::hsplit);
+    window.insert("C-s", action::hsplit);
+    window.insert("w", action::rotate_view);
+    window.insert("C-w", action::rotate_view);
+    window.insert("q", action::wclose);
+    window.insert("C-q", action::wclose);
+    window.insert("o", action::wonly);
+    window.insert("C-o", action::wonly);
+    window.insert("h", action::jump_view_left);
+    window.insert("C-h", action::jump_view_left);
+    window.insert("left", action::jump_view_left);
+    window.insert("j", action::jump_view_down);
+    window.insert("C-j", action::jump_view_down);
+    window.insert("down", action::jump_view_down);
+    window.insert("k", action::jump_view_up);
+    window.insert("C-k", action::jump_view_up);
+    window.insert("up", action::jump_view_up);
+    window.insert("l", action::jump_view_right);
+    window.insert("C-l", action::jump_view_right);
+    window.insert("right", action::jump_view_right);
+    normal.insert_node("C-w", window.clone());
 
     // '[' and ']' diagnostic brackets
     let mut left_bracket = key_trie_node::new("Left bracket");
     left_bracket.insert("d", action::goto_prev_diag);
-    normal.insert_node("[", left_bracket);
+    normal.insert_node("[", left_bracket.clone());
 
     let mut right_bracket = key_trie_node::new("Right bracket");
     right_bracket.insert("d", action::goto_next_diag);
-    normal.insert_node("]", right_bracket);
+    normal.insert_node("]", right_bracket.clone());
 
     // Space leader keymap
     let mut space = key_trie_node::new("Space");
@@ -107,7 +148,8 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     space.insert("d", action::diagnostics_picker);
     space.insert("k", action::hover);
     space.insert("y", action::yank);
-    normal.insert_node("space", space);
+    space.insert_node("w", window.clone());
+    normal.insert_node("space", space.clone());
 
     keymaps.insert(mode::normal, normal);
 
@@ -136,6 +178,13 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     select.insert("d", action::delete_selection);
     select.insert("c", action::change_selection);
     select.insert("y", action::yank);
+    select.insert_node("g", goto);
+    select.insert_node("z", view);
+    select.insert_node("m", match_trie);
+    select.insert_node("C-w", window);
+    select.insert_node("[", left_bracket);
+    select.insert_node("]", right_bracket);
+    select.insert_node("space", space);
     keymaps.insert(mode::select, select);
 
     keymaps

@@ -154,6 +154,42 @@ pub enum action {
     /// Delete word backward (`C-w`).
     delete_word_backward,
 
+    // --- View alignment & scrolling ---
+    /// Align current line to center of view (`zz` or `zc`).
+    align_view_center,
+    /// Align current line to top of view (`zt`).
+    align_view_top,
+    /// Align current line to bottom of view (`zb`).
+    align_view_bottom,
+    /// Scroll viewport down (`zj` or `C-d`).
+    scroll_down,
+    /// Scroll viewport up (`zk` or `C-u`).
+    scroll_up,
+
+    // --- Match & Surround ---
+    /// Jump between matching brackets (`mm`).
+    match_brackets,
+
+    // --- Window / View management ---
+    /// Split view vertically (`C-w v`).
+    vsplit,
+    /// Split view horizontally (`C-w s`).
+    hsplit,
+    /// Rotate view focus (`C-w w`).
+    rotate_view,
+    /// Close active view window (`C-w q`).
+    wclose,
+    /// Close other view windows (`C-w o`).
+    wonly,
+    /// Jump to view on left (`C-w h`).
+    jump_view_left,
+    /// Jump to view below (`C-w j`).
+    jump_view_down,
+    /// Jump to view above (`C-w k`).
+    jump_view_up,
+    /// Jump to view on right (`C-w l`).
+    jump_view_right,
+
     // --- No operation ---
     /// No operation.
     no_op,

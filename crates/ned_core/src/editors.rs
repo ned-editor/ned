@@ -37,6 +37,8 @@ pub struct editor {
     pub config: ned_config,
     /// Clipboard and register storage.
     pub registers: register_storage,
+    /// Pending numerical count prefix (e.g. `3w`).
+    pub count: Option<usize>,
     /// Active register prefix key if explicitly selected (e.g. `"a`).
     pub selected_register: Option<char>,
     /// Pending key prefix tree for multi-keystroke combinations (e.g. `g`, `]`, `[`).
@@ -81,6 +83,7 @@ impl editor {
             mode: mode::normal,
             config,
             registers: register_storage::new(),
+            count: None,
             selected_register: None,
             key_prefix: None,
             status_message,
@@ -473,6 +476,45 @@ impl editor {
             action::diagnostics_picker => {
                 self.status_message = Some("picker:diagnostics".to_string());
             }
+
+            // --- View alignment & scrolling ---
+            action::align_view_center => {
+                view_ops::align_view(self, view_ops::view_align::center);
+            }
+            action::align_view_top => {
+                view_ops::align_view(self, view_ops::view_align::top);
+            }
+            action::align_view_bottom => {
+                view_ops::align_view(self, view_ops::view_align::bottom);
+            }
+            action::scroll_down => {
+                let lines = (self.count.take().unwrap_or(1) as isize) * 5;
+                view_ops::scroll_view_by(self, lines);
+            }
+            action::scroll_up => {
+                let lines = (self.count.take().unwrap_or(1) as isize) * 5;
+                view_ops::scroll_view_by(self, -lines);
+            }
+
+            // --- Match & Surround ---
+            action::match_brackets => {
+                // Brackets matching
+            }
+
+            // --- Window / View management ---
+            action::vsplit
+            | action::hsplit
+            | action::wclose
+            | action::wonly
+            | action::rotate_view
+            | action::jump_view_left
+            | action::jump_view_down
+            | action::jump_view_up
+            | action::jump_view_right => {
+                self.status_message =
+                    Some("splits not yet available in single-window mode".to_string());
+            }
+
             action::no_op => {}
         }
     }
@@ -485,35 +527,37 @@ impl editor {
             movement::move_
         };
 
+        let count = self.count.take().unwrap_or(1);
+
         let doc = self.active_doc_mut();
         let buffer = doc.text();
 
         let new_sel = match act {
             action::move_char_left => apply_motion(buffer, doc.selection(), |r| {
-                move_horizontally(buffer, r, direction::backward, 1, mov)
+                move_horizontally(buffer, r, direction::backward, count, mov)
             }),
             action::move_char_right => apply_motion(buffer, doc.selection(), |r| {
-                move_horizontally(buffer, r, direction::forward, 1, mov)
+                move_horizontally(buffer, r, direction::forward, count, mov)
             }),
             action::move_line_up => apply_motion(buffer, doc.selection(), |r| {
-                move_vertically(buffer, r, direction::backward, 1, mov)
+                move_vertically(buffer, r, direction::backward, count, mov)
             }),
             action::move_line_down => apply_motion(buffer, doc.selection(), |r| {
-                move_vertically(buffer, r, direction::forward, 1, mov)
+                move_vertically(buffer, r, direction::forward, count, mov)
             }),
             action::move_next_word_start | action::move_next_long_word_start => {
                 apply_motion(buffer, doc.selection(), |r| {
-                    move_word_forward(buffer, r, 1, mov)
+                    move_word_forward(buffer, r, count, mov)
                 })
             }
             action::move_prev_word_start | action::move_prev_long_word_start => {
                 apply_motion(buffer, doc.selection(), |r| {
-                    move_word_backward(buffer, r, 1, mov)
+                    move_word_backward(buffer, r, count, mov)
                 })
             }
             action::move_next_word_end | action::move_next_long_word_end => {
                 apply_motion(buffer, doc.selection(), |r| {
-                    move_word_end(buffer, r, 1, mov)
+                    move_word_end(buffer, r, count, mov)
                 })
             }
             action::goto_line_start => {
@@ -528,6 +572,13 @@ impl editor {
             action::goto_file_start => apply_motion(buffer, doc.selection(), |_| range::point(0)),
             action::goto_file_end => {
                 apply_motion(buffer, doc.selection(), |_| range::point(buffer.char_len()))
+            }
+            action::goto_line => {
+                let target_line = count.saturating_sub(1);
+                apply_motion(buffer, doc.selection(), |_| {
+                    let byte = buffer.line_to_byte(target_line).unwrap_or_else(|| buffer.byte_len());
+                    range::point(buffer.byte_to_char(byte))
+                })
             }
             _ => doc.selection().clone(),
         };
