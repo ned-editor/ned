@@ -35,3 +35,9 @@
 
 - Only snake_case is permitted for identifiers, types, files, and code constructs.
 - Do not use camelCase, PascalCase, kebab-case, or alternative casing styles unless strictly required by an external standard or protocol.
+
+## 9. Termit Fork (ned_tui)
+
+- `crates/ned_tui` is forked from the `termit` TUI library.
+- Keep the `ned_tui` codebase and its widget toolkit intact as is mostly; do not delete its widgets or dismantle its core abstractions.
+- External / upstream types originating from `termit` in `ned_tui` are preserved as part of this foundational contract.
