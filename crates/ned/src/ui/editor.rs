@@ -13,6 +13,7 @@ use crate::theme_bridge::{merge_style, style_for_scope};
 use crate::ui::draw_str;
 
 pub mod buffer;
+pub mod selection;
 
 /// Computes the dynamic width of the gutter for `line_count` matching Helix layout:
 /// `[diagnostic (1)] [line_digits] [space (1)] [diff indicator (1)]`.
@@ -196,18 +197,14 @@ pub fn render_editor(
                 }
 
                 // Selection overlay
-                for sel_range in doc.selection() {
-                    let is_primary = *sel_range == primary_range;
-                    if sel_range.contains(global_char_idx) {
-                        let sel_overlay = if is_primary {
-                            sel_primary_style
-                        } else {
-                            sel_secondary_style
-                        };
-                        token_style = merge_style(token_style, sel_overlay);
-                        break;
-                    }
-                }
+                token_style = selection::apply_selection_style(
+                    doc.selection(),
+                    primary_range,
+                    global_char_idx,
+                    token_style,
+                    sel_primary_style,
+                    sel_secondary_style,
+                );
 
                 let s = ch.to_string();
                 screen.set(point(screen_col, row), &token_style, &s);
