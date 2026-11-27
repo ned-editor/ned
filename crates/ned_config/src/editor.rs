@@ -66,17 +66,21 @@ pub enum statusline_element {
     /// Current editor mode (e.g. "NOR", "INS", "SEL").
     mode,
     /// File name or path.
-    fileName,
+    #[serde(alias = "fileName")]
+    file_name,
     /// Modification indicator (`[+]` if unsaved).
-    fileModificationIndicator,
+    #[serde(alias = "fileModificationIndicator")]
+    file_modification_indicator,
     /// Diagnostic summary (errors and warnings).
     diagnostics,
     /// Cursor line and column coordinates.
     position,
     /// File encoding (e.g. "utf-8").
-    fileEncoding,
+    #[serde(alias = "fileEncoding")]
+    file_encoding,
     /// Line ending format (e.g. "LF", "CRLF").
-    fileLineEnding,
+    #[serde(alias = "fileLineEnding")]
+    file_line_ending,
     /// Elastic spacer filling remaining width.
     spacer,
     /// Explicit separator element.
@@ -86,8 +90,8 @@ pub enum statusline_element {
 fn default_statusline_left() -> Vec<statusline_element> {
     vec![
         statusline_element::mode,
-        statusline_element::fileName,
-        statusline_element::fileModificationIndicator,
+        statusline_element::file_name,
+        statusline_element::file_modification_indicator,
     ]
 }
 
@@ -95,8 +99,8 @@ fn default_statusline_right() -> Vec<statusline_element> {
     vec![
         statusline_element::diagnostics,
         statusline_element::position,
-        statusline_element::fileEncoding,
-        statusline_element::fileLineEnding,
+        statusline_element::file_encoding,
+        statusline_element::file_line_ending,
     ]
 }
 
@@ -140,7 +144,8 @@ pub enum gutter_element {
     /// Git diff indicators (`+`, `~`, `-`).
     diff,
     /// Line numbers (relative or absolute).
-    lineNumbers,
+    #[serde(alias = "lineNumbers")]
+    line_numbers,
     /// LSP diagnostic markers (`E`, `W`).
     diagnostics,
     /// Padding spacer column.
@@ -151,7 +156,7 @@ fn default_gutters_layout() -> Vec<gutter_element> {
     vec![
         gutter_element::diff,
         gutter_element::diagnostics,
-        gutter_element::lineNumbers,
+        gutter_element::line_numbers,
         gutter_element::spacer,
     ]
 }

@@ -136,13 +136,13 @@ impl language_registry {
     #[must_use]
     pub fn from_toml(val: Value) -> Self {
         #[derive(Deserialize)]
-        struct LanguagesWrapper {
+        struct languages_wrapper {
             #[serde(default)]
             language: Vec<language_config>,
         }
 
         let mut reg = Self::new();
-        if let Ok(wrapper) = val.try_into::<LanguagesWrapper>() {
+        if let Ok(wrapper) = val.try_into::<languages_wrapper>() {
             reg.languages = wrapper.language;
         }
         reg
