@@ -12,6 +12,8 @@ use ned_tui::Screen;
 use crate::theme_bridge::{merge_style, style_for_scope};
 use crate::ui::draw_str;
 
+pub mod buffer;
+
 /// Computes the dynamic width of the gutter for `line_count` matching Helix layout:
 /// `[diagnostic (1)] [line_digits] [space (1)] [diff indicator (1)]`.
 #[must_use]
@@ -143,9 +145,7 @@ pub fn render_editor(
 
             // --- Text Area rendering ---
             // Fill line background
-            for c in gutter_width..width {
-                screen.set(point(c, row), &line_bg, " ");
-            }
+            buffer::fill_line_background(screen, row, gutter_width, width, &line_bg);
 
             let line_str = doc.text().line(line_idx).unwrap_or_default();
             let clean_str = line_str.trim_end_matches(['\r', '\n']);
@@ -174,14 +174,12 @@ pub fn render_editor(
                 let global_char_idx = line_start_char + char_idx_in_line;
 
                 // Base token style from syntax highlighter
-                let mut token_style = line_bg;
-                if let Some(span) = line_spans
-                    .iter()
-                    .find(|s| char_idx_in_line >= s.start && char_idx_in_line < s.end)
-                {
-                    let scope_style = style_for_scope(theme, span.scope());
-                    token_style = merge_style(token_style, scope_style);
-                }
+                let mut token_style = buffer::resolve_syntax_style(
+                    theme,
+                    line_spans,
+                    char_idx_in_line,
+                    line_bg,
+                );
 
                 // Inline diagnostic underline
                 if let Some(ul_color) = diag_underline_color(
@@ -236,14 +234,14 @@ pub fn render_editor(
             }
         } else {
             // Beyond EOF: Helix virtual line indicator `~`
-            screen.set(point(0, row), &gutter_style, " ");
-            screen.set(point(1, row), &gutter_style, "~");
-            for c in 2..gutter_width {
-                screen.set(point(c, row), &gutter_style, " ");
-            }
-            for c in gutter_width..width {
-                screen.set(point(c, row), &default_style, " ");
-            }
+            buffer::render_beyond_eof(
+                screen,
+                row,
+                gutter_width,
+                width,
+                &gutter_style,
+                &default_style,
+            );
         }
     }
 }
