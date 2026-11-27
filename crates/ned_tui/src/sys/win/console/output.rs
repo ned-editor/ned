@@ -1,4 +1,4 @@
-use crate::prelude::{Point, point};
+use crate::prelude::{point, Point};
 use crate::sys::result;
 use std::ffi::c_void;
 use std::fs;

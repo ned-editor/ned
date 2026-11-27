@@ -331,8 +331,7 @@ fn try_match_rule(
                         return None;
                     }
                     idx += 1;
-                    while idx < num_chars
-                        && (chars[idx].1.is_alphanumeric() || chars[idx].1 == '_')
+                    while idx < num_chars && (chars[idx].1.is_alphanumeric() || chars[idx].1 == '_')
                     {
                         idx += 1;
                     }

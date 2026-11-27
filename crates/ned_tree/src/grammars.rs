@@ -218,24 +218,32 @@ impl grammar_def {
     /// Checks whether an identifier is a general keyword.
     #[must_use]
     pub fn is_keyword(&self, word: &str) -> bool {
-        self.keywords.binary_search_by(|k| k.as_str().cmp(word)).is_ok()
+        self.keywords
+            .binary_search_by(|k| k.as_str().cmp(word))
+            .is_ok()
     }
 
     /// Checks whether an identifier is a control-flow keyword.
     #[must_use]
     pub fn is_control_keyword(&self, word: &str) -> bool {
-        self.control_keywords.binary_search_by(|k| k.as_str().cmp(word)).is_ok()
+        self.control_keywords
+            .binary_search_by(|k| k.as_str().cmp(word))
+            .is_ok()
     }
 
     /// Checks whether an identifier is a function definition keyword.
     #[must_use]
     pub fn is_function_keyword(&self, word: &str) -> bool {
-        self.function_keywords.binary_search_by(|k| k.as_str().cmp(word)).is_ok()
+        self.function_keywords
+            .binary_search_by(|k| k.as_str().cmp(word))
+            .is_ok()
     }
 
     /// Checks whether an identifier is a primitive or built-in type.
     #[must_use]
     pub fn is_builtin_type(&self, word: &str) -> bool {
-        self.builtin_types.binary_search_by(|k| k.as_str().cmp(word)).is_ok()
+        self.builtin_types
+            .binary_search_by(|k| k.as_str().cmp(word))
+            .is_ok()
     }
 }

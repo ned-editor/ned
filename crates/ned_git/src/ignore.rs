@@ -26,11 +26,7 @@ impl git_ignore_rule {
         }
 
         let is_negative = trimmed.starts_with('!');
-        let pattern_str = if is_negative {
-            &trimmed[1..]
-        } else {
-            trimmed
-        };
+        let pattern_str = if is_negative { &trimmed[1..] } else { trimmed };
 
         let dir_only = pattern_str.ends_with('/');
         let pattern_trimmed = pattern_str.trim_matches('/');
@@ -138,10 +134,7 @@ fn glob_match_slices(pattern: &[char], text: &[char]) -> bool {
 pub fn load_gitignore(dir: &Path) -> Vec<git_ignore_rule> {
     let gitignore_path = dir.join(".gitignore");
     if let Ok(content) = fs::read_to_string(gitignore_path) {
-        content
-            .lines()
-            .filter_map(git_ignore_rule::parse)
-            .collect()
+        content.lines().filter_map(git_ignore_rule::parse).collect()
     } else {
         Vec::new()
     }

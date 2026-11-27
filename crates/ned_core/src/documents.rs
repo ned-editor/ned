@@ -145,7 +145,8 @@ impl document {
         }
 
         let selection_before = self.selection.clone();
-        let selection_after = new_selection.unwrap_or_else(|| changes.map_selection(self.selection.clone()));
+        let selection_after =
+            new_selection.unwrap_or_else(|| changes.map_selection(self.selection.clone()));
 
         self.highlighter.invalidate_from(0);
         self.history.commit(

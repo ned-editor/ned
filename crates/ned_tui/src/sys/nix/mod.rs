@@ -3,7 +3,7 @@
 pub mod tty;
 
 use super::Control;
-use crate::{Terminal, input::DefaultInput, output::DefaultOutput, prelude::Point};
+use crate::{input::DefaultInput, output::DefaultOutput, prelude::Point, Terminal};
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::{fs, io, sync::Arc};
 

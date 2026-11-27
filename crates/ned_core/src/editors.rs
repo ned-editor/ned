@@ -236,7 +236,9 @@ impl editor {
                     let line = buffer.byte_to_line(buffer.char_to_byte(cursor_pos));
                     let start_byte = buffer.line_to_byte(line).unwrap_or(0);
                     let start_char = buffer.byte_to_char(start_byte);
-                    let end_byte = buffer.line_to_byte(line + 1).unwrap_or_else(|| buffer.byte_len());
+                    let end_byte = buffer
+                        .line_to_byte(line + 1)
+                        .unwrap_or_else(|| buffer.byte_len());
                     let end_char = buffer.byte_to_char(end_byte);
                     range::new(start_char, end_char)
                 });
@@ -485,26 +487,18 @@ impl editor {
         let buffer = doc.text();
 
         let new_sel = match act {
-            action::move_char_left => {
-                apply_motion(buffer, doc.selection(), |r| {
-                    move_horizontally(buffer, r, direction::backward, 1, mov)
-                })
-            }
-            action::move_char_right => {
-                apply_motion(buffer, doc.selection(), |r| {
-                    move_horizontally(buffer, r, direction::forward, 1, mov)
-                })
-            }
-            action::move_line_up => {
-                apply_motion(buffer, doc.selection(), |r| {
-                    move_vertically(buffer, r, direction::backward, 1, mov)
-                })
-            }
-            action::move_line_down => {
-                apply_motion(buffer, doc.selection(), |r| {
-                    move_vertically(buffer, r, direction::forward, 1, mov)
-                })
-            }
+            action::move_char_left => apply_motion(buffer, doc.selection(), |r| {
+                move_horizontally(buffer, r, direction::backward, 1, mov)
+            }),
+            action::move_char_right => apply_motion(buffer, doc.selection(), |r| {
+                move_horizontally(buffer, r, direction::forward, 1, mov)
+            }),
+            action::move_line_up => apply_motion(buffer, doc.selection(), |r| {
+                move_vertically(buffer, r, direction::backward, 1, mov)
+            }),
+            action::move_line_down => apply_motion(buffer, doc.selection(), |r| {
+                move_vertically(buffer, r, direction::forward, 1, mov)
+            }),
             action::move_next_word_start | action::move_next_long_word_start => {
                 apply_motion(buffer, doc.selection(), |r| {
                     move_word_forward(buffer, r, 1, mov)
@@ -526,14 +520,10 @@ impl editor {
             action::goto_line_end => {
                 apply_motion(buffer, doc.selection(), |r| move_line_end(buffer, r, mov))
             }
-            action::goto_first_nonwhitespace => {
-                apply_motion(buffer, doc.selection(), |r| {
-                    move_first_non_whitespace(buffer, r, mov)
-                })
-            }
-            action::goto_file_start => {
-                apply_motion(buffer, doc.selection(), |_| range::point(0))
-            }
+            action::goto_first_nonwhitespace => apply_motion(buffer, doc.selection(), |r| {
+                move_first_non_whitespace(buffer, r, mov)
+            }),
+            action::goto_file_start => apply_motion(buffer, doc.selection(), |_| range::point(0)),
             action::goto_file_end => {
                 apply_motion(buffer, doc.selection(), |_| range::point(buffer.char_len()))
             }

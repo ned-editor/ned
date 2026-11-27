@@ -41,10 +41,7 @@ impl selection {
     #[must_use]
     pub fn new(ranges: Vec<range>, primary_index: usize) -> Self {
         assert!(!ranges.is_empty(), "selection cannot be empty");
-        assert!(
-            primary_index < ranges.len(),
-            "primary_index out of bounds"
-        );
+        assert!(primary_index < ranges.len(), "primary_index out of bounds");
 
         let sel = Self {
             ranges,
@@ -130,7 +127,10 @@ impl selection {
     /// or if `index >= self.len()`.
     #[must_use]
     pub fn remove(mut self, index: usize) -> Self {
-        assert!(self.ranges.len() > 1, "cannot remove the only range in selection");
+        assert!(
+            self.ranges.len() > 1,
+            "cannot remove the only range in selection"
+        );
         self.ranges.remove(index);
         if index < self.primary_index || self.primary_index == self.ranges.len() {
             self.primary_index = self.primary_index.saturating_sub(1);
@@ -188,11 +188,7 @@ impl selection {
         }
 
         self.ranges = deduped;
-        self.primary_index = self
-            .ranges
-            .iter()
-            .position(|r| *r == primary)
-            .unwrap_or(0);
+        self.primary_index = self.ranges.iter().position(|r| *r == primary).unwrap_or(0);
         self
     }
 

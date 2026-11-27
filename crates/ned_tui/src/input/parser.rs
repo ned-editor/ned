@@ -226,7 +226,7 @@ fn parse_key_event_kind(kind: u8) -> KeyEventKind {
 
 pub(crate) fn parse_csi_modifier_key_code<A: AppEvent>(buffer: &[u8]) -> Result<Option<Event<A>>> {
     assert!(buffer.starts_with(b"\x1B[")); // ESC [
-    //
+                                           //
     let s = std::str::from_utf8(&buffer[2..buffer.len() - 1])
         .map_err(|_| "Could not parse utf-8 for CSI modifier code")?;
     let mut split = s.split(';');

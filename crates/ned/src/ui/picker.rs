@@ -28,7 +28,10 @@ pub fn render_picker(
     let border_style = merge_style(popup_style, style_for_scope(theme, "ui.window"));
     let text_style = merge_style(default_style, style_for_scope(theme, "ui.text"));
     let linenr_style = merge_style(default_style, style_for_scope(theme, "ui.linenr"));
-    let sep_style = merge_style(border_style, style_for_scope(theme, "ui.background.separator"));
+    let sep_style = merge_style(
+        border_style,
+        style_for_scope(theme, "ui.background.separator"),
+    );
     let inactive_style = merge_style(default_style, style_for_scope(theme, "ui.text.inactive"));
     let match_style = merge_style(
         style_for_scope(theme, "special"),
@@ -37,11 +40,7 @@ pub fn render_picker(
 
     let fits_beside = width > min_area_width_for_preview && picker.show_preview;
     let picker_width = if fits_beside { width / 2 } else { width };
-    let preview_width = if fits_beside {
-        width - picker_width
-    } else {
-        0
-    };
+    let preview_width = if fits_beside { width - picker_width } else { 0 };
 
     // --- Render Left Pane (Picker candidate list & search query) ---
     // Clear picker area
@@ -214,8 +213,7 @@ pub fn render_picker(
                     preview_content::text(lines) => {
                         if lines.is_empty() {
                             let empty_msg = "<Empty file>";
-                            let px =
-                                inner_x + (inner_w.saturating_sub(empty_msg.len() as u16)) / 2;
+                            let px = inner_x + (inner_w.saturating_sub(empty_msg.len() as u16)) / 2;
                             let py = 1 + inner_h / 2;
                             draw_str(screen, px, py, empty_msg, &inactive_style, prev_end);
                         } else {
@@ -281,11 +279,7 @@ pub fn render_picker(
                                         char_style = merge_style(char_style, scope_style);
                                     }
 
-                                    screen.set(
-                                        point(char_col, y),
-                                        &char_style,
-                                        &ch.to_string(),
-                                    );
+                                    screen.set(point(char_col, y), &char_style, &ch.to_string());
                                 }
                             }
                         }

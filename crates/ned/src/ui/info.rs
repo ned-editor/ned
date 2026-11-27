@@ -65,12 +65,18 @@ pub fn render_autoinfo(
     let rows_per_col = entries.len().div_ceil(cols);
     let popup_rows = (rows_per_col as u16).min(statusline_row.saturating_sub(2));
 
-    let max_key_len = entries.iter().map(|(k, _)| k.len()).max().unwrap_or(1).max(2);
+    let max_key_len = entries
+        .iter()
+        .map(|(k, _)| k.len())
+        .max()
+        .unwrap_or(1)
+        .max(2);
     let max_desc_len = entries.iter().map(|(_, d)| d.len()).max().unwrap_or(8);
     let col_content_width = (max_key_len + 2 + max_desc_len) as u16;
     let col_spacing = 3u16;
 
-    let inner_width = (cols as u16) * col_content_width + (cols as u16).saturating_sub(1) * col_spacing;
+    let inner_width =
+        (cols as u16) * col_content_width + (cols as u16).saturating_sub(1) * col_spacing;
     let title = format!(" {} ", node.label);
     let popup_width = (inner_width + 4)
         .max(title.len() as u16 + 4)
@@ -106,7 +112,14 @@ pub fn render_autoinfo(
 
     // 3. Render title in top border
     let title_x = start_col + 2;
-    draw_str(screen, title_x, start_row, &title, &title_style, end_col - 1);
+    draw_str(
+        screen,
+        title_x,
+        start_row,
+        &title,
+        &title_style,
+        end_col - 1,
+    );
 
     // 4. Render items in aligned columns
     for (idx, (key_str, desc_str)) in entries.iter().enumerate() {
@@ -129,7 +142,14 @@ pub fn render_autoinfo(
         draw_str(screen, col_x, r, &key_display, &key_style, end_col - 1);
 
         // Render separator
-        draw_str(screen, col_x + max_key_len as u16, r, "  ", &desc_style, end_col - 1);
+        draw_str(
+            screen,
+            col_x + max_key_len as u16,
+            r,
+            "  ",
+            &desc_style,
+            end_col - 1,
+        );
 
         // Render action description in theme `ui.text` scope
         let desc_x = col_x + max_key_len as u16 + 2;
@@ -175,7 +195,11 @@ pub fn render_hover_popup(
         return;
     }
 
-    let max_line_len = wrapped_lines.iter().map(|l| l.chars().count()).max().unwrap_or(10);
+    let max_line_len = wrapped_lines
+        .iter()
+        .map(|l| l.chars().count())
+        .max()
+        .unwrap_or(10);
     let popup_width = (max_line_len as u16 + 4).clamp(20, width.saturating_sub(2));
     let max_popup_h = statusline_row.min(18);
     let popup_height = (wrapped_lines.len() as u16 + 2).clamp(3, max_popup_h);
@@ -217,7 +241,14 @@ pub fn render_hover_popup(
         screen.set(point(end_col, r), &border_style, "│");
     }
 
-    draw_str(screen, start_col + 2, start_row, " info ", &title_style, end_col - 1);
+    draw_str(
+        screen,
+        start_col + 2,
+        start_row,
+        " info ",
+        &title_style,
+        end_col - 1,
+    );
 
     let max_lines = popup_height.saturating_sub(2) as usize;
     for (i, line) in wrapped_lines.iter().take(max_lines).enumerate() {

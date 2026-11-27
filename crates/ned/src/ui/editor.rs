@@ -37,10 +37,7 @@ pub fn render_editor(
     let total_lines = doc.text().line_count().max(1);
     let text_area_width = width.saturating_sub(gutter_width);
 
-    let view = ed
-        .views
-        .get_mut(&view_id)
-        .expect("active view must exist");
+    let view = ed.views.get_mut(&view_id).expect("active view must exist");
     view.resize(text_area_width, editor_height);
     view.ensure_cursor_visible(doc, ed.config.editor.scrolloff);
 
@@ -167,12 +164,8 @@ pub fn render_editor(
                 let global_char_idx = line_start_char + char_idx_in_line;
 
                 // Base token style from syntax highlighter
-                let mut token_style = buffer::resolve_syntax_style(
-                    theme,
-                    line_spans,
-                    char_idx_in_line,
-                    line_bg,
-                );
+                let mut token_style =
+                    buffer::resolve_syntax_style(theme, line_spans, char_idx_in_line, line_bg);
 
                 // Inline diagnostic underline
                 if let Some(ul_color) = diagnostics::diag_underline_color(

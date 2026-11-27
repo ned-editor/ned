@@ -23,7 +23,10 @@ pub fn discover_grammar_file(lang_name: &str) -> Option<PathBuf> {
     }
 
     // 2. Global runtime
-    let global_path = config_dir().join("runtime").join("grammars").join(&filename);
+    let global_path = config_dir()
+        .join("runtime")
+        .join("grammars")
+        .join(&filename);
     if global_path.is_file() {
         return Some(global_path);
     }

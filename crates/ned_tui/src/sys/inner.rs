@@ -1,6 +1,6 @@
 //! Dummy facade that always fails - no sys
-use crate::Terminal;
 use crate::sys::*;
+use crate::Terminal;
 use crate::{input::DefaultInput, output::DefaultOutput};
 use std::io;
 

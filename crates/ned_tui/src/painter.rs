@@ -1,5 +1,9 @@
 use super::Screen;
-use crate::{output::ansi::ScreenStyle, prelude::*, unicode::{Graphemes, grapheme_width, str_graphemes}};
+use crate::{
+    output::ansi::ScreenStyle,
+    prelude::*,
+    unicode::{grapheme_width, str_graphemes, Graphemes},
+};
 
 /// The TUI Painter :)
 ///

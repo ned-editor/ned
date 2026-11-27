@@ -76,11 +76,8 @@ impl client {
     ///
     /// Returns an `io::Error` if the subprocess fails to spawn or pipe stdio.
     pub fn start(config: server_config) -> io::Result<Self> {
-        let (trans, incoming_rx) = transport::spawn(
-            &config.command,
-            &config.args,
-            config.root_path.as_deref(),
-        )?;
+        let (trans, incoming_rx) =
+            transport::spawn(&config.command, &config.args, config.root_path.as_deref())?;
         let transport = Arc::new(trans);
 
         let pending_requests: Arc<Mutex<HashMap<u64, Sender<Result<Value, rpc_error>>>>> =
@@ -115,7 +112,9 @@ impl client {
                         incoming_message::notification(notif) => {
                             if notif.method == "textDocument/publishDiagnostics" {
                                 if let Some(params) = notif.params {
-                                    if let Ok(parsed) = serde_json::from_value::<publish_diagnostics_params>(params) {
+                                    if let Ok(parsed) =
+                                        serde_json::from_value::<publish_diagnostics_params>(params)
+                                    {
                                         let _ = diag_tx.send(parsed);
                                     }
                                 }
@@ -163,9 +162,10 @@ impl client {
     ) -> io::Result<Receiver<Result<Value, rpc_error>>> {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let params_val = match params {
-            Some(p) => Some(serde_json::to_value(p).map_err(|e| {
-                io::Error::new(io::ErrorKind::InvalidData, e)
-            })?),
+            Some(p) => Some(
+                serde_json::to_value(p)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
+            ),
             None => None,
         };
 
@@ -216,9 +216,10 @@ impl client {
         params: Option<P>,
     ) -> io::Result<()> {
         let params_val = match params {
-            Some(p) => Some(serde_json::to_value(p).map_err(|e| {
-                io::Error::new(io::ErrorKind::InvalidData, e)
-            })?),
+            Some(p) => Some(
+                serde_json::to_value(p)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?,
+            ),
             None => None,
         };
 
@@ -304,12 +305,7 @@ impl client {
     /// # Errors
     ///
     /// Returns an `io::Error` on transport failure.
-    pub fn notify_did_change(
-        &self,
-        uri: &str,
-        version: i32,
-        text: &str,
-    ) -> io::Result<()> {
+    pub fn notify_did_change(&self, uri: &str, version: i32, text: &str) -> io::Result<()> {
         let params = did_change_text_document_params {
             text_document: versioned_text_document_identifier {
                 uri: uri.to_string(),
@@ -398,9 +394,8 @@ impl client {
         if resp.is_null() {
             return Ok(None);
         }
-        let parsed = serde_json::from_value::<hover>(resp).map_err(|e| {
-            io::Error::new(io::ErrorKind::InvalidData, e)
-        })?;
+        let parsed = serde_json::from_value::<hover>(resp)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(Some(parsed))
     }
 

@@ -83,7 +83,8 @@ impl view {
     pub fn pos_at_coords(&self, doc: &document, text_col: u16, text_row: u16) -> usize {
         let buffer = doc.text();
         let total_lines = buffer.line_count().max(1);
-        let target_line = (self.row_offset + (text_row as usize)).min(total_lines.saturating_sub(1));
+        let target_line =
+            (self.row_offset + (text_row as usize)).min(total_lines.saturating_sub(1));
 
         let line_start_byte = buffer.line_to_byte(target_line).unwrap_or(0);
         let line_start_char = buffer.byte_to_char(line_start_byte);
@@ -118,7 +119,8 @@ impl view {
         let line_start_char = buffer.byte_to_char(line_start_byte);
         let cursor_col = primary_cursor.saturating_sub(line_start_char);
 
-        if cursor_line < self.row_offset || cursor_line >= self.row_offset + (self.height as usize) {
+        if cursor_line < self.row_offset || cursor_line >= self.row_offset + (self.height as usize)
+        {
             return None;
         }
         if cursor_col < self.col_offset || cursor_col >= self.col_offset + (self.width as usize) {

@@ -1,12 +1,12 @@
 pub mod console;
 
-use crate::prelude::Point;
-use crate::{Terminal, sys::Control};
-use crate::{input::DefaultInput, output::DefaultOutput};
 use crate::log::{trace, warn};
+use crate::prelude::Point;
+use crate::{input::DefaultInput, output::DefaultOutput};
+use crate::{sys::Control, Terminal};
 use std::os::windows::prelude::AsHandle;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::{fs, io};
 use windows_sys::Win32::System::Console::*;
 

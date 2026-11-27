@@ -46,7 +46,11 @@ pub fn lex_line(
                 char_idx += 1;
             }
 
-            out_spans.push(highlight_span::new(0, close_char, syntax_kind::string_literal));
+            out_spans.push(highlight_span::new(
+                0,
+                close_char,
+                syntax_kind::string_literal,
+            ));
 
             if closed {
                 state = line_state::normal;
@@ -66,7 +70,11 @@ pub fn lex_line(
                         line_state::normal
                     };
                 } else {
-                    out_spans.push(highlight_span::new(0, num_chars, syntax_kind::comment_block));
+                    out_spans.push(highlight_span::new(
+                        0,
+                        num_chars,
+                        syntax_kind::comment_block,
+                    ));
                     return state;
                 }
             }
@@ -75,11 +83,19 @@ pub fn lex_line(
             let triple = format!("{q}{q}{q}");
             if let Some(pos) = line.find(&triple) {
                 let end_char = line[..pos + triple.len()].chars().count();
-                out_spans.push(highlight_span::new(0, end_char, syntax_kind::string_literal));
+                out_spans.push(highlight_span::new(
+                    0,
+                    end_char,
+                    syntax_kind::string_literal,
+                ));
                 char_idx = end_char;
                 state = line_state::normal;
             } else {
-                out_spans.push(highlight_span::new(0, num_chars, syntax_kind::string_literal));
+                out_spans.push(highlight_span::new(
+                    0,
+                    num_chars,
+                    syntax_kind::string_literal,
+                ));
                 return state;
             }
         }
@@ -91,11 +107,19 @@ pub fn lex_line(
             }
             if let Some(pos) = line.find(&close) {
                 let end_char = line[..pos + close.len()].chars().count();
-                out_spans.push(highlight_span::new(0, end_char, syntax_kind::string_literal));
+                out_spans.push(highlight_span::new(
+                    0,
+                    end_char,
+                    syntax_kind::string_literal,
+                ));
                 char_idx = end_char;
                 state = line_state::normal;
             } else {
-                out_spans.push(highlight_span::new(0, num_chars, syntax_kind::string_literal));
+                out_spans.push(highlight_span::new(
+                    0,
+                    num_chars,
+                    syntax_kind::string_literal,
+                ));
                 return state;
             }
         }
@@ -116,7 +140,11 @@ pub fn lex_line(
         // Single-line comments (e.g. `//`, `#`)
         if let Some(ref prefix) = grammar.line_comment {
             if !prefix.is_empty() && rem.starts_with(prefix) {
-                out_spans.push(highlight_span::new(char_idx, num_chars, syntax_kind::comment_line));
+                out_spans.push(highlight_span::new(
+                    char_idx,
+                    num_chars,
+                    syntax_kind::comment_line,
+                ));
                 break;
             }
         }
@@ -129,12 +157,22 @@ pub fn lex_line(
                 let rem_after = &line[chars[char_idx.min(num_chars - 1)].0..];
 
                 if let Some(end_offset) = rem_after.find(end_delim) {
-                    let end_char = comment_start + start_delim.chars().count() + rem_after[..end_offset + end_delim.len()].chars().count();
-                    out_spans.push(highlight_span::new(comment_start, end_char, syntax_kind::comment_block));
+                    let end_char = comment_start
+                        + start_delim.chars().count()
+                        + rem_after[..end_offset + end_delim.len()].chars().count();
+                    out_spans.push(highlight_span::new(
+                        comment_start,
+                        end_char,
+                        syntax_kind::comment_block,
+                    ));
                     char_idx = end_char;
                     continue;
                 }
-                out_spans.push(highlight_span::new(comment_start, num_chars, syntax_kind::comment_block));
+                out_spans.push(highlight_span::new(
+                    comment_start,
+                    num_chars,
+                    syntax_kind::comment_block,
+                ));
                 return line_state::in_block_comment(1);
             }
         }
@@ -149,11 +187,19 @@ pub fn lex_line(
 
             if let Some(end_offset) = rem_after.find(&triple) {
                 let end_char = str_start + 3 + rem_after[..end_offset + 3].chars().count();
-                out_spans.push(highlight_span::new(str_start, end_char, syntax_kind::string_literal));
+                out_spans.push(highlight_span::new(
+                    str_start,
+                    end_char,
+                    syntax_kind::string_literal,
+                ));
                 char_idx = end_char;
                 continue;
             }
-            out_spans.push(highlight_span::new(str_start, num_chars, syntax_kind::string_literal));
+            out_spans.push(highlight_span::new(
+                str_start,
+                num_chars,
+                syntax_kind::string_literal,
+            ));
             return line_state::in_triple_string(q);
         }
 
@@ -180,11 +226,19 @@ pub fn lex_line(
                 };
                 if let Some(pos) = rem_after.find(&close) {
                     let end_char = char_idx + rem_after[..pos + close.len()].chars().count();
-                    out_spans.push(highlight_span::new(str_start, end_char, syntax_kind::string_literal));
+                    out_spans.push(highlight_span::new(
+                        str_start,
+                        end_char,
+                        syntax_kind::string_literal,
+                    ));
                     char_idx = end_char;
                     continue;
                 }
-                out_spans.push(highlight_span::new(str_start, num_chars, syntax_kind::string_literal));
+                out_spans.push(highlight_span::new(
+                    str_start,
+                    num_chars,
+                    syntax_kind::string_literal,
+                ));
                 return line_state::in_raw_string(hashes);
             }
         }
@@ -261,7 +315,11 @@ pub fn lex_line(
                     break;
                 }
             }
-            out_spans.push(highlight_span::new(num_start, char_idx, syntax_kind::number_literal));
+            out_spans.push(highlight_span::new(
+                num_start,
+                char_idx,
+                syntax_kind::number_literal,
+            ));
             continue;
         }
 
@@ -313,19 +371,48 @@ pub fn lex_line(
         }
 
         // Operators
-        if matches!(ch, '+' | '-' | '*' | '/' | '%' | '=' | '<' | '>' | '!' | '&' | '|' | '^' | '~' | '?' | ':') {
+        if matches!(
+            ch,
+            '+' | '-' | '*' | '/' | '%' | '=' | '<' | '>' | '!' | '&' | '|' | '^' | '~' | '?' | ':'
+        ) {
             let op_start = char_idx;
             char_idx += 1;
-            while char_idx < num_chars && matches!(chars[char_idx].1, '+' | '-' | '*' | '/' | '%' | '=' | '<' | '>' | '!' | '&' | '|' | '^' | '~' | '?' | ':') {
+            while char_idx < num_chars
+                && matches!(
+                    chars[char_idx].1,
+                    '+' | '-'
+                        | '*'
+                        | '/'
+                        | '%'
+                        | '='
+                        | '<'
+                        | '>'
+                        | '!'
+                        | '&'
+                        | '|'
+                        | '^'
+                        | '~'
+                        | '?'
+                        | ':'
+                )
+            {
                 char_idx += 1;
             }
-            out_spans.push(highlight_span::new(op_start, char_idx, syntax_kind::operator));
+            out_spans.push(highlight_span::new(
+                op_start,
+                char_idx,
+                syntax_kind::operator,
+            ));
             continue;
         }
 
         // Punctuation
         if matches!(ch, '(' | ')' | '{' | '}' | '[' | ']' | ';' | ',' | '.') {
-            out_spans.push(highlight_span::new(char_idx, char_idx + 1, syntax_kind::punctuation));
+            out_spans.push(highlight_span::new(
+                char_idx,
+                char_idx + 1,
+                syntax_kind::punctuation,
+            ));
             char_idx += 1;
             continue;
         }

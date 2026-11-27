@@ -67,7 +67,10 @@ pub fn handle_mouse_click(
         (pos, ed.config.editor.scrolloff)
     };
 
-    let doc = ed.documents.get_mut(&doc_id).expect("active doc must exist");
+    let doc = ed
+        .documents
+        .get_mut(&doc_id)
+        .expect("active doc must exist");
     if extend || ed.mode == mode::select {
         let primary = doc.selection().primary();
         let new_range = primary.put_cursor(doc.text(), target_pos, true);
@@ -121,7 +124,10 @@ pub fn scroll_view_by(ed: &mut editor, delta: isize) {
         .saturating_sub(scrolloff + 1)
         .min(total_lines.saturating_sub(1));
 
-    let doc = ed.documents.get_mut(&doc_id).expect("active doc must exist");
+    let doc = ed
+        .documents
+        .get_mut(&doc_id)
+        .expect("active doc must exist");
     let buffer = doc.text();
     let primary_cursor = doc.selection().primary().cursor(buffer);
     let cursor_byte = buffer.char_to_byte(primary_cursor);

@@ -1,5 +1,5 @@
 use crate::{
-    geometry::{Point, point},
+    geometry::{point, Point},
     output::{
         ansi::*,
         command::{ClearScreen, MoveCursorBy, MoveCursorTo, ResetStyles, TerminalCommander},

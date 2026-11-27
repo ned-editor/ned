@@ -43,14 +43,19 @@ impl transport {
 
         let mut child = cmd.spawn()?;
         let stdin = child.stdin.take().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::BrokenPipe, "failed to open server stdin pipe")
+            io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "failed to open server stdin pipe",
+            )
         })?;
         let stdout = child.stdout.take().ok_or_else(|| {
-            io::Error::new(io::ErrorKind::BrokenPipe, "failed to open server stdout pipe")
+            io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "failed to open server stdout pipe",
+            )
         })?;
 
-        let (tx, rx): (Sender<incoming_message>, Receiver<incoming_message>) =
-            mpsc::channel();
+        let (tx, rx): (Sender<incoming_message>, Receiver<incoming_message>) = mpsc::channel();
         let is_running = Arc::new(AtomicBool::new(true));
 
         let is_running_reader = Arc::clone(&is_running);
@@ -95,9 +100,10 @@ impl transport {
             )
         })?;
 
-        let mut stdin = self.stdin.lock().map_err(|_| {
-            io::Error::new(io::ErrorKind::Other, "poisoned stdin lock")
-        })?;
+        let mut stdin = self
+            .stdin
+            .lock()
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "poisoned stdin lock"))?;
         stdin.write_all(&bytes)?;
         stdin.flush()?;
         Ok(())
@@ -126,9 +132,10 @@ impl transport {
     /// Returns an `io::Error` if terminating the process fails.
     pub fn terminate(&self) -> io::Result<()> {
         self.is_running.store(false, Ordering::Relaxed);
-        let mut child = self.child.lock().map_err(|_| {
-            io::Error::new(io::ErrorKind::Other, "poisoned child lock")
-        })?;
+        let mut child = self
+            .child
+            .lock()
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "poisoned child lock"))?;
         let _ = child.kill();
         let _ = child.wait();
         Ok(())

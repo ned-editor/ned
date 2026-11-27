@@ -27,15 +27,16 @@ impl state_cache {
     /// Creates an empty state cache.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            states: Vec::new(),
-        }
+        Self { states: Vec::new() }
     }
 
     /// Returns the syntax state at the start of `line_idx` (defaults to [`line_state::normal`]).
     #[must_use]
     pub fn get(&self, line_idx: usize) -> line_state {
-        self.states.get(line_idx).copied().unwrap_or(line_state::normal)
+        self.states
+            .get(line_idx)
+            .copied()
+            .unwrap_or(line_state::normal)
     }
 
     /// Sets or updates the syntax state at the start of `line_idx`.

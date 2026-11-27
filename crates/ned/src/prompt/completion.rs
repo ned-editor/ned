@@ -624,8 +624,6 @@ pub enum completion_direction {
     backward,
 }
 
-
-
 /// Recalculates matching completions based on the currently typed command prefix.
 pub fn recalculate_completion(prompt: &mut prompt_state) {
     prompt.selection = None;
@@ -698,7 +696,12 @@ pub fn active_doc(prompt: &prompt_state) -> Option<(&'static str, &'static str)>
             return Some((cmd.name, cmd.doc));
         }
     }
-    let token = prompt.input.trim_start().split_whitespace().next().unwrap_or("");
+    let token = prompt
+        .input
+        .trim_start()
+        .split_whitespace()
+        .next()
+        .unwrap_or("");
     if token.is_empty() {
         return None;
     }

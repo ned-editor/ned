@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use crate::prelude::{Point, point};
+use crate::prelude::{point, Point};
 
 /// discovers terminal dimensions without native syscalls.
 #[must_use]
@@ -43,5 +43,9 @@ fn tput_value(arg: &str) -> Option<u16> {
         .filter_map(|b| char::from(b).to_digit(10))
         .fold(0, |v, n| v * 10 + n as u16);
 
-    if value > 0 { Some(value) } else { None }
+    if value > 0 {
+        Some(value)
+    } else {
+        None
+    }
 }

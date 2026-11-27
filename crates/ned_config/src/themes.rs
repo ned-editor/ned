@@ -123,18 +123,39 @@ impl theme {
         // UI scopes
         t.insert("ui.background", style::new().bg(bg));
         t.insert("ui.text", style::new().fg(fg));
-        t.insert("ui.text.focus", style::new().fg(fg).modifier(modifier { bold: true, ..Default::default() }));
+        t.insert(
+            "ui.text.focus",
+            style::new().fg(fg).modifier(modifier {
+                bold: true,
+                ..Default::default()
+            }),
+        );
         t.insert("ui.cursor", style::new().fg(bg).bg(fg));
         t.insert("ui.cursor.normal", style::new().fg(bg).bg(fg));
         t.insert("ui.cursor.insert", style::new().fg(bg).bg(c_blue));
         t.insert("ui.cursor.select", style::new().fg(bg).bg(c_green));
-        t.insert("ui.cursor.primary", style::new().fg(bg).bg(fg).modifier(modifier { bold: true, ..Default::default() }));
+        t.insert(
+            "ui.cursor.primary",
+            style::new().fg(bg).bg(fg).modifier(modifier {
+                bold: true,
+                ..Default::default()
+            }),
+        );
         t.insert("ui.selection", style::new().bg(surface0));
         t.insert("ui.selection.primary", style::new().bg(surface1));
         t.insert("ui.linenr", style::new().fg(overlay0));
-        t.insert("ui.linenr.selected", style::new().fg(fg).modifier(modifier { bold: true, ..Default::default() }));
+        t.insert(
+            "ui.linenr.selected",
+            style::new().fg(fg).modifier(modifier {
+                bold: true,
+                ..Default::default()
+            }),
+        );
         t.insert("ui.statusline", style::new().fg(fg).bg(mantle));
-        t.insert("ui.statusline.inactive", style::new().fg(overlay0).bg(mantle));
+        t.insert(
+            "ui.statusline.inactive",
+            style::new().fg(overlay0).bg(mantle),
+        );
         t.insert("ui.gutter", style::new().bg(bg));
         t.insert("ui.popup", style::new().fg(fg).bg(mantle));
         t.insert("ui.menu", style::new().fg(fg).bg(mantle));
@@ -144,7 +165,13 @@ impl theme {
         t.insert("ui.help", style::new().fg(fg).bg(surface0));
         t.insert("ui.text.inactive", style::new().fg(overlay0));
         t.insert("ui.highlight", style::new().bg(surface1));
-        t.insert("special", style::new().fg(c_yellow).modifier(modifier { bold: true, ..Default::default() }));
+        t.insert(
+            "special",
+            style::new().fg(c_yellow).modifier(modifier {
+                bold: true,
+                ..Default::default()
+            }),
+        );
 
         // Git diff scopes
         t.insert("diff.plus", style::new().fg(c_green));
@@ -152,14 +179,32 @@ impl theme {
         t.insert("diff.delta", style::new().fg(c_yellow));
 
         // LSP diagnostic scopes
-        t.insert("diagnostic.error", style::new().fg(c_red).modifier(modifier { bold: true, ..Default::default() }));
+        t.insert(
+            "diagnostic.error",
+            style::new().fg(c_red).modifier(modifier {
+                bold: true,
+                ..Default::default()
+            }),
+        );
         t.insert("diagnostic.warning", style::new().fg(c_yellow));
         t.insert("diagnostic.info", style::new().fg(c_blue));
         t.insert("diagnostic.hint", style::new().fg(c_cyan));
 
         // Basic syntax highlighting scopes
-        t.insert("comment", style::new().fg(overlay0).modifier(modifier { italic: true, ..Default::default() }));
-        t.insert("keyword", style::new().fg(c_mauve).modifier(modifier { bold: true, ..Default::default() }));
+        t.insert(
+            "comment",
+            style::new().fg(overlay0).modifier(modifier {
+                italic: true,
+                ..Default::default()
+            }),
+        );
+        t.insert(
+            "keyword",
+            style::new().fg(c_mauve).modifier(modifier {
+                bold: true,
+                ..Default::default()
+            }),
+        );
         t.insert("function", style::new().fg(c_blue));
         t.insert("string", style::new().fg(c_green));
         t.insert("constant", style::new().fg(c_yellow));
@@ -177,15 +222,16 @@ fn load_theme_value(name: &str, visited: &mut HashSet<String>) -> Result<Value, 
     }
     visited.insert(name.to_string());
 
-    let file_path = find_theme_file(name).ok_or_else(|| {
-        theme_error::io_error(format!("theme file not found for '{name}'"))
+    let file_path = find_theme_file(name)
+        .ok_or_else(|| theme_error::io_error(format!("theme file not found for '{name}'")))?;
+
+    let contents = fs::read_to_string(&file_path).map_err(|e| {
+        theme_error::io_error(format!("failed to read {}: {e}", file_path.display()))
     })?;
 
-    let contents = fs::read_to_string(&file_path)
-        .map_err(|e| theme_error::io_error(format!("failed to read {}: {e}", file_path.display())))?;
-
-    let theme_val: Value = toml::from_str(&contents)
-        .map_err(|e| theme_error::parse_error(format!("failed to parse {}: {e}", file_path.display())))?;
+    let theme_val: Value = toml::from_str(&contents).map_err(|e| {
+        theme_error::parse_error(format!("failed to parse {}: {e}", file_path.display()))
+    })?;
 
     if let Some(parent_val) = theme_val.get("inherits") {
         if let Some(parent_name) = parent_val.as_str() {

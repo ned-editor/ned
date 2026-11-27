@@ -71,9 +71,11 @@ impl language_registry {
     #[must_use]
     pub fn detect_by_extension(&self, ext: &str) -> Option<&language_config> {
         let clean_ext = ext.strip_prefix('.').unwrap_or(ext);
-        self.languages
-            .iter()
-            .find(|l| l.file_types.iter().any(|ft| ft.eq_ignore_ascii_case(clean_ext)))
+        self.languages.iter().find(|l| {
+            l.file_types
+                .iter()
+                .any(|ft| ft.eq_ignore_ascii_case(clean_ext))
+        })
     }
 
     /// Finds a language definition from a file path.
@@ -86,7 +88,9 @@ impl language_registry {
     /// Finds a language definition by exact language name.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&language_config> {
-        self.languages.iter().find(|l| l.name.eq_ignore_ascii_case(name))
+        self.languages
+            .iter()
+            .find(|l| l.name.eq_ignore_ascii_case(name))
     }
 
     /// Constructs a [`ned_lsp::server_config`] for the specified file path, if an LSP is configured.

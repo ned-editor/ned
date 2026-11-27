@@ -39,7 +39,9 @@ pub fn parse_command(input: &str) -> Result<editor_command, String> {
         "w" | "write" => Ok(editor_command::write(arg1.map(ToString::to_string))),
         "q" | "quit" => Ok(editor_command::quit),
         "q!" | "quit!" => Ok(editor_command::force_quit),
-        "wq" | "x" => Ok(editor_command::write_and_quit(arg1.map(ToString::to_string))),
+        "wq" | "x" => Ok(editor_command::write_and_quit(
+            arg1.map(ToString::to_string),
+        )),
         "e" | "open" => {
             if let Some(path) = arg1 {
                 Ok(editor_command::open(path.to_string()))

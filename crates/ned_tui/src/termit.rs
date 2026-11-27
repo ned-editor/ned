@@ -1,8 +1,8 @@
 //! the main termit application facilitator.
 
 use crate::geometry::*;
-use crate::input::InputWatcher;
 use crate::input::events::{AppEvent, Event};
+use crate::input::InputWatcher;
 use crate::output::command::{
     CaptureFocus, CaptureMouse, EnterRawMode, Flush, ResetStyles, ShowCursor, TerminalCommander,
     UseAlternateScreen, WrapLines,

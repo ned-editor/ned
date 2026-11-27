@@ -29,7 +29,14 @@ pub fn render_prompt(
     }
 
     let prompt_display = format!("{}{}", prompt.prefix, prompt.input);
-    draw_str(screen, 0, cmdline_row, &prompt_display, &cmdline_style, width);
+    draw_str(
+        screen,
+        0,
+        cmdline_row,
+        &prompt_display,
+        &cmdline_style,
+        width,
+    );
 
     if prompt.prefix == ":" {
         let completions = &prompt.completion;
@@ -58,9 +65,7 @@ pub fn render_prompt(
                 merge_style(default_style, style_for_scope(theme, "ui.menu.selected"));
 
             let items = (height as usize) * (cols as usize);
-            let offset = prompt
-                .selection
-                .map_or(0, |idx| (idx / items) * items);
+            let offset = prompt.selection.map_or(0, |idx| (idx / items) * items);
 
             // Clear completion grid area
             for r in 0..height {
@@ -75,11 +80,7 @@ pub fn render_prompt(
 
             for (i, item) in completions.iter().enumerate().skip(offset).take(items) {
                 let is_sel = prompt.selection == Some(i);
-                let item_style = if is_sel {
-                    &menu_sel_style
-                } else {
-                    &menu_style
-                };
+                let item_style = if is_sel { &menu_sel_style } else { &menu_style };
 
                 let x = col * (1 + col_width);
                 let y = completion_start_row + row;
@@ -104,8 +105,7 @@ pub fn render_prompt(
 
         // Render documentation box directly above completion area
         if let Some((cmd_name, doc_text)) = prompt.active_doc() {
-            let max_box_width =
-                ((base_width * 3) as usize).min((width as usize).saturating_sub(2));
+            let max_box_width = ((base_width * 3) as usize).min((width as usize).saturating_sub(2));
             let inner_text_width = max_box_width.saturating_sub(4).max(10);
             let full_doc = format!("{cmd_name}: {doc_text}");
             let wrapped_lines = wrap_text(&full_doc, inner_text_width);
@@ -114,8 +114,8 @@ pub fn render_prompt(
                 as u16)
                 .min(width)
                 .max(25);
-            let doc_box_height = (wrapped_lines.len() as u16 + 2)
-                .min(cmdline_row.saturating_sub(completion_height));
+            let doc_box_height =
+                (wrapped_lines.len() as u16 + 2).min(cmdline_row.saturating_sub(completion_height));
 
             if doc_box_height >= 3 {
                 let doc_box_row = cmdline_row

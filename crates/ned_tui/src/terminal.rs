@@ -1,14 +1,14 @@
 //! terminal initialization and configuration facade.
 
 use crate::{
-    Termit,
-    input::DefaultInput,
     input::events::AppEvent,
+    input::DefaultInput,
     output::{
-        DefaultOutput,
         command::{TerminalCommander, TerminalRequest},
+        DefaultOutput,
     },
     sys::{Control, DefaultControl},
+    Termit,
 };
 use std::io::{self, Read};
 

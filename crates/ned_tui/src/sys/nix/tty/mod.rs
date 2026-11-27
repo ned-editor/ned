@@ -1,6 +1,6 @@
 //! unix tty attribute and size queries using libc.
 
-use crate::prelude::{Point, point};
+use crate::prelude::{point, Point};
 use std::fs;
 use std::io;
 use std::os::unix::io::RawFd;

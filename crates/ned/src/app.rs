@@ -203,13 +203,16 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                     if let Some((loc, msg)) = item.split_once("] ") {
                         if let Some(coords) = loc.split_whitespace().next() {
                             if let Some((l_str, c_str)) = coords.split_once(':') {
-                                if let (Ok(l), Ok(c)) = (l_str.parse::<usize>(), c_str.parse::<usize>()) {
+                                if let (Ok(l), Ok(c)) =
+                                    (l_str.parse::<usize>(), c_str.parse::<usize>())
+                                {
                                     let doc = app.ed.active_doc_mut();
                                     let line_idx = l.saturating_sub(1);
                                     let col_idx = c.saturating_sub(1);
                                     let line_byte = doc.text().line_to_byte(line_idx).unwrap_or(0);
                                     let line_char = doc.text().byte_to_char(line_byte);
-                                    let target_char = (line_char + col_idx).min(doc.text().char_len());
+                                    let target_char =
+                                        (line_char + col_idx).min(doc.text().char_len());
                                     doc.set_selection(ned_text::selection::point(target_char));
                                     app.ed.ensure_active_cursor_visible();
                                 }
@@ -238,8 +241,8 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                 app.prompt = None;
                 let trimmed = cmd.trim();
                 if trimmed == "o" || trimmed == "open" {
-                    let cwd = std::env::current_dir()
-                        .unwrap_or_else(|_| std::path::PathBuf::from("."));
+                    let cwd =
+                        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
                     app.picker = Some(picker_state::new_file_picker(&cwd));
                 } else {
                     app.ed.execute_command(&cmd);
@@ -267,8 +270,7 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
             if msg == ":" {
                 app.prompt = Some(prompt_state::new(":"));
             } else if msg == "picker:file" {
-                let cwd =
-                    std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
                 app.picker = Some(picker_state::new_file_picker(&cwd));
             } else if msg == "picker:buffer" {
                 let mut buffers = Vec::new();
@@ -336,12 +338,22 @@ fn handle_mouse_event(app: &mut app_state, mouse_ev: &MouseEvent) {
 
     match mouse_ev.kind {
         MouseEventKind::Down(MouseButton::Left) => {
-            app.ed
-                .handle_mouse_click(mouse_ev.column, mouse_ev.row, gutter_width, editor_height, false);
+            app.ed.handle_mouse_click(
+                mouse_ev.column,
+                mouse_ev.row,
+                gutter_width,
+                editor_height,
+                false,
+            );
         }
         MouseEventKind::Drag(MouseButton::Left) => {
-            app.ed
-                .handle_mouse_click(mouse_ev.column, mouse_ev.row, gutter_width, editor_height, true);
+            app.ed.handle_mouse_click(
+                mouse_ev.column,
+                mouse_ev.row,
+                gutter_width,
+                editor_height,
+                true,
+            );
         }
         MouseEventKind::ScrollUp => {
             let lines = app.ed.config.editor.scroll_lines as isize;

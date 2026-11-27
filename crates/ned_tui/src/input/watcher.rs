@@ -132,8 +132,9 @@ pub fn watch_terminal_input<A: AppEvent, F: FnMut(io::Result<Event<A>>) + 'stati
                             if read_err.kind() == io::ErrorKind::WouldBlock {
                                 if pending.len() == 1 && pending[0] == 0x1B {
                                     pending.clear();
-                                    on_event_input
-                                        .borrow_mut()(Ok(Event::Key(super::events::KeyCode::Esc.into())));
+                                    on_event_input.borrow_mut()(Ok(Event::Key(
+                                        super::events::KeyCode::Esc.into(),
+                                    )));
                                 }
                                 break;
                             }
@@ -268,7 +269,10 @@ fn parse_pending_buffer<A: AppEvent, F: FnMut(io::Result<Event<A>>)>(
             }
         } else {
             // regular text bytes up to next ESC
-            let text_end = buffer.iter().position(|&b| b == 0x1B).unwrap_or(buffer.len());
+            let text_end = buffer
+                .iter()
+                .position(|&b| b == 0x1B)
+                .unwrap_or(buffer.len());
             let text_slice = &buffer[..text_end];
 
             match std::str::from_utf8(text_slice) {

@@ -1,8 +1,8 @@
 use super::Widget;
 use crate::{
-    Painter, Screen,
-    geometry::{Window, point},
+    geometry::{point, Window},
     prelude::*,
+    Painter, Screen,
 };
 
 /// The action a [`Button`] runs, given its own content and the model.

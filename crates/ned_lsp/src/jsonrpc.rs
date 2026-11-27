@@ -237,20 +237,17 @@ pub fn read_message<R: BufRead>(reader: &mut R) -> io::Result<Option<incoming_me
     // Classify into response, notification, or request
     if val.get("id").is_some() {
         if val.get("method").is_some() {
-            let req: request = serde_json::from_value(val).map_err(|e| {
-                io::Error::new(io::ErrorKind::InvalidData, e)
-            })?;
+            let req: request = serde_json::from_value(val)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
             Ok(Some(incoming_message::request(req)))
         } else {
-            let resp: response = serde_json::from_value(val).map_err(|e| {
-                io::Error::new(io::ErrorKind::InvalidData, e)
-            })?;
+            let resp: response = serde_json::from_value(val)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
             Ok(Some(incoming_message::response(resp)))
         }
     } else {
-        let notif: notification = serde_json::from_value(val).map_err(|e| {
-            io::Error::new(io::ErrorKind::InvalidData, e)
-        })?;
+        let notif: notification = serde_json::from_value(val)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         Ok(Some(incoming_message::notification(notif)))
     }
 }

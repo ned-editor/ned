@@ -3,11 +3,11 @@
 use ned_rope::rope;
 
 use crate::chars::{char_is_whitespace, char_is_word};
-use crate::line_endings::char_is_line_ending;
 use crate::graphemes::{
     ensure_grapheme_boundary_prev, next_grapheme_boundary, nth_next_grapheme_boundary,
     nth_prev_grapheme_boundary, prev_grapheme_boundary,
 };
+use crate::line_endings::char_is_line_ending;
 use crate::ranges::{direction, range};
 use crate::selections::selection;
 
@@ -87,23 +87,14 @@ pub fn move_vertically(
     let raw_target_pos = target_start_char + target_char_offset;
     let aligned_target_pos = ensure_grapheme_boundary_prev(buffer, raw_target_pos);
 
-    let mut new_range = r.put_cursor(
-        buffer,
-        aligned_target_pos,
-        behavior == movement::extend,
-    );
+    let mut new_range = r.put_cursor(buffer, aligned_target_pos, behavior == movement::extend);
     new_range.old_visual_position = Some((0, sticky_col));
     new_range
 }
 
 /// Moves the cursor forward to the start of the next word.
 #[must_use]
-pub fn move_word_forward(
-    buffer: &rope,
-    r: range,
-    count: usize,
-    behavior: movement,
-) -> range {
+pub fn move_word_forward(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
     let mut pos = r.cursor(buffer);
     let len = buffer.char_len();
 
@@ -149,12 +140,7 @@ pub fn move_word_forward(
 
 /// Moves the cursor backward to the start of the previous word.
 #[must_use]
-pub fn move_word_backward(
-    buffer: &rope,
-    r: range,
-    count: usize,
-    behavior: movement,
-) -> range {
+pub fn move_word_backward(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
     let mut pos = r.cursor(buffer);
 
     for _ in 0..count {
@@ -207,12 +193,7 @@ pub fn move_word_backward(
 
 /// Moves the cursor to the end of the current or next word.
 #[must_use]
-pub fn move_word_end(
-    buffer: &rope,
-    r: range,
-    count: usize,
-    behavior: movement,
-) -> range {
+pub fn move_word_end(buffer: &rope, r: range, count: usize, behavior: movement) -> range {
     let mut pos = r.cursor(buffer);
     let len = buffer.char_len();
 
@@ -345,11 +326,7 @@ pub fn extend_line(buffer: &rope, r: range, count: usize) -> range {
 
 /// Applies a pure motion transformation to each range in a multi-selection.
 #[must_use]
-pub fn apply_motion(
-    buffer: &rope,
-    sel: &selection,
-    f: impl Fn(range) -> range,
-) -> selection {
+pub fn apply_motion(buffer: &rope, sel: &selection, f: impl Fn(range) -> range) -> selection {
     let new_ranges: Vec<range> = sel.ranges().iter().map(|&r| f(r)).collect();
     selection::new(new_ranges, sel.primary_index()).collapse(buffer)
 }
