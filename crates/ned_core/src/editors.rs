@@ -3,9 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use ::ned_config::{
-    action, key_code, key_event, key_trie, key_trie_node, mode, ned_config,
-};
+use ::ned_config::{action, key_event, key_trie_node, mode, ned_config};
 use ned_lsp::client;
 use ned_text::{
     apply_motion, change_set, direction, extend_line, move_first_non_whitespace,
@@ -17,6 +15,8 @@ use crate::command_parser::{editor_command, parse_command};
 use crate::documents::{document, document_id};
 use crate::registers::register_storage;
 use crate::views::{view, view_id};
+
+pub mod mode_dispatch;
 
 /// Central editor runtime coordinating documents, views, registers, and modal input.
 pub struct editor {
@@ -293,95 +293,9 @@ impl editor {
     /// Processes an incoming keyboard key event.
     ///
     /// Returns `true` if the event was handled and may require redraw.
+    #[inline]
     pub fn handle_key(&mut self, ev: key_event) -> bool {
-        self.hover_popup = None;
-        if self.mode == mode::insert {
-            // Check insert mode keybindings first (e.g. Esc -> normal_mode, Backspace)
-            let matched_entry = self
-                .config
-                .keys
-                .get(&mode::insert)
-                .and_then(|trie| trie.get(&ev).cloned());
-
-            if let Some(entry) = matched_entry {
-                match entry {
-                    key_trie::action(act) => {
-                        self.dispatch(act);
-                        return true;
-                    }
-                    key_trie::sequence(acts) => {
-                        for act in acts {
-                            self.dispatch(act);
-                        }
-                        return true;
-                    }
-                    key_trie::node(_) => {}
-                }
-            }
-
-            // Insert character literal if key is a character without Ctrl/Alt modifiers
-            if !ev.modifiers.ctrl && !ev.modifiers.alt {
-                if let key_code::char(ch) = ev.code {
-                    self.insert_char(ch);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // Normal or Select mode dispatch
-        if let Some(prefix_node) = self.key_prefix.take() {
-            if let Some(entry) = prefix_node.get(&ev) {
-                match entry {
-                    key_trie::action(act) => {
-                        self.dispatch(*act);
-                    }
-                    key_trie::sequence(acts) => {
-                        for act in acts {
-                            self.dispatch(*act);
-                        }
-                    }
-                    key_trie::node(sub_node) => {
-                        self.key_prefix = Some(sub_node.clone());
-                    }
-                }
-                return true;
-            }
-            // Key not in prefix trie: prefix cancelled
-            return true;
-        }
-
-        // Top-level modal keymap lookup
-        let matched_entry = self
-            .config
-            .keys
-            .get(&self.mode)
-            .and_then(|trie| trie.get(&ev).cloned());
-
-        if let Some(entry) = matched_entry {
-            match entry {
-                key_trie::action(act) => {
-                    self.dispatch(act);
-                }
-                key_trie::sequence(acts) => {
-                    for act in acts {
-                        self.dispatch(act);
-                    }
-                }
-                key_trie::node(sub_node) => {
-                    self.key_prefix = Some(sub_node);
-                }
-            }
-            return true;
-        }
-
-        // Register prefix shortcut (`"`)
-        if ev.code == key_code::char('"') && !ev.modifiers.ctrl && !ev.modifiers.alt {
-            // Note: register selection continuation can be handled on subsequent key
-            return true;
-        }
-
-        false
+        mode_dispatch::handle_key(self, ev)
     }
 
     /// Dispatches an editor action.
