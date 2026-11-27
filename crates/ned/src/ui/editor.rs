@@ -8,6 +8,7 @@ use crate::theme_bridge::{merge_style, style_for_scope};
 use crate::ui::draw_str;
 
 pub mod buffer;
+pub mod cursor;
 pub mod diagnostics;
 pub mod gutter;
 pub mod selection;
@@ -83,11 +84,12 @@ pub fn render_editor(
     for row in 0..editor_height {
         let line_idx = start_line + (row as usize);
         let is_active_line = line_idx == active_line_idx;
-        let line_bg = if is_active_line && cursorline_enabled {
-            merge_style(default_style, cursorline_style)
-        } else {
-            default_style
-        };
+        let line_bg = cursor::resolve_line_background(
+            is_active_line,
+            cursorline_enabled,
+            default_style,
+            cursorline_style,
+        );
 
         if line_idx < total_lines {
             // --- Gutter rendering (Helix layout: [diag] [line-numbers] [space] [diff]) ---

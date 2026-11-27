@@ -107,12 +107,13 @@ pub fn render_frame(
             .get(&ed.active_view_id)
             .expect("active view must exist");
 
-        let (cursor_col, cursor_row, visible) =
-            if let Some((c_col, c_row)) = view.cursor_coords(doc) {
-                (gutter_width + c_col, c_row, true)
-            } else {
-                (gutter_width, 0, false)
-            };
+        let cursor_info = editor::cursor::compute_cursor_info(
+            view,
+            doc,
+            gutter_width,
+            ed.mode,
+            &ed.config.editor.cursor_shape,
+        );
 
         if let Some(ref hover_text) = ed.hover_popup {
             info::render_hover_popup(
@@ -121,23 +122,12 @@ pub fn render_frame(
                 hover_text,
                 width,
                 statusline_row,
-                cursor_col,
-                cursor_row,
+                cursor_info.col,
+                cursor_info.row,
             );
         }
 
-        let shape = match ed.mode {
-            ned_config::mode::normal => ed.config.editor.cursor_shape.normal,
-            ned_config::mode::insert => ed.config.editor.cursor_shape.insert,
-            ned_config::mode::select => ed.config.editor.cursor_shape.select,
-        };
-
-        cursor_render_info {
-            col: cursor_col,
-            row: cursor_row,
-            shape,
-            visible,
-        }
+        cursor_info
     }
 }
 
