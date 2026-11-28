@@ -56,6 +56,8 @@ pub struct editor {
     pub lsp_clients: HashMap<String, client>,
     /// Termination flag signaling editor exit.
     pub should_quit: bool,
+    /// Optional exit status code when quitting via :cquit.
+    pub exit_code: Option<i32>,
     pub(crate) next_doc_id: usize,
     pub(crate) next_view_id: usize,
 }
@@ -98,6 +100,7 @@ impl editor {
             search_query: None,
             lsp_clients: HashMap::new(),
             should_quit: false,
+            exit_code: None,
             next_doc_id: 2,
             next_view_id: 2,
         }
@@ -122,7 +125,16 @@ impl editor {
         let doc_id = self.next_doc_id;
         self.next_doc_id += 1;
 
-        let doc = document::open(doc_id, &abs_path, lang_cfg)?;
+        let doc = match document::open(doc_id, &abs_path, lang_cfg.clone()) {
+            Ok(d) => d,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                let mut d = document::new_empty(doc_id);
+                d.set_path(&abs_path);
+                d.set_language(lang_cfg);
+                d
+            }
+            Err(e) => return Err(e),
+        };
         self.documents.insert(doc_id, doc);
         self.active_doc_id = doc_id;
 

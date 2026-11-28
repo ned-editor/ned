@@ -248,11 +248,22 @@ impl document {
         self.path.as_deref()
     }
 
+    /// Sets the file path associated with this document.
+    pub fn set_path(&mut self, path: impl AsRef<Path>) {
+        self.path = Some(path.as_ref().to_path_buf());
+    }
+
     /// Returns the detected line ending format.
     #[inline]
     #[must_use]
     pub fn line_ending(&self) -> line_ending {
         self.line_ending
+    }
+
+    /// Sets the document default line ending format.
+    #[inline]
+    pub fn set_line_ending(&mut self, le: line_ending) {
+        self.line_ending = le;
     }
 
     /// Returns whether this document has unpersisted changes.

@@ -162,6 +162,21 @@ fn probe_provider() -> provider_kind {
     provider_kind::none
 }
 
+/// Returns the name of the active detected clipboard provider.
+#[must_use]
+pub fn provider_name() -> &'static str {
+    match detect_provider() {
+        provider_kind::wayland => "wayland (wl-copy/wl-paste)",
+        provider_kind::xclip => "x11 (xclip)",
+        provider_kind::xsel => "x11 (xsel)",
+        provider_kind::macos => "macos (pbcopy/pbpaste)",
+        provider_kind::termux => "termux (termux-clipboard)",
+        provider_kind::windows_powershell => "windows (powershell)",
+        provider_kind::windows_clip => "windows (clip.exe)",
+        provider_kind::none => "none (internal only)",
+    }
+}
+
 /// Reads text from the specified clipboard target buffer.
 ///
 /// Returns multi-selection pieces if the clipboard content matches

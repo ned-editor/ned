@@ -299,6 +299,11 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                     if !trimmed.is_empty() {
                         app.ed.keep_or_remove_matches(trimmed, true);
                     }
+                } else if prefix == "!" || prefix == "run-shell-command:" {
+                    let trimmed = cmd.trim();
+                    if !trimmed.is_empty() {
+                        app.ed.execute_command(&format!("sh {trimmed}"));
+                    }
                 } else {
                     let trimmed = cmd.trim();
                     let _ = app.ed.registers.write(':', vec![trimmed.to_string()]);
@@ -328,6 +333,9 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
             return;
         } else if key_ev.keycode == KeyCode::Char('?') {
             app.prompt = Some(prompt_state::new("?"));
+            return;
+        } else if key_ev.keycode == KeyCode::Char('!') {
+            app.prompt = Some(prompt_state::new("!"));
             return;
         }
     }

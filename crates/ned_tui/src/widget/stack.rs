@@ -150,6 +150,7 @@ enum StackLayout {
 mod tests {
     use super::*;
     use crate::prelude::Widget;
+    use crate::widget::Fill;
     use std::marker::PhantomData;
 
     /// just takes all space

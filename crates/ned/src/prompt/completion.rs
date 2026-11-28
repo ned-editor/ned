@@ -11,15 +11,11 @@ pub struct command_doc {
     pub doc: &'static str,
 }
 
-/// Complete registry of Helix typable commands and aliases with full documentation.
+/// Complete registry of Ned typable commands and aliases with full documentation, sorted alphabetically.
 pub const COMMANDS: &[command_doc] = &[
     command_doc {
         name: "!",
-        doc: "Alias for :run-shell-command. Run a shell command",
-    },
-    command_doc {
-        name: "append-output",
-        doc: "Run shell command, appending output after each selection.",
+        doc: "Alias for :run-shell-command. Run a shell command.",
     },
     command_doc {
         name: "bc",
@@ -70,11 +66,11 @@ pub const COMMANDS: &[command_doc] = &[
         doc: "Alias for :buffer-close-others!. Force close all buffers but the currently focused one.",
     },
     command_doc {
-        name: "bnext",
+        name: "bn",
         doc: "Alias for :buffer-next. Goto next buffer.",
     },
     command_doc {
-        name: "bn",
+        name: "bnext",
         doc: "Alias for :buffer-next. Goto next buffer.",
     },
     command_doc {
@@ -119,7 +115,11 @@ pub const COMMANDS: &[command_doc] = &[
     },
     command_doc {
         name: "cd",
-        doc: "Change the current working directory.",
+        doc: "Alias for :change-current-directory. Change the current working directory.",
+    },
+    command_doc {
+        name: "change-current-directory",
+        doc: "Change the current working directory.\nAliases: cd",
     },
     command_doc {
         name: "char",
@@ -140,6 +140,10 @@ pub const COMMANDS: &[command_doc] = &[
     command_doc {
         name: "clipboard-paste-before",
         doc: "Paste system clipboard before selections.",
+    },
+    command_doc {
+        name: "clipboard-paste-replace",
+        doc: "Replace selections with content of system clipboard.",
     },
     command_doc {
         name: "clipboard-yank",
@@ -175,15 +179,7 @@ pub const COMMANDS: &[command_doc] = &[
     },
     command_doc {
         name: "cquit!",
-        doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).\nAliases: cq!",
-    },
-    command_doc {
-        name: "diffg",
-        doc: "Alias for :reset-diff-change. Reset the diff change at the cursor position.",
-    },
-    command_doc {
-        name: "diffget",
-        doc: "Alias for :reset-diff-change. Reset the diff change at the cursor position.",
+        doc: "Force quit with exit code (default 1) ignoring unsaved changes.\nAliases: cq!",
     },
     command_doc {
         name: "e",
@@ -191,11 +187,11 @@ pub const COMMANDS: &[command_doc] = &[
     },
     command_doc {
         name: "ear",
-        doc: "Alias for :earlier. Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
+        doc: "Alias for :earlier. Jump back to an earlier point in edit history.",
     },
     command_doc {
         name: "earlier",
-        doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.\nAliases: ear",
+        doc: "Jump back to an earlier point in edit history. Accepts a number of steps.\nAliases: ear",
     },
     command_doc {
         name: "echo",
@@ -206,20 +202,12 @@ pub const COMMANDS: &[command_doc] = &[
         doc: "Alias for :open. Open a file from disk into the current view.",
     },
     command_doc {
-        name: "exit",
-        doc: "Write changes to disk if the buffer is modified and then quit. Accepts an optional path (:exit some/path.txt).\nAliases: x, xit",
-    },
-    command_doc {
-        name: "exit!",
-        doc: "Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit. Accepts an optional path (:exit! some/path.txt).\nAliases: x!, xit!",
-    },
-    command_doc {
         name: "fmt",
-        doc: "Alias for :format. Format the file using an external formatter or language server.",
+        doc: "Alias for :format. Format the file using an external formatter.",
     },
     command_doc {
         name: "format",
-        doc: "Format the file using an external formatter or language server.\nAliases: fmt",
+        doc: "Format the file using an external formatter.\nAliases: fmt",
     },
     command_doc {
         name: "g",
@@ -238,72 +226,24 @@ pub const COMMANDS: &[command_doc] = &[
         doc: "Goto line number.\nAliases: g",
     },
     command_doc {
-        name: "hnew",
-        doc: "Alias for :hsplit-new. Open a scratch buffer in a horizontal split.",
-    },
-    command_doc {
-        name: "hs",
-        doc: "Alias for :hsplit. Open the file in a horizontal split.",
-    },
-    command_doc {
-        name: "hsplit",
-        doc: "Open the file in a horizontal split.\nAliases: hs, sp",
-    },
-    command_doc {
-        name: "hsplit-new",
-        doc: "Open a scratch buffer in a horizontal split.\nAliases: hnew",
-    },
-    command_doc {
         name: "indent-style",
-        doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
-    },
-    command_doc {
-        name: "insert-output",
-        doc: "Run shell command, inserting output before each selection.",
-    },
-    command_doc {
-        name: "lang",
-        doc: "Alias for :set-language. Set the language of current buffer (show current language if no value specified).",
+        doc: "Set the indentation style for editing ('t' for tabs or 1-16 for number of spaces).",
     },
     command_doc {
         name: "lat",
-        doc: "Alias for :later. Jump to a later point in edit history. Accepts a number of steps or a time span.",
+        doc: "Alias for :later. Jump to a later point in edit history.",
     },
     command_doc {
         name: "later",
-        doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.\nAliases: lat",
+        doc: "Jump to a later point in edit history. Accepts a number of steps.\nAliases: lat",
+    },
+    command_doc {
+        name: "line-ending",
+        doc: "Set the document's default line ending. Options: crlf, lf.",
     },
     command_doc {
         name: "log-open",
-        doc: "Open the helix log file.",
-    },
-    command_doc {
-        name: "lsp-restart",
-        doc: "Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied",
-    },
-    command_doc {
-        name: "lsp-stop",
-        doc: "Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied",
-    },
-    command_doc {
-        name: "lsp-workspace-command",
-        doc: "Open workspace command picker",
-    },
-    command_doc {
-        name: "move",
-        doc: "Move the current buffer and its corresponding file to a different path\nAliases: mv",
-    },
-    command_doc {
-        name: "move!",
-        doc: "Move the current buffer and its corresponding file to a different path creating necessary subdirectories\nAliases: mv!",
-    },
-    command_doc {
-        name: "mv",
-        doc: "Alias for :move. Move the current buffer and its corresponding file to a different path",
-    },
-    command_doc {
-        name: "mv!",
-        doc: "Alias for :move!. Move the current buffer and its corresponding file to a different path creating necessary subdirectories",
+        doc: "Open the log file.",
     },
     command_doc {
         name: "n",
@@ -323,31 +263,31 @@ pub const COMMANDS: &[command_doc] = &[
     },
     command_doc {
         name: "open",
-        doc: "Open a file from disk into the current view.\nAliases: o, edit, e",
-    },
-    command_doc {
-        name: "pipe",
-        doc: "Pipe each selection to the shell command.\nAliases: |",
-    },
-    command_doc {
-        name: "pipe-to",
-        doc: "Pipe each selection to the shell command, ignoring output.",
+        doc: "Open a file from disk into the current view.\nAliases: e, edit, o",
     },
     command_doc {
         name: "primary-clipboard-paste-after",
-        doc: "Paste system primary clipboard after selections.",
+        doc: "Paste primary clipboard after selections.",
     },
     command_doc {
         name: "primary-clipboard-paste-before",
-        doc: "Paste system primary clipboard before selections.",
+        doc: "Paste primary clipboard before selections.",
+    },
+    command_doc {
+        name: "primary-clipboard-paste-replace",
+        doc: "Replace selections with content of primary clipboard.",
     },
     command_doc {
         name: "primary-clipboard-yank",
-        doc: "Yank main selection into system primary clipboard.",
+        doc: "Yank main selection into primary clipboard.",
     },
     command_doc {
         name: "primary-clipboard-yank-join",
-        doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.",
+        doc: "Yank joined selections into primary clipboard. A separator can be provided as first argument. Default value is newline.",
+    },
+    command_doc {
+        name: "pwd",
+        doc: "Alias for :show-directory. Show the current working directory.",
     },
     command_doc {
         name: "q",
@@ -382,20 +322,8 @@ pub const COMMANDS: &[command_doc] = &[
         doc: "Force close all views ignoring unsaved changes.\nAliases: qa!",
     },
     command_doc {
-        name: "r",
-        doc: "Alias for :read. Load a file into buffer",
-    },
-    command_doc {
-        name: "read",
-        doc: "Load a file into buffer\nAliases: r",
-    },
-    command_doc {
         name: "redraw",
-        doc: "Clear and re-render the whole UI",
-    },
-    command_doc {
-        name: "reflow",
-        doc: "Hard-wrap the current selection of lines to a given width.",
+        doc: "Clear and re-render the whole UI.",
     },
     command_doc {
         name: "reload",
@@ -404,10 +332,6 @@ pub const COMMANDS: &[command_doc] = &[
     command_doc {
         name: "reload-all",
         doc: "Discard changes and reload all documents from the source files.\nAliases: rla",
-    },
-    command_doc {
-        name: "reset-diff-change",
-        doc: "Reset the diff change at the cursor position.\nAliases: diffget, diffg",
     },
     command_doc {
         name: "rl",
@@ -419,35 +343,27 @@ pub const COMMANDS: &[command_doc] = &[
     },
     command_doc {
         name: "run-shell-command",
-        doc: "Run a shell command\nAliases: sh, !",
+        doc: "Run a shell command.\nAliases: !, sh",
     },
     command_doc {
         name: "set",
         doc: "Alias for :set-option. Set a config option at runtime.",
     },
     command_doc {
-        name: "set-language",
-        doc: "Set the language of current buffer (show current language if no value specified).\nAliases: lang",
-    },
-    command_doc {
         name: "set-option",
         doc: "Set a config option at runtime.\nAliases: set",
     },
     command_doc {
-        name: "set-register",
-        doc: "Set contents of the given register.",
-    },
-    command_doc {
         name: "sh",
-        doc: "Alias for :run-shell-command. Run a shell command",
+        doc: "Alias for :run-shell-command. Run a shell command.",
     },
     command_doc {
-        name: "sort",
-        doc: "Sort ranges in selection.",
+        name: "show-clipboard-provider",
+        doc: "Show clipboard provider name in status bar.",
     },
     command_doc {
-        name: "sp",
-        doc: "Alias for :hsplit. Open the file in a horizontal split.",
+        name: "show-directory",
+        doc: "Show the current working directory.\nAliases: pwd",
     },
     command_doc {
         name: "theme",
@@ -470,24 +386,8 @@ pub const COMMANDS: &[command_doc] = &[
         doc: "Write changes only if the file has been modified.\nAliases: u",
     },
     command_doc {
-        name: "vnew",
-        doc: "Alias for :vsplit-new. Open a scratch buffer in a vertical split.",
-    },
-    command_doc {
-        name: "vs",
-        doc: "Alias for :vsplit. Open the file in a vertical split.",
-    },
-    command_doc {
-        name: "vsplit",
-        doc: "Open the file in a vertical split.\nAliases: vs",
-    },
-    command_doc {
-        name: "vsplit-new",
-        doc: "Open a scratch buffer in a vertical split.\nAliases: vnew",
-    },
-    command_doc {
         name: "w",
-        doc: "Alias for :write. Write changes to disk. Accepts an optional path (:write some/path.txt)",
+        doc: "Alias for :write. Write changes to disk.",
     },
     command_doc {
         name: "w!",
@@ -503,23 +403,51 @@ pub const COMMANDS: &[command_doc] = &[
     },
     command_doc {
         name: "wbc",
-        doc: "Alias for :write-buffer-close. Write changes to disk and closes the buffer.",
+        doc: "Alias for :write-buffer-close. Write changes to disk and close the buffer.",
     },
     command_doc {
         name: "wbc!",
-        doc: "Alias for :write-buffer-close!. Force write changes to disk creating necessary subdirectories and closes the buffer.",
+        doc: "Alias for :write-buffer-close!. Force write changes to disk creating necessary subdirectories and close the buffer.",
     },
     command_doc {
-        name: "workspace-exclude",
-        doc: "Mark the current workspace as never-prompt. Never prompts for trust again.",
+        name: "write",
+        doc: "Write changes to disk. Accepts an optional path (:write some/path.txt).\nAliases: w",
     },
     command_doc {
-        name: "workspace-trust",
-        doc: "Allow language servers and local config for the current workspace.",
+        name: "write!",
+        doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt).\nAliases: w!",
     },
     command_doc {
-        name: "workspace-untrust",
-        doc: "Revoke the current workspace's trust grant or exclusion.",
+        name: "write-all",
+        doc: "Write changes from all buffers to disk.\nAliases: wa",
+    },
+    command_doc {
+        name: "write-all!",
+        doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.\nAliases: wa!",
+    },
+    command_doc {
+        name: "write-buffer-close",
+        doc: "Write changes to disk and close the buffer. Accepts an optional path (:write-buffer-close some/path.txt).\nAliases: wbc",
+    },
+    command_doc {
+        name: "write-buffer-close!",
+        doc: "Force write changes to disk creating necessary subdirectories and close the buffer.\nAliases: wbc!",
+    },
+    command_doc {
+        name: "write-quit",
+        doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt).\nAliases: wq, x",
+    },
+    command_doc {
+        name: "write-quit!",
+        doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt).\nAliases: wq!, x!",
+    },
+    command_doc {
+        name: "write-quit-all",
+        doc: "Write changes from all buffers to disk and close all views.\nAliases: wqa, xa",
+    },
+    command_doc {
+        name: "write-quit-all!",
+        doc: "Write changes from all buffers to disk and close all views forcefully.\nAliases: wqa!, xa!",
     },
     command_doc {
         name: "wq",
@@ -535,55 +463,15 @@ pub const COMMANDS: &[command_doc] = &[
     },
     command_doc {
         name: "wqa!",
-        doc: "Alias for :write-quit-all!. Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes).",
-    },
-    command_doc {
-        name: "write",
-        doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)\nAliases: w",
-    },
-    command_doc {
-        name: "write!",
-        doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)\nAliases: w!",
-    },
-    command_doc {
-        name: "write-all",
-        doc: "Write changes from all buffers to disk.\nAliases: wa",
-    },
-    command_doc {
-        name: "write-all!",
-        doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.\nAliases: wa!",
-    },
-    command_doc {
-        name: "write-buffer-close",
-        doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)\nAliases: wbc",
-    },
-    command_doc {
-        name: "write-buffer-close!",
-        doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)\nAliases: wbc!",
-    },
-    command_doc {
-        name: "write-quit",
-        doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)\nAliases: wq",
-    },
-    command_doc {
-        name: "write-quit!",
-        doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)\nAliases: wq!",
-    },
-    command_doc {
-        name: "write-quit-all",
-        doc: "Write changes from all buffers to disk and close all views.\nAliases: wqa, xa",
-    },
-    command_doc {
-        name: "write-quit-all!",
-        doc: "Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes).\nAliases: wqa!, xa!",
+        doc: "Alias for :write-quit-all!. Write changes from all buffers to disk and close all views forcefully.",
     },
     command_doc {
         name: "x",
-        doc: "Alias for :exit. Write changes to disk if the buffer is modified and then quit.",
+        doc: "Alias for :write-quit. Write changes to disk and close the current view.",
     },
     command_doc {
         name: "x!",
-        doc: "Alias for :exit!. Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit.",
+        doc: "Alias for :write-quit!. Write changes to disk and close the current view forcefully.",
     },
     command_doc {
         name: "xa",
@@ -591,31 +479,11 @@ pub const COMMANDS: &[command_doc] = &[
     },
     command_doc {
         name: "xa!",
-        doc: "Alias for :write-quit-all!. Forcefully write changes from all buffers to disk, creating necessary subdirectories, and close all views (ignoring unsaved changes).",
-    },
-    command_doc {
-        name: "xit",
-        doc: "Alias for :exit. Write changes to disk if the buffer is modified and then quit.",
-    },
-    command_doc {
-        name: "xit!",
-        doc: "Alias for :exit!. Force write changes to disk, creating necessary subdirectories, if the buffer is modified and then quit.",
-    },
-    command_doc {
-        name: "yank-diagnostic",
-        doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
-    },
-    command_doc {
-        name: "yank-join",
-        doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
-    },
-    command_doc {
-        name: "|",
-        doc: "Alias for :pipe. Pipe each selection to the shell command.",
+        doc: "Alias for :write-quit-all!. Write changes from all buffers to disk and close all views forcefully.",
     },
 ];
 
-/// Direction for cycling completion candidate selections.
+/// Direction to cycle through prompt completions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum completion_direction {
     /// Move to next item.
