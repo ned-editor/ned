@@ -183,7 +183,8 @@ pub fn read_register(ed: &editor, reg: char) -> Option<Vec<String>> {
                 .unwrap_or_default();
             Some(vec![p])
         }
-        '+' | '*' => None,
+        '+' => crate::clipboard::read(crate::clipboard::clipboard_target::clipboard).ok(),
+        '*' => crate::clipboard::read(crate::clipboard::clipboard_target::primary).ok(),
         _ => ed.registers.read(reg),
     }
 }
@@ -225,7 +226,9 @@ pub fn delete_selection(ed: &mut editor, yank: bool) {
             let to = r.to().max(from + 1).min(doc.text().char_len());
             values.push(doc.text().slice_chars(from..to));
         }
-        let _ = ed.registers.write(reg, values);
+        if let Err(err) = ed.registers.write(reg, values) {
+            ed.status_message = Some(err);
+        }
     }
     delete_selected_text(ed);
 }
@@ -324,7 +327,18 @@ pub fn paste_register(ed: &mut editor, after: bool) {
     let reg = ed.selected_register.take().unwrap_or('"');
     let values = match read_register(ed, reg) {
         Some(v) if !v.is_empty() => v,
-        _ => return,
+        _ => {
+            if reg == '+' {
+                if let Err(e) = crate::clipboard::read(crate::clipboard::clipboard_target::clipboard) {
+                    ed.status_message = Some(e);
+                }
+            } else if reg == '*' {
+                if let Err(e) = crate::clipboard::read(crate::clipboard::clipboard_target::primary) {
+                    ed.status_message = Some(e);
+                }
+            }
+            return;
+        }
     };
 
     let doc_id = ed.active_doc_id;

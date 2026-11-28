@@ -36,6 +36,8 @@ impl register_storage {
     pub fn read(&self, reg: char) -> Option<Vec<String>> {
         match reg {
             '_' => None,
+            '+' => crate::clipboard::read(crate::clipboard::clipboard_target::clipboard).ok(),
+            '*' => crate::clipboard::read(crate::clipboard::clipboard_target::primary).ok(),
             '/' => self.last_search.as_ref().map(|s| vec![s.clone()]),
             ':' => self.last_command.as_ref().map(|c| vec![c.clone()]),
             _ => self.registers.get(&reg).cloned(),
@@ -54,11 +56,8 @@ impl register_storage {
         match reg {
             '_' => Ok(()), // Blackhole: silently discard writes
             '#' | '.' | '%' => Err(format!("Register \"{reg}\" is read-only")),
-            '+' | '*' => {
-                // Clipboard registers: stored locally pending OS provider wiring
-                self.registers.insert(reg, values);
-                Ok(())
-            }
+            '+' => crate::clipboard::write(crate::clipboard::clipboard_target::clipboard, &values),
+            '*' => crate::clipboard::write(crate::clipboard::clipboard_target::primary, &values),
             '/' => {
                 if let Some(first) = values.into_iter().next() {
                     self.last_search = Some(first);

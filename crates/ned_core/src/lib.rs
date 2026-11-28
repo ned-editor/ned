@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+pub mod clipboard;
 pub mod command_parser;
 pub mod documents;
 pub mod editors;
