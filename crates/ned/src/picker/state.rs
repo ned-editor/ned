@@ -48,6 +48,7 @@ impl picker_state {
         let mut items = Vec::new();
         let mut ignore_stack = ned_git::git_ignore_stack::new();
         filesystem::collect_files(root_dir, root_dir, &mut ignore_stack, &mut items, 0);
+        items.truncate(50_000);
         items.sort();
 
         let filtered = (0..items.len()).collect();
@@ -170,6 +171,9 @@ impl picker_state {
         if let Some(item) = self.selected_item() {
             let item_str = item.to_string();
             if !self.preview_cache.contains_key(&item_str) {
+                if self.preview_cache.len() >= 2 {
+                    self.preview_cache.clear();
+                }
                 let content = self.load_preview_for_item(&item_str);
                 self.preview_cache.insert(item_str, content);
             }

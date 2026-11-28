@@ -4,6 +4,7 @@ members = [
     "crates/ned",
     "crates/ned_config",
     "crates/ned_core",
+    "crates/ned_fuzz",
     "crates/ned_git",
     "crates/ned_lsp",
     "crates/ned_regex",

@@ -48,6 +48,7 @@ version = "0.1.0"
 dependencies = [
  "ned_config",
  "ned_core",
+ "ned_fuzz",
  "ned_git",
  "ned_lsp",
  "ned_regex",
@@ -82,6 +83,10 @@ dependencies = [
  "serde_json",
  "toml",
 ]
+
+[[package]]
+name = "ned_fuzz"
+version = "0.1.0"
 
 [[package]]
 name = "ned_git"
