@@ -35,13 +35,17 @@ impl regex_match {
 }
 
 #[derive(Clone, Copy, Debug)]
+/// A single NFA execution thread during `PikeVM` simulation.
 struct thread {
+    /// Current instruction pointer (program counter).
     pc: usize,
+    /// Starting byte offset of this thread's match attempt.
     start_byte: usize,
 }
 
 /// `PikeVM` execution context.
 pub struct pattern_matcher<'a> {
+    /// Compiled NFA program to execute against.
     program: &'a nfa_program,
 }
 
@@ -54,6 +58,10 @@ impl<'a> pattern_matcher<'a> {
     }
 
     /// Searches for the leftmost match in `haystack` starting at `start_byte`.
+    ///
+    /// The single-threaded simulation loop is intentionally kept together so the
+    /// thread visit-generation logic stays local; the line-limit lint is allowed here.
+    #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn find_at(&self, haystack: &str, start_byte: usize) -> Option<regex_match> {
         let start_byte = if start_byte >= haystack.len() {
@@ -256,6 +264,11 @@ impl<'a> pattern_matcher<'a> {
         best_match
     }
 
+    /// Recursively follows NFA transitions from thread `t`, recording matches and
+    /// enqueuing successor threads. Takes 8 arguments to carry the full simulation
+    /// state; splitting it would thread more state through without clarity gain.
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_lines)]
     fn add_thread(
         &self,
         t: thread,
@@ -443,6 +456,7 @@ impl<'a> pattern_matcher<'a> {
     }
 }
 
+/// Returns true if `c` is a word character (alphanumeric or underscore).
 #[inline]
 fn is_word_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'

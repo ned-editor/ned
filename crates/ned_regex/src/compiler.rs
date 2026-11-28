@@ -63,7 +63,9 @@ pub struct nfa_program {
 
 /// Compiles an AST into an `nfa_program`.
 pub struct pattern_compiler {
+    /// Compiled NFA instructions being built.
     insts: Vec<inst>,
+    /// Whether matching ignores casing differences.
     case_insensitive: bool,
 }
 
@@ -87,6 +89,7 @@ impl pattern_compiler {
         }
     }
 
+    /// Returns true if `node` is anchored to the start of the input.
     fn check_anchored_start(node: &ast) -> bool {
         match node {
             ast::anchor(anchor_kind::start_line) => true,
@@ -99,6 +102,12 @@ impl pattern_compiler {
         }
     }
 
+    /// Compiles a single AST `node` into NFA instructions, appending to `self.insts`.
+    ///
+    /// This is a single recursive-descent pass over the AST; splitting it into smaller
+    /// helpers would thread `self` and `node` through many signatures without improving
+    /// clarity, so the line-limit lint is allowed here.
+    #[allow(clippy::too_many_lines)]
     fn compile_node(&mut self, node: &ast) {
         match node {
             ast::empty => {}

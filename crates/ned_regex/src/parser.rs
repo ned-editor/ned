@@ -98,8 +98,11 @@ pub enum ast {
 
 /// Parses regular expression string into an AST.
 pub struct pattern_parser<'a> {
+    /// Characters of the pattern being parsed.
     chars: Vec<char>,
+    /// Current parse position into `chars`.
     pos: usize,
+    /// Phantom marker tying the parser to the input lifetime.
     _marker: std::marker::PhantomData<&'a str>,
 }
 
@@ -115,6 +118,11 @@ impl<'a> pattern_parser<'a> {
     }
 
     /// Parses the entire pattern into a root `ast`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `regex_error` if the pattern is malformed (unclosed group,
+    /// unexpected end, invalid quantifier/escape, etc.).
     pub fn parse(&mut self) -> Result<ast, regex_error> {
         let node = self.parse_alternation()?;
         if self.pos < self.chars.len() {
@@ -126,10 +134,12 @@ impl<'a> pattern_parser<'a> {
         Ok(node)
     }
 
+    /// Returns the next character without advancing the position.
     fn peek(&self) -> Option<char> {
         self.chars.get(self.pos).copied()
     }
 
+    /// Consumes and returns the next character, or `None` at end of input.
     fn next(&mut self) -> Option<char> {
         if self.pos < self.chars.len() {
             let c = self.chars[self.pos];
@@ -140,6 +150,7 @@ impl<'a> pattern_parser<'a> {
         }
     }
 
+    /// Parses a top-level alternation: `concat ('|' concat)*`.
     fn parse_alternation(&mut self) -> Result<ast, regex_error> {
         let mut branches = Vec::new();
         let first = self.parse_concat()?;
@@ -158,6 +169,7 @@ impl<'a> pattern_parser<'a> {
         }
     }
 
+    /// Parses a concatenation of one or more quantified atoms.
     fn parse_concat(&mut self) -> Result<ast, regex_error> {
         let mut nodes = Vec::new();
 
@@ -178,6 +190,7 @@ impl<'a> pattern_parser<'a> {
         }
     }
 
+    /// Parses an atom followed by an optional quantifier (`*`, `+`, `?`, `{n,m}`).
     fn parse_quantified(&mut self) -> Result<ast, regex_error> {
         let atom = self.parse_atom()?;
 
@@ -233,6 +246,7 @@ impl<'a> pattern_parser<'a> {
         }
     }
 
+    /// Checks for a lazy `?` suffix after a quantifier; returns `true` for greedy.
     fn check_greedy(&mut self) -> bool {
         if self.peek() == Some('?') {
             self.next();
@@ -242,6 +256,7 @@ impl<'a> pattern_parser<'a> {
         }
     }
 
+    /// Parses a `{n}`, `{n,}`, or `{n,m}` range quantifier, if present.
     fn try_parse_range_quantifier(
         &mut self,
     ) -> Result<Option<(usize, Option<usize>)>, regex_error> {
@@ -304,6 +319,7 @@ impl<'a> pattern_parser<'a> {
         Ok(None)
     }
 
+    /// Parses a single atom: `.`, `^`, `$`, `(...)`, `[...]`, `\<escape>`, or a literal.
     fn parse_atom(&mut self) -> Result<ast, regex_error> {
         let Some(c) = self.next() else {
             return Err(regex_error::unexpected_end_of_pattern);
@@ -342,6 +358,7 @@ impl<'a> pattern_parser<'a> {
         }
     }
 
+    /// Parses an escape sequence after `\`, returning the corresponding `ast`.
     fn parse_escape(&mut self) -> Result<ast, regex_error> {
         let Some(c) = self.next() else {
             return Err(regex_error::unexpected_end_of_pattern);
@@ -394,6 +411,7 @@ impl<'a> pattern_parser<'a> {
         }
     }
 
+    /// Parses a character class `[...]` (optionally negated with `^`) into `ast::char_class`.
     fn parse_character_class(&mut self) -> Result<ast, regex_error> {
         let negated = if self.peek() == Some('^') {
             self.next();

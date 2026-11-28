@@ -19,17 +19,27 @@ use parser::pattern_parser;
 /// Compiled regular expression pattern ready for matching.
 #[derive(Clone, Debug)]
 pub struct regex {
+    /// Original pattern string.
     pattern: String,
+    /// Compiled NFA program.
     program: nfa_program,
 }
 
 impl regex {
     /// Compiles `pattern` with default case-sensitive matching.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `regex_error` if `pattern` is malformed.
     pub fn new(pattern: &str) -> Result<Self, regex_error> {
         Self::with_options(pattern, false)
     }
 
     /// Compiles `pattern` with explicit case-insensitivity option.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `regex_error` if `pattern` is malformed.
     pub fn with_options(pattern: &str, case_insensitive: bool) -> Result<Self, regex_error> {
         let mut p = pattern_parser::new(pattern);
         let ast = p.parse()?;
@@ -42,6 +52,10 @@ impl regex {
 
     /// Compiles `pattern` using smart-case heuristic:
     /// case-insensitive unless `pattern` contains any uppercase character.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `regex_error` if `pattern` is malformed.
     pub fn smart_case(pattern: &str) -> Result<Self, regex_error> {
         let has_uppercase = pattern.chars().any(char::is_uppercase);
         Self::with_options(pattern, !has_uppercase)
@@ -133,8 +147,11 @@ impl regex {
 
 /// Iterator yielding non-overlapping matches of a `regex`.
 pub struct regex_matches<'a, 'p> {
+    /// The regex being matched.
     re: &'p regex,
+    /// The input being searched.
     haystack: &'a str,
+    /// Current search cursor position.
     cursor: usize,
 }
 
@@ -165,9 +182,13 @@ impl Iterator for regex_matches<'_, '_> {
 
 /// Iterator yielding substrings separated by `regex` matches.
 pub struct regex_split<'a, 'p> {
+    /// Underlying match iterator.
     matches: regex_matches<'a, 'p>,
+    /// The input being split.
     haystack: &'a str,
+    /// End of the last emitted match.
     last_end: usize,
+    /// Whether iteration is complete.
     finished: bool,
 }
 
@@ -193,6 +214,7 @@ impl<'a> Iterator for regex_split<'a, '_> {
 /// Builder for configuring and compiling a `regex`.
 #[derive(Clone, Debug, Default)]
 pub struct regex_builder {
+    /// Whether matching is case-insensitive.
     case_insensitive: bool,
 }
 
@@ -213,6 +235,10 @@ impl regex_builder {
     }
 
     /// Compiles `pattern` with configured options.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `regex_error` if `pattern` is malformed.
     #[inline]
     pub fn build(self, pattern: &str) -> Result<regex, regex_error> {
         regex::with_options(pattern, self.case_insensitive)
