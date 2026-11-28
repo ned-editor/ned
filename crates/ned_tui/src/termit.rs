@@ -92,6 +92,7 @@ impl<'a, A: AppEvent> Termit<'a, A> {
     ///
     /// The `input` event is consumed by pattern matching but may also be borrowed afterwards
     /// depending on the variant, so it is passed by value.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn update<M>(&mut self, model: &mut M, input: Event<A>, root: &mut impl Widget<M, A>) {
         if let Event::Resize(new_size) = input {
             if self.screen.size() != new_size {
