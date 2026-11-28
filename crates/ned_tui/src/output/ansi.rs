@@ -106,6 +106,7 @@ impl Default for AnsiConfig {
 }
 impl AnsiConfig {
     /// full control
+    #[must_use]
     pub fn new(
         color_3b: bool,
         color_4b: bool,
@@ -122,6 +123,7 @@ impl AnsiConfig {
         }
     }
     /// only print RGB and DO add CR to LF
+    #[must_use]
     pub const fn true_color() -> Self {
         Self {
             color_3b: false,
@@ -132,6 +134,7 @@ impl AnsiConfig {
         }
     }
     /// only print RGB and do NOT add CR to LF
+    #[must_use]
     pub const fn raw_true_color() -> Self {
         Self {
             color_3b: false,
@@ -142,6 +145,7 @@ impl AnsiConfig {
         }
     }
     /// print color in 4b, 8b and true color, and DO add CR to LF
+    #[must_use]
     pub const fn compatible_color() -> Self {
         Self {
             color_3b: false,
@@ -152,6 +156,7 @@ impl AnsiConfig {
         }
     }
     /// print color in 4b, 8b and true color, and do NOT add CR to LF
+    #[must_use]
     pub const fn raw_compatible_color() -> Self {
         Self {
             color_3b: false,
@@ -162,6 +167,7 @@ impl AnsiConfig {
         }
     }
     /// no color support, but DO add CR to LF
+    #[must_use]
     pub const fn no_color() -> Self {
         Self {
             color_3b: false,
@@ -172,6 +178,7 @@ impl AnsiConfig {
         }
     }
     /// no color support and do NOT add CR to LF
+    #[must_use]
     pub const fn raw_no_color() -> Self {
         Self {
             color_3b: false,
@@ -323,10 +330,10 @@ impl std::fmt::Display for AnsiPrintConfigured<&'_ ScreenStyle> {
 
 pub(crate) fn ansi_color_code_4b(mut c: u8, background: bool) -> u8 {
     if c >= 8 {
-        c += 52
+        c += 52;
     }
     if background {
-        c += 10
+        c += 10;
     }
     c += 30;
     assert!(
@@ -366,6 +373,7 @@ impl ScreenStyle {
         under: Color::grey(true),
     };
     /// Returns foreground color if set.
+    #[must_use]
     pub fn front_color(&self) -> Option<Color> {
         if 1 == 1 & (self.flags >> Self::FRONT) {
             Some(self.front)
@@ -374,6 +382,7 @@ impl ScreenStyle {
         }
     }
     /// Returns background color if set.
+    #[must_use]
     pub fn back_color(&self) -> Option<Color> {
         if 1 == 1 & (self.flags >> Self::BACK) {
             Some(self.back)
@@ -400,13 +409,13 @@ where
         let front = style.front_color.unwrap_or(Color::grey(true));
         let back = style.back_color.unwrap_or(Color::black());
         let under = style.frame_color.unwrap_or(front);
-        let flags = (((style.frame_color.is_some() && style.underlined.unwrap_or_default()) as u8)
+        let flags = (u8::from(style.frame_color.is_some() && style.underlined.unwrap_or_default())
             << Self::UNDER)
-            | ((style.front_color.is_some() as u8) << Self::FRONT)
-            | ((style.back_color.is_some() as u8) << Self::BACK)
-            | ((style.bold.unwrap_or_default() as u8) << Self::BOLD)
-            | ((style.italic.unwrap_or_default() as u8) << Self::ITALIC)
-            | ((style.blink.unwrap_or_default() as u8) << Self::BLINK);
+            | (u8::from(style.front_color.is_some()) << Self::FRONT)
+            | (u8::from(style.back_color.is_some()) << Self::BACK)
+            | (u8::from(style.bold.unwrap_or_default()) << Self::BOLD)
+            | (u8::from(style.italic.unwrap_or_default()) << Self::ITALIC)
+            | (u8::from(style.blink.unwrap_or_default()) << Self::BLINK);
         Self {
             flags,
             front,

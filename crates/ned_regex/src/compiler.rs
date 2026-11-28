@@ -2,7 +2,7 @@
 
 use crate::parser::{anchor_kind, ast};
 
-/// NFA bytecode instruction executed by PikeVM.
+/// NFA bytecode instruction executed by `PikeVM`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum inst {
     /// Matches a single character, respecting case sensitivity configuration.
@@ -69,6 +69,7 @@ pub struct pattern_compiler {
 
 impl pattern_compiler {
     /// Compiles `root` AST node into an NFA program.
+    #[must_use]
     pub fn compile(root: &ast, case_insensitive: bool) -> nfa_program {
         let is_anchored_start = Self::check_anchored_start(root);
         let mut comp = Self {
@@ -89,7 +90,7 @@ impl pattern_compiler {
     fn check_anchored_start(node: &ast) -> bool {
         match node {
             ast::anchor(anchor_kind::start_line) => true,
-            ast::concat(nodes) => nodes.first().map_or(false, Self::check_anchored_start),
+            ast::concat(nodes) => nodes.first().is_some_and(Self::check_anchored_start),
             ast::group(inner) => Self::check_anchored_start(inner),
             ast::alternation(branches) => {
                 !branches.is_empty() && branches.iter().all(Self::check_anchored_start)

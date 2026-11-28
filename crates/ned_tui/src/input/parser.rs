@@ -1,4 +1,11 @@
-use crate::{input::events::*, prelude::point};
+use crate::{
+    input::events::{
+        AppEvent, Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyEventStates,
+        KeyModifier, KeyModifiers, MediaKeyCode, ModifierKeyCode, MouseButton, MouseEvent,
+        MouseEventKind,
+    },
+    prelude::point,
+};
 
 type Result<T> = std::result::Result<T, &'static str>;
 
@@ -15,7 +22,7 @@ type Result<T> = std::result::Result<T, &'static str>;
 //
 
 pub(crate) fn parse_esc<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Option<Event<A>>> {
-    assert!(!buffer.is_empty());
+    assert_ne!(buffer, []);
     Ok(Some(match buffer {
         [0x1B] => Event::Key(KeyCode::Esc.into()),
         // Incomplete SS3: the final byte has not arrived yet.
@@ -44,7 +51,7 @@ pub(crate) fn parse_esc<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Op
                     Ok(key)
                 })
                 .transpose()
-                .map(|key| key.flatten());
+                .map(std::option::Option::flatten);
         }
         _ => return Err("Invalid ESC <p>"),
     }))
@@ -84,13 +91,12 @@ pub(crate) fn parse_csi<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Op
         b'[' => {
             if buffer.len() == 3 {
                 return Ok(None);
-            } else {
-                match buffer[3] {
-                    // NOTE (@imdaveho): cannot find when this occurs;
-                    // having another '[' after ESC[ not a likely scenario
-                    val @ b'A'..=b'E' => Event::Key(KeyCode::F(1 + val - b'A').into()),
-                    _ => return Err("Invalid ESC [ [ <p>"),
-                }
+            }
+            match buffer[3] {
+                // NOTE (@imdaveho): cannot find when this occurs;
+                // having another '[' after ESC[ not a likely scenario
+                val @ b'A'..=b'E' => Event::Key(KeyCode::F(1 + val - b'A').into()),
+                _ => return Err("Invalid ESC [ [ <p>"),
             }
         }
         b'D' => Event::Key(KeyCode::Left.into()),
@@ -119,17 +125,16 @@ pub(crate) fn parse_csi<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Op
                 let last_byte = buffer[buffer.len() - 1];
                 if !(64..=126).contains(&last_byte) {
                     return Ok(None);
-                } else {
-                    if buffer.starts_with(b"\x1B[200~") {
-                        return parse_csi_bracketed_paste(buffer);
-                    }
-                    match last_byte {
-                        b'M' => return parse_csi_rxvt_mouse(buffer),
-                        b'~' => return parse_csi_special_key_code(buffer),
-                        b'u' => return parse_csi_u_encoded_key_code(buffer, raw_mode),
-                        b'R' => return parse_csi_cursor_position(buffer),
-                        _ => return parse_csi_modifier_key_code(buffer),
-                    }
+                }
+                if buffer.starts_with(b"\x1B[200~") {
+                    return parse_csi_bracketed_paste(buffer);
+                }
+                match last_byte {
+                    b'M' => return parse_csi_rxvt_mouse(buffer),
+                    b'~' => return parse_csi_special_key_code(buffer),
+                    b'u' => return parse_csi_u_encoded_key_code(buffer, raw_mode),
+                    b'R' => return parse_csi_cursor_position(buffer),
+                    _ => return parse_csi_modifier_key_code(buffer),
                 }
             }
         }
@@ -635,7 +640,7 @@ fn parse_cb(cb: u8) -> Result<(MouseEventKind, KeyModifiers)> {
         (1, true) => MouseEventKind::Drag(MouseButton::Middle),
         (2, true) => MouseEventKind::Drag(MouseButton::Right),
         (3, false) => MouseEventKind::Up(MouseButton::Left),
-        (3, true) | (4, true) | (5, true) => MouseEventKind::Moved,
+        (3..=5, true) => MouseEventKind::Moved,
         (4, false) => MouseEventKind::ScrollUp,
         (5, false) => MouseEventKind::ScrollDown,
         // We do not support other buttons.
@@ -661,49 +666,46 @@ pub(crate) fn parse_csi_bracketed_paste<A: AppEvent>(buffer: &[u8]) -> Result<Op
     // ESC [ 2 0 0 ~ pasted text ESC 2 0 1 ~
     assert!(buffer.starts_with(b"\x1B[200~"));
 
-    if !buffer.ends_with(b"\x1b[201~") {
-        Ok(None)
-    } else {
+    if buffer.ends_with(b"\x1b[201~") {
         let paste = String::from_utf8_lossy(&buffer[6..buffer.len() - 6]).to_string();
         Ok(Some(Event::Paste(paste)))
+    } else {
+        Ok(None)
     }
 }
 
 pub(crate) fn parse_utf8_char(buffer: &[u8]) -> Result<Option<char>> {
-    match std::str::from_utf8(buffer) {
-        Ok(s) => {
-            let ch = s.chars().next().ok_or("missing utf-8 char")?;
+    if let Ok(s) = std::str::from_utf8(buffer) {
+        let ch = s.chars().next().ok_or("missing utf-8 char")?;
 
-            Ok(Some(ch))
-        }
-        Err(_) => {
-            // from_utf8 failed, but we have to check if we need more bytes for code point
-            // and if all the bytes we have no are valid
+        Ok(Some(ch))
+    } else {
+        // from_utf8 failed, but we have to check if we need more bytes for code point
+        // and if all the bytes we have no are valid
 
-            let required_bytes = match buffer[0] {
-                // https://en.wikipedia.org/wiki/UTF-8#Description
-                (0x00..=0x7F) => 1, // 0xxxxxxx
-                (0xC0..=0xDF) => 2, // 110xxxxx 10xxxxxx
-                (0xE0..=0xEF) => 3, // 1110xxxx 10xxxxxx 10xxxxxx
-                (0xF0..=0xF7) => 4, // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-                (0x80..=0xBF) | (0xF8..=0xFF) => return Err("invalid utf-8 char"),
-            };
+        let required_bytes = match buffer[0] {
+            // https://en.wikipedia.org/wiki/UTF-8#Description
+            (0x00..=0x7F) => 1, // 0xxxxxxx
+            (0xC0..=0xDF) => 2, // 110xxxxx 10xxxxxx
+            (0xE0..=0xEF) => 3, // 1110xxxx 10xxxxxx 10xxxxxx
+            (0xF0..=0xF7) => 4, // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+            (0x80..=0xBF) | (0xF8..=0xFF) => return Err("invalid utf-8 char"),
+        };
 
-            // More than 1 byte, check them for 10xxxxxx pattern
-            if required_bytes > 1 && buffer.len() > 1 {
-                for byte in &buffer[1..] {
-                    if byte & !0b0011_1111 != 0b1000_0000 {
-                        return Err("invalid utf-8 char");
-                    }
+        // More than 1 byte, check them for 10xxxxxx pattern
+        if required_bytes > 1 && buffer.len() > 1 {
+            for byte in &buffer[1..] {
+                if byte & !0b0011_1111 != 0b1000_0000 {
+                    return Err("invalid utf-8 char");
                 }
             }
+        }
 
-            if buffer.len() < required_bytes {
-                // All bytes looks good so far, but we need more of them
-                Ok(None)
-            } else {
-                Err("invalid utf-8 char")
-            }
+        if buffer.len() < required_bytes {
+            // All bytes looks good so far, but we need more of them
+            Ok(None)
+        } else {
+            Err("invalid utf-8 char")
         }
     }
 }

@@ -103,7 +103,7 @@ impl transport {
         let mut stdin = self
             .stdin
             .lock()
-            .map_err(|_| io::Error::new(io::ErrorKind::Other, "poisoned stdin lock"))?;
+            .map_err(|_| io::Error::other("poisoned stdin lock"))?;
         stdin.write_all(&bytes)?;
         stdin.flush()?;
         Ok(())
@@ -135,7 +135,7 @@ impl transport {
         let mut child = self
             .child
             .lock()
-            .map_err(|_| io::Error::new(io::ErrorKind::Other, "poisoned child lock"))?;
+            .map_err(|_| io::Error::other("poisoned child lock"))?;
         let _ = child.kill();
         let _ = child.wait();
         Ok(())

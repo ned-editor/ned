@@ -105,6 +105,7 @@ pub struct pattern_parser<'a> {
 
 impl<'a> pattern_parser<'a> {
     /// Creates a new regular expression parser for `pattern`.
+    #[must_use]
     pub fn new(pattern: &'a str) -> Self {
         Self {
             chars: pattern.chars().collect(),

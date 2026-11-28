@@ -2,7 +2,7 @@
 //! yokio-based terminal input watcher with zero-dependency ansi tokenization.
 
 use super::events::{AppEvent, Event};
-use super::parser::*;
+use super::parser::{parse_csi, parse_esc, parse_key};
 use crate::prelude::Point;
 use crate::sys::Control;
 use std::cell::{Cell, RefCell};
@@ -20,7 +20,7 @@ extern "C" fn sigwinch_handler(_: libc::c_int) {
     if fd >= 0 {
         let b = [1u8];
         unsafe {
-            libc::write(fd, b.as_ptr() as *const libc::c_void, 1);
+            libc::write(fd, b.as_ptr().cast::<libc::c_void>(), 1);
         }
     }
 }

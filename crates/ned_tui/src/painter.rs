@@ -34,14 +34,17 @@ impl Painter {
         }
     }
     /// Set new scope
+    #[must_use]
     pub fn with_scope(&self, scope: Window) -> Painter {
         Self::new(self.style, scope)
     }
     /// Ignore the current style and use the given one
+    #[must_use]
     pub fn with_new_style(&self, style: Style) -> Painter {
         Self::new(style, self.scope)
     }
     /// Returns active clipping window scope.
+    #[must_use]
     pub fn scope(&self) -> Window {
         self.scope
     }
@@ -61,7 +64,7 @@ impl Painter {
     /// The offset allows to continue a line where the previous painting stopped.
     /// The offest is zero-based relative to the painter scope.
     ///
-    /// With the explicit_carriage_return set to true, new line (\n) will not imply carriage return (\r).
+    /// With the `explicit_carriage_return` set to true, new line (\n) will not imply carriage return (\r).
     /// Set it to true if you fave pre-formatted text where \n should not return carriage.
     /// False suitable for most texts in the nix world and no harm in \r\n world.
     /// Set it to false if you want text to continue at the beginning after new line.
@@ -126,7 +129,7 @@ impl Painter {
     pub fn fill(&self, screen: &mut Screen) {
         for row in self.scope.row..self.scope.row + self.scope.height {
             for col in self.scope.col..self.scope.col + self.scope.width {
-                screen.set(point(col, row), &self.style, " ")
+                screen.set(point(col, row), &self.style, " ");
             }
         }
     }
@@ -225,16 +228,15 @@ impl<'a> Iterator for TextSymbols<'a> {
                             self.pos = next;
                         } else {
                             // beyond scope so next loop will be None
-                            self.pos += point(1, 1)
+                            self.pos += point(1, 1);
                         }
 
                         return Some(stroke);
-                    } else {
-                        // ignore graphemes not in scope
-                        // but quit early if over the bottom
-                        if self.pos.row > self.size.row {
-                            return None;
-                        }
+                    }
+                    // ignore graphemes not in scope
+                    // but quit early if over the bottom
+                    if self.pos.row > self.size.row {
+                        return None;
                     }
                 }
             }
@@ -243,7 +245,7 @@ impl<'a> Iterator for TextSymbols<'a> {
     }
 }
 
-/// Credit: https://github.com/tombruijn @ https://github.com/lintje/lintje/blob/501aab06e19008e787237438a69ac961f38bb4b7/src/utils.rs#L22-L71
+/// Credit: <https://github.com/tombruijn> @ <https://github.com/lintje/lintje/blob/501aab06e19008e787237438a69ac961f38bb4b7/src/utils.rs#L22-L71>
 /// Calculate the render width of a single Unicode character. Unicode characters may consist of
 /// multiple String characters, which is why the function argument takes a string.
 fn display_width_char(string: &str) -> (usize, usize) {
@@ -251,12 +253,12 @@ fn display_width_char(string: &str) -> (usize, usize) {
     (width, width)
 }
 
-fn text_symbols<'a>(
-    text: &'a impl AsRef<str>,
+fn text_symbols(
+    text: &impl AsRef<str>,
     size: Point,
     offset: u16,
     cr_on_lf: bool,
-) -> TextSymbols<'a> {
+) -> TextSymbols<'_> {
     let content = text.as_ref();
     let graphemes = str_graphemes(content);
     let pos = if size.col == 0 {

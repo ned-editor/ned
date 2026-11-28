@@ -29,7 +29,7 @@ impl<C: Control, W: io::Write> TerminalCommander for (C, W) {
                 return Ok(());
             }
             // it is probably not an ansi command
-            ansi_tried = true
+            ansi_tried = true;
         }
 
         // we're going to run ioctl/winapi call which is immediate, flush first
@@ -340,7 +340,7 @@ impl TerminalRequest for CaptureMouse {
         }
 
         for mode in modes {
-            write.write_all(format!("{CSI}?{mode}{act}").as_bytes())?
+            write.write_all(format!("{CSI}?{mode}{act}").as_bytes())?;
         }
         Ok(true)
     }

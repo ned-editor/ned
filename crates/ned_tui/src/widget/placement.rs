@@ -1,13 +1,13 @@
-use crate::geometry::*;
-use crate::widget::*;
+use crate::geometry::{point, window, Window};
+use crate::widget::{AppEvent, Event, Painter, Screen, Widget};
 
 /// Implement this trait to easily enable placement for a widget
-/// by wrapping it in [PlacedWidget] decorator.
+/// by wrapping it in [`PlacedWidget`] decorator.
 pub trait AnchorPlacementEnabled
 where
     Self: Sized,
 {
-    /// Enabling method called by the related [AnchorPlaced] impl
+    /// Enabling method called by the related [`AnchorPlaced`] impl
     fn place(self) -> PlacedWidget<Self> {
         PlacedWidget {
             content: self,
@@ -50,9 +50,9 @@ impl<T: AnchorPlacementEnabled> AnchorPlaced for T {
 
 /// Placement widget decorator
 ///
-/// Constrains the placed_widgets's scope.
+/// Constrains the `placed_widgets`'s scope.
 ///
-/// Wraps widgets that implement [AnchorPlacementEnabled].
+/// Wraps widgets that implement [`AnchorPlacementEnabled`].
 #[derive(Default)]
 pub struct PlacedWidget<W> {
     /// The inner widget being placed.

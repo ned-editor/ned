@@ -1,5 +1,5 @@
-use super::*;
-use crate::geometry::*;
+use super::{AnchorPlacementEnabled, AppEvent, Event, Painter, Screen, Widget};
+use crate::geometry::{point, window, Point, Window};
 
 /// A grid layout widget
 ///
@@ -27,7 +27,7 @@ impl<W> Grid<W> {
     /// Add a widget to a cell.
     ///
     /// cell: (x,y)
-    /// weight: (x_weigt,y_weight)
+    /// weight: (`x_weigt,y_weight`)
     ///
     /// There can be multiple widgets in one cell.
     /// For each row and column the max value of all cells' weights apply.
@@ -37,17 +37,17 @@ impl<W> Grid<W> {
         let (col, row) = cell;
         let (col_weight, row_weight) = weight;
         if row >= self.row_weights.len() {
-            self.row_weights.resize(row + 1, 0)
+            self.row_weights.resize(row + 1, 0);
         }
         if self.row_weights[row] < row_weight {
-            self.row_weights[row] = row_weight
+            self.row_weights[row] = row_weight;
         }
 
         if col >= self.col_weights.len() {
-            self.col_weights.resize(col + 1, 0)
+            self.col_weights.resize(col + 1, 0);
         }
         if self.col_weights[col] < col_weight {
-            self.col_weights[col] = col_weight
+            self.col_weights[col] = col_weight;
         }
         self.cells.push((col, row, widget));
         self
@@ -77,30 +77,31 @@ impl<W> Grid<W> {
             return (0, size);
         }
 
-        let sum = grid.iter().fold(0u16, |s, c| s + *c as u16);
+        let sum = grid.iter().fold(0u16, |s, c| s + u16::from(*c));
 
         let scale = if sum == 0 {
             0f32
         } else {
-            size as f32 / sum as f32
+            f32::from(size) / f32::from(sum)
         };
 
         let start = grid[..idx]
             .iter()
-            .cloned()
-            .fold(0u16, |s, c| s + (scale * c as f32) as u16);
+            .copied()
+            .fold(0u16, |s, c| s + (scale * f32::from(c)) as u16);
 
         let cell = if idx + 1 == grid.len() {
             // special case for last cell that takes the remainder
             size - start
         } else {
-            (scale * grid[idx] as f32) as u16
+            (scale * f32::from(grid[idx])) as u16
         };
 
         (start, cell)
     }
 
     /// Find which cell is at the given spot
+    #[must_use]
     pub fn get_cell_for_point(&self, point: Point, scope: Window) -> Option<(usize, usize)> {
         for col in 0..self.col_weights.len() {
             for row in 0..self.row_weights.len() {
@@ -119,10 +120,12 @@ impl<W> Grid<W> {
     }
 
     /// Get the calculated scope for a given cell order idx
+    #[must_use]
     pub fn get_cell_scope_by_idx(&self, i: usize, scope: Window) -> Window {
         Self::cell_scope(scope.size(), i, &self.col_weights, &self.row_weights) + scope.position()
     }
     /// Get the calculated scope for a given cell
+    #[must_use]
     pub fn get_cell_scope(&self, i: (usize, usize), scope: Window) -> Window {
         let (x, y) = i;
         let i = x + y * self.cols();
@@ -130,10 +133,12 @@ impl<W> Grid<W> {
     }
 
     /// get the number of rows in the grid
+    #[must_use]
     pub fn rows(&self) -> usize {
         self.row_weights.len()
     }
     /// get the number of columns in the grid
+    #[must_use]
     pub fn cols(&self) -> usize {
         self.col_weights.len()
     }
@@ -141,6 +146,7 @@ impl<W> Grid<W> {
 
 impl<'a, M, A: AppEvent> Grid<Box<dyn Widget<M, A> + 'a>> {
     /// Create a Grid with boxed widgets
+    #[must_use]
     pub fn boxed() -> Self {
         Self {
             row_weights: Default::default(),
@@ -170,7 +176,7 @@ where
         screen: &mut Screen,
         painter: &Painter,
     ) -> Window {
-        for cell in self.cells.iter_mut() {
+        for cell in &mut self.cells {
             let (col, row, element) = cell;
             let ord = *row * self.col_weights.len() + *col;
             let cell_scope = Self::cell_scope(

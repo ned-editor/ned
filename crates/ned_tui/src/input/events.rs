@@ -3,7 +3,7 @@
 use crate::prelude::Point;
 use std::collections::HashSet;
 
-/// The AppEvent is an extension point in termit so that
+/// The `AppEvent` is an extension point in termit so that
 /// you can include your application specific event stream
 /// in the input processing.
 pub trait AppEvent: std::fmt::Debug + PartialEq + Unpin + 'static {}

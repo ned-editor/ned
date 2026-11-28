@@ -173,12 +173,11 @@ pub fn goto_diagnostic(ed: &mut editor, next: bool) {
 /// Queries hover documentation for the symbol under cursor.
 pub fn request_hover(ed: &mut editor) {
     let doc = ed.active_doc();
-    let lang_name = match doc.language() {
-        Some(l) => l.name.clone(),
-        None => {
-            ed.status_message = Some("No language server for this buffer".to_string());
-            return;
-        }
+    let lang_name = if let Some(l) = doc.language() {
+        l.name.clone()
+    } else {
+        ed.status_message = Some("No language server for this buffer".to_string());
+        return;
     };
     let path = match doc.path() {
         Some(p) => p.to_path_buf(),
@@ -270,7 +269,7 @@ pub fn request_definition(ed: &mut editor) {
 
         let is_same_file = doc
             .path()
-            .map_or(false, |p| p.to_string_lossy() == target_path_str);
+            .is_some_and(|p| p.to_string_lossy() == target_path_str);
         if !is_same_file {
             let _ = ed.open_file(target_path_str);
         }

@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 ///
 /// The cursor is always at the end. Backspace removes the last char.
 ///
-/// Clicking on the TextBox activates it,
+/// Clicking on the `TextBox` activates it,
 /// clicking somewhere else deactivates it.
 /// You can override this by setting the
 /// `active` property on each update.
@@ -72,7 +72,7 @@ where
             },
             Event::Mouse(mouse) => {
                 if let MouseEventKind::Up(_) = mouse.kind {
-                    self.active = point(mouse.column, mouse.row).is_in(painter.scope())
+                    self.active = point(mouse.column, mouse.row).is_in(painter.scope());
                 }
             }
             Event::Refresh(_) => {

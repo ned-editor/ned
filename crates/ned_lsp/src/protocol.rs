@@ -1,6 +1,6 @@
 //! Language Server Protocol (LSP) data types.
 //!
-//! Maps standard LSP objects to snake_case Rust structures with automatic
+//! Maps standard LSP objects to `snake_case` Rust structures with automatic
 //! camelCase serialization matching the LSP JSON specification.
 
 use serde::{Deserialize, Serialize};

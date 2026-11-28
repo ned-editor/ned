@@ -1,7 +1,7 @@
 use crate::{
     geometry::{point, Point},
     output::{
-        ansi::*,
+        ansi::{AnsiPrint, ScreenStyle},
         command::{ClearScreen, MoveCursorBy, MoveCursorTo, ResetStyles, TerminalCommander},
     },
     prelude::Window,
@@ -34,6 +34,7 @@ pub struct Screen {
 
 impl Screen {
     /// New screen buffer of the given size
+    #[must_use]
     pub fn new(size: Point) -> Self {
         let mut me = Self::default();
         me.resize(size);
@@ -122,7 +123,7 @@ impl Screen {
             row as usize * self.width as usize + col as usize,
             style,
             symbol,
-        )
+        );
     }
     /// Set a symbol at given order index
     ///
@@ -144,7 +145,7 @@ impl Screen {
         self.last_write = Some(idx);
     }
     /// Dump all the currently set screen symbols
-    pub fn symbols<'a>(&'a self) -> impl Iterator<Item = (Point, &'a ScreenStyle, &'a str)> + 'a {
+    pub fn symbols(&self) -> impl Iterator<Item = (Point, &ScreenStyle, &str)> + '_ {
         self.current.iter().enumerate().filter_map(|(i, s)| {
             if s.is_empty() {
                 None
@@ -195,11 +196,11 @@ impl Screen {
     fn remember(&self, idx: usize, spot: ScreenSpot) {
         let mut remember = self.previous.borrow_mut();
         let grow = idx >= remember.len();
-        if !grow {
-            remember[idx] = spot;
-        } else {
+        if grow {
             remember.resize(idx, ScreenSpot::Empty);
             remember.push(spot);
+        } else {
+            remember[idx] = spot;
         }
     }
 
@@ -247,7 +248,7 @@ impl Screen {
             commander.send(AnsiPrint(symbol))?;
         }
         if busy {
-            commander.send(MoveCursorBy(self.width as i16, self.height as i16))?
+            commander.send(MoveCursorBy(self.width as i16, self.height as i16))?;
         }
         Ok(())
     }
@@ -267,9 +268,7 @@ impl<'a> DiffIterator<'a> {
 
         let scope = {
             let my_scope = screen.size().window();
-            scope
-                .map(|scope| my_scope.relative_crop(scope))
-                .unwrap_or(my_scope)
+            scope.map_or(my_scope, |scope| my_scope.relative_crop(scope))
         };
 
         Self {

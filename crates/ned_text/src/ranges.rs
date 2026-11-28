@@ -24,7 +24,7 @@ pub enum direction {
 /// The `head` is the cursor end that moves when extending a selection, while the
 /// `anchor` remains stationary.
 ///
-/// `old_visual_position` stores the (visual_row, visual_col) for sticky column
+/// `old_visual_position` stores the (`visual_row`, `visual_col`) for sticky column
 /// retention during vertical cursor movements across lines of differing lengths.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct range {
@@ -32,7 +32,7 @@ pub struct range {
     pub anchor: usize,
     /// Active cursor end of the range.
     pub head: usize,
-    /// Saved (visual_row, visual_column) for vertical navigation.
+    /// Saved (`visual_row`, `visual_column`) for vertical navigation.
     pub old_visual_position: Option<(u32, u32)>,
 }
 
@@ -211,7 +211,7 @@ impl range {
         buffer.byte_to_line(byte_offset)
     }
 
-    /// Returns the (start_line, end_line) inclusive lines overlapped by this range.
+    /// Returns the (`start_line`, `end_line`) inclusive lines overlapped by this range.
     #[must_use]
     pub fn line_range(&self, buffer: &rope) -> (usize, usize) {
         let from = self.from();

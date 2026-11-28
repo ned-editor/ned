@@ -1,4 +1,4 @@
-//! # ned_regex
+//! # `ned_regex`
 //!
 //! A dedicated, bounded Thompson-NFA regular expression engine engineered for Ned.
 //! Provides deterministic linear-time matching ($O(m \times n)$) without catastrophic
@@ -49,18 +49,21 @@ impl regex {
 
     /// Returns the original string representation of the pattern.
     #[inline]
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.pattern
     }
 
     /// Searches for the first match within `haystack`.
     #[inline]
+    #[must_use]
     pub fn find(&self, haystack: &str) -> Option<regex_match> {
         self.find_at(haystack, 0)
     }
 
     /// Searches for the first match in `haystack` starting at or after `start_byte`.
     #[inline]
+    #[must_use]
     pub fn find_at(&self, haystack: &str, start_byte: usize) -> Option<regex_match> {
         let m = pattern_matcher::new(&self.program);
         m.find_at(haystack, start_byte)
@@ -68,6 +71,7 @@ impl regex {
 
     /// Returns an iterator over all non-overlapping matches in `haystack`.
     #[inline]
+    #[must_use]
     pub fn find_iter<'a, 'p>(&'p self, haystack: &'a str) -> regex_matches<'a, 'p> {
         regex_matches {
             re: self,
@@ -78,6 +82,7 @@ impl regex {
 
     /// Returns the last match ending at or before `before_byte`.
     /// Useful for backward search (`?` or `search_prev`).
+    #[must_use]
     pub fn rfind(&self, haystack: &str, before_byte: usize) -> Option<regex_match> {
         let mut last = None;
         for m in self.find_iter(haystack) {
@@ -92,12 +97,14 @@ impl regex {
 
     /// Tests whether the pattern matches anywhere within `haystack`.
     #[inline]
+    #[must_use]
     pub fn is_match(&self, haystack: &str) -> bool {
         self.find(haystack).is_some()
     }
 
     /// Returns an iterator yielding substrings separated by matches of this pattern.
     #[inline]
+    #[must_use]
     pub fn split<'a, 'p>(&'p self, haystack: &'a str) -> regex_split<'a, 'p> {
         regex_split {
             matches: self.find_iter(haystack),
@@ -108,6 +115,7 @@ impl regex {
     }
 
     /// Replaces all occurrences of this pattern in `haystack` with `replacement`.
+    #[must_use]
     pub fn replace_all(&self, haystack: &str, replacement: &str) -> String {
         let mut result = String::with_capacity(haystack.len());
         let mut last_end = 0;
@@ -130,7 +138,7 @@ pub struct regex_matches<'a, 'p> {
     cursor: usize,
 }
 
-impl<'a, 'p> Iterator for regex_matches<'a, 'p> {
+impl Iterator for regex_matches<'_, '_> {
     type Item = regex_match;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -163,7 +171,7 @@ pub struct regex_split<'a, 'p> {
     finished: bool,
 }
 
-impl<'a, 'p> Iterator for regex_split<'a, 'p> {
+impl<'a> Iterator for regex_split<'a, '_> {
     type Item = &'a str;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -191,12 +199,14 @@ pub struct regex_builder {
 impl regex_builder {
     /// Creates a new default builder.
     #[inline]
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Sets whether matching is case-insensitive.
     #[inline]
+    #[must_use]
     pub fn case_insensitive(mut self, yes: bool) -> Self {
         self.case_insensitive = yes;
         self

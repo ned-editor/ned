@@ -107,7 +107,7 @@ On the system side:
 
 - [x] Asynchronous input parsing into a neat input model stolen from crossterm.
 - [x] Synchronous output with escaping and style.
-- [x] TTY terminal ioctl / Windows console WinRT set up and configuration.
+- [x] TTY terminal ioctl / Windows console `WinRT` set up and configuration.
 - [x] Plug in your own IO and control.
 - [x] Explicit use of IOs = there is no single system-wide tty/console or global settings.
 - [x] Internal screen buffer trying hard to reduce the amount of IO.
@@ -142,7 +142,7 @@ On the app side:
 On the curiosity side:
 
 - [x] The screen buffer lives in an anonymous memory mapped area avoiding frequent allocation. `MmapVec` is as big as it's contents.
-- [x] We've got some Windows Console API calls neatly wrapped in rust style. It is calling new `windows-sys` crate and WinRT.
+- [x] We've got some Windows Console API calls neatly wrapped in rust style. It is calling new `windows-sys` crate and `WinRT`.
 - [x] We use `rustix` for all *nix ioctl things. You may be able to compile without `libc`, not tested.
 - [x] Some support for terminal emulation - we can run other terminal apps and display them in a window.
 - [x] Constant time refresh for FPS sensitive apps - games.
@@ -281,7 +281,7 @@ the libraries worth knowing about, and where termit sits among them.
 * [iocraft](https://crates.io/crates/iocraft) - declarative components with
   hooks, in the React idiom.
 * [termwiz](https://crates.io/crates/termwiz) - the terminal layer behind
-  WezTerm: parsing, cells and surfaces. Lower level than a widget toolkit.
+  `WezTerm`: parsing, cells and surfaces. Lower level than a widget toolkit.
 * [bracket-lib](https://crates.io/crates/bracket-lib) - formerly rltk.
   CP437 and roguelike oriented, aimed at games.
 * [ncurses](https://crates.io/crates/ncurses) - bindings to the C library, for

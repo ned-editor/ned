@@ -51,7 +51,7 @@ impl Terminal<DefaultControl, DefaultInput, DefaultOutput> {
     /// tries to get default system terminal configuration.
     ///
     /// # errors
-    /// returns io::Error if no tty is available.
+    /// returns `io::Error` if no tty is available.
     pub fn try_system_default() -> io::Result<Self> {
         crate::sys::terminal()
     }

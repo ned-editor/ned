@@ -106,7 +106,7 @@ pub fn query_file_status(repo_root: &Path, relative_path: &Path) -> Result<file_
 
     if !output.status.success() {
         let err_msg = String::from_utf8_lossy(&output.stderr);
-        return Err(Error::new(ErrorKind::Other, err_msg.trim().to_string()));
+        return Err(Error::other(err_msg.trim().to_string()));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);

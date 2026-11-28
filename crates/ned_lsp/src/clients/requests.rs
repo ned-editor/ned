@@ -58,10 +58,7 @@ pub fn send_request_timeout<P: Serialize>(
     let rx = send_request(client, method, params)?;
     match rx.recv_timeout(timeout) {
         Ok(Ok(val)) => Ok(val),
-        Ok(Err(rpc_err)) => Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("LSP server error: {rpc_err}"),
-        )),
+        Ok(Err(rpc_err)) => Err(io::Error::other(format!("LSP server error: {rpc_err}"))),
         Err(_) => Err(io::Error::new(
             io::ErrorKind::TimedOut,
             format!("LSP request '{method}' timed out after {timeout:?}"),

@@ -298,7 +298,7 @@ where
     T: AsRef<Style>,
 {
     fn add_assign(&mut self, rhs: T) {
-        *self = *self + rhs.as_ref()
+        *self = *self + rhs.as_ref();
     }
 }
 
@@ -312,7 +312,7 @@ impl<'a> From<Pretty<&'a str>> for StylishStringy<'a> {
         }
     }
 }
-impl<'a> From<Pretty<String>> for StylishStringy<'a> {
+impl From<Pretty<String>> for StylishStringy<'_> {
     fn from(content: Pretty<String>) -> Self {
         StylishStringy {
             style: content.style,
@@ -329,7 +329,7 @@ impl<'a> From<&'a str> for StylishStringy<'a> {
         }
     }
 }
-impl<'a> From<String> for StylishStringy<'a> {
+impl From<String> for StylishStringy<'_> {
     fn from(content: String) -> Self {
         let style = Style::default();
         StylishStringy {

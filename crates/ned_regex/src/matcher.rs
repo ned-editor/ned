@@ -1,4 +1,4 @@
-//! Thompson NFA (PikeVM) matching engine for `ned_regex`.
+//! Thompson NFA (`PikeVM`) matching engine for `ned_regex`.
 
 use crate::compiler::{inst, nfa_program};
 
@@ -14,18 +14,21 @@ pub struct regex_match {
 impl regex_match {
     /// Constructs a new match range.
     #[inline]
+    #[must_use]
     pub const fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
 
     /// Returns the matched byte range.
     #[inline]
+    #[must_use]
     pub const fn range(&self) -> std::ops::Range<usize> {
         self.start..self.end
     }
 
     /// Extracts the matched substring from `haystack`.
     #[inline]
+    #[must_use]
     pub fn as_str<'a>(&self, haystack: &'a str) -> &'a str {
         &haystack[self.start..self.end]
     }
@@ -37,7 +40,7 @@ struct thread {
     start_byte: usize,
 }
 
-/// PikeVM execution context.
+/// `PikeVM` execution context.
 pub struct pattern_matcher<'a> {
     program: &'a nfa_program,
 }
@@ -45,11 +48,13 @@ pub struct pattern_matcher<'a> {
 impl<'a> pattern_matcher<'a> {
     /// Creates a new matcher for compiled NFA `program`.
     #[inline]
+    #[must_use]
     pub const fn new(program: &'a nfa_program) -> Self {
         Self { program }
     }
 
     /// Searches for the leftmost match in `haystack` starting at `start_byte`.
+    #[must_use]
     pub fn find_at(&self, haystack: &str, start_byte: usize) -> Option<regex_match> {
         let start_byte = if start_byte >= haystack.len() {
             haystack.len()
@@ -105,10 +110,10 @@ impl<'a> pattern_matcher<'a> {
 
             // Check if we have an optimal match and no earlier starting threads remain
             if let Some(m) = best_match {
-                if curr_threads.is_empty() || curr_threads.iter().all(|t| t.start_byte >= m.start) {
-                    if m.start != m.end || curr_byte > m.start {
-                        return Some(m);
-                    }
+                if (curr_threads.is_empty() || curr_threads.iter().all(|t| t.start_byte >= m.start))
+                    && (m.start != m.end || curr_byte > m.start)
+                {
+                    return Some(m);
                 }
             }
 
@@ -197,21 +202,19 @@ impl<'a> pattern_matcher<'a> {
                     }
                     inst::any_char {
                         dot_matches_newline,
-                    } => {
-                        if *dot_matches_newline || c != '\n' {
-                            self.add_thread(
-                                thread {
-                                    pc: t.pc + 1,
-                                    start_byte: t.start_byte,
-                                },
-                                next_byte,
-                                haystack,
-                                &mut next_threads,
-                                &mut visited,
-                                gen,
-                                &mut best_match,
-                            );
-                        }
+                    } if (*dot_matches_newline || c != '\n') => {
+                        self.add_thread(
+                            thread {
+                                pc: t.pc + 1,
+                                start_byte: t.start_byte,
+                            },
+                            next_byte,
+                            haystack,
+                            &mut next_threads,
+                            &mut visited,
+                            gen,
+                            &mut best_match,
+                        );
                     }
                     _ => {}
                 }
@@ -372,7 +375,7 @@ impl<'a> pattern_matcher<'a> {
                     haystack[..curr_byte]
                         .chars()
                         .next_back()
-                        .map_or(false, is_word_char)
+                        .is_some_and(is_word_char)
                 } else {
                     false
                 };
@@ -380,7 +383,7 @@ impl<'a> pattern_matcher<'a> {
                     haystack[curr_byte..]
                         .chars()
                         .next()
-                        .map_or(false, is_word_char)
+                        .is_some_and(is_word_char)
                 } else {
                     false
                 };
@@ -405,7 +408,7 @@ impl<'a> pattern_matcher<'a> {
                     haystack[..curr_byte]
                         .chars()
                         .next_back()
-                        .map_or(false, is_word_char)
+                        .is_some_and(is_word_char)
                 } else {
                     false
                 };
@@ -413,7 +416,7 @@ impl<'a> pattern_matcher<'a> {
                     haystack[curr_byte..]
                         .chars()
                         .next()
-                        .map_or(false, is_word_char)
+                        .is_some_and(is_word_char)
                 } else {
                     false
                 };

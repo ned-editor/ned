@@ -25,7 +25,7 @@ impl register_storage {
         if reg == '_' {
             return None;
         }
-        self.registers.get(&reg).map(|v| v.as_slice())
+        self.registers.get(&reg).map(std::vec::Vec::as_slice)
     }
 
     /// Writes values into register `reg`.

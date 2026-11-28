@@ -1,4 +1,4 @@
-//! ned_rope: chunked b-tree text buffer with line indexing for ned editor.
+//! `ned_rope`: chunked b-tree text buffer with line indexing for ned editor.
 
 #![warn(missing_docs)]
 

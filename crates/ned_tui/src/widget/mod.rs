@@ -136,9 +136,9 @@ impl<M, A: AppEvent> Widget<M, A> for Cow<'_, str> {
     }
 }
 
-impl<'a, M, A: AppEvent> AnchorPlacementEnabled for Box<dyn Widget<M, A> + 'a> {}
+impl<M, A: AppEvent> AnchorPlacementEnabled for Box<dyn Widget<M, A> + '_> {}
 /// Widget for boxed widgets
-impl<'a, M, A: AppEvent> Widget<M, A> for Box<dyn Widget<M, A> + 'a> {
+impl<M, A: AppEvent> Widget<M, A> for Box<dyn Widget<M, A> + '_> {
     fn update(
         &mut self,
         model: &mut M,
@@ -235,7 +235,7 @@ where
     {
         self.load_with(move |w, m| {
             let what = std::mem::take(w);
-            *w = loader(what, m)
+            *w = loader(what, m);
         })
     }
     fn load_with(self, loader: impl Fn(&mut Self, &M) + 'static) -> WidgetBinder<Self, M, A>

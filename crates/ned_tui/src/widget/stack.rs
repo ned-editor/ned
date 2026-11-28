@@ -2,7 +2,9 @@ use std::ops::DerefMut;
 
 use crate::{
     geometry::{point, window},
-    widget::*,
+    widget::{
+        AnchorPlacementEnabled, AppEvent, Event, Painter, Screen, Widget, Window,
+    },
 };
 
 /// A stack layout widget
@@ -10,7 +12,7 @@ use crate::{
 /// Layered stack: Widgets are placed on top of each other.
 ///
 /// Flat stack: Widgets are added until they fill up
-/// a horizontal (east_south) or vertical (south_east) line.
+/// a horizontal (`east_south`) or vertical (`south_east`) line.
 /// Then - if there is space - another line is started.
 ///
 /// The plain Stack is for single widget type.
@@ -65,14 +67,17 @@ impl<S> Stack<Vec<S>> {
 
 impl<'a, M, A: AppEvent> Stack<Vec<Box<dyn Widget<M, A> + 'a>>> {
     /// Creates an east-south stack layout from boxed widgets.
+    #[must_use]
     pub fn east_south_boxes(widgets: Vec<Box<dyn Widget<M, A> + 'a>>) -> Self {
         Self::east_south(widgets)
     }
     /// Creates a south-east stack layout from boxed widgets.
+    #[must_use]
     pub fn south_east_boxes(widgets: Vec<Box<dyn Widget<M, A> + 'a>>) -> Self {
         Self::south_east(widgets)
     }
     /// Creates a layered stack layout from boxed widgets.
+    #[must_use]
     pub fn layered_boxes(widgets: Vec<Box<dyn Widget<M, A> + 'a>>) -> Self {
         Self::layered(widgets)
     }
@@ -128,7 +133,7 @@ where
                         bulk = 0;
                     }
                 }
-            };
+            }
         }
 
         window(pscope.position(), size)

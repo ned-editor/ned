@@ -1,4 +1,4 @@
-//! ned_git: git integration, repository discovery, and line diffing for ned editor.
+//! `ned_git`: git integration, repository discovery, and line diffing for ned editor.
 
 #![warn(missing_docs)]
 

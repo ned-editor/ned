@@ -291,11 +291,7 @@ fn delete_from_node(target: &mut node, start: usize, end: usize) {
                 let child_end = current_offset + child_len;
 
                 if end > current_offset && start < child_end {
-                    let sub_start = if start > current_offset {
-                        start - current_offset
-                    } else {
-                        0
-                    };
+                    let sub_start = start.saturating_sub(current_offset);
                     let sub_end = if end < child_end {
                         end - current_offset
                     } else {

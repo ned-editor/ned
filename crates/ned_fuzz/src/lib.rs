@@ -6,6 +6,4 @@
 
 pub mod matcher;
 
-pub use matcher::{
-    fuzzy_match, fuzzy_matcher, match_indices, score_candidate,
-};
+pub use matcher::{fuzzy_match, fuzzy_matcher, match_indices, score_candidate};

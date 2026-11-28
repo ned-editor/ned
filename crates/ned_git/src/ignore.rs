@@ -112,10 +112,10 @@ fn glob_match_slices(pattern: &[char], text: &[char]) -> bool {
             false
         }
         (Some('?'), Some(&t_first)) => {
-            if t_first != '/' {
-                glob_match_slices(&pattern[1..], &text[1..])
-            } else {
+            if t_first == '/' {
                 false
+            } else {
+                glob_match_slices(&pattern[1..], &text[1..])
             }
         }
         (Some(&p_first), Some(&t_first)) => {
@@ -156,11 +156,11 @@ impl git_ignore_stack {
     /// Pushes local `.gitignore` rules for `dir` if present. Returns true if rules were added.
     pub fn push_dir(&mut self, dir: &Path) -> bool {
         let rules = load_gitignore(dir);
-        if !rules.is_empty() {
+        if rules.is_empty() {
+            false
+        } else {
             self.scopes.push((dir.to_path_buf(), rules));
             true
-        } else {
-            false
         }
     }
 

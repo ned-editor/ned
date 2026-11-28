@@ -28,10 +28,12 @@ impl From<(u16, u16)> for Point {
     }
 }
 /// New 2D coordinates for a terminal screen
+#[must_use]
 pub fn point(col: u16, row: u16) -> Point {
     Point { col, row }
 }
 /// New 2D rectangle for a terminal screen
+#[must_use]
 pub fn window(position: Point, size: Point) -> Window {
     Window {
         col: position.col,
@@ -43,6 +45,7 @@ pub fn window(position: Point, size: Point) -> Window {
 
 impl Point {
     /// create a window the size of the point position
+    #[must_use]
     pub fn window(&self) -> Window {
         Window {
             col: 0,
@@ -52,10 +55,12 @@ impl Point {
         }
     }
     /// The total number of discrete points on the terminal screen
+    #[must_use]
     pub fn area(&self) -> u32 {
-        self.col as u32 * self.row as u32
+        u32::from(self.col) * u32::from(self.row)
     }
     /// Is the given coordinate smaller or equal to self?
+    #[must_use]
     pub fn contains(&self, o: &Point) -> bool {
         self.col > o.col && self.row > o.row
     }
@@ -69,23 +74,25 @@ impl Point {
             && w.row.saturating_add(w.height) > self.row
     }
     /// What is the col/row coordinate of the nth point within the bounds of self?
+    #[must_use]
     pub fn point_at_idx(&self, idx: u32) -> Option<Point> {
         if idx >= self.area() {
             None
         } else {
-            let col = (idx % self.col as u32) as u16;
-            let row = (idx / self.col as u32) as u16;
+            let col = (idx % u32::from(self.col)) as u16;
+            let row = (idx / u32::from(self.col)) as u16;
             Some(point(col, row))
         }
     }
     /// What is the order index of the given coordinates within the bounds of self?
+    #[must_use]
     pub fn idx_at_point(&self, p: Point) -> Option<u32> {
         if p.row >= self.row || p.col >= self.col {
             None
         } else {
-            let w = self.col as u32;
-            let x = p.col as u32;
-            let y = p.row as u32;
+            let w = u32::from(self.col);
+            let x = u32::from(p.col);
+            let y = u32::from(p.row);
             Some(y * w + x)
         }
     }
@@ -185,6 +192,7 @@ impl Window {
         self.intersection(p.borrow().window())
     }
     /// The col/row coordinates of the bottom right corner
+    #[must_use]
     pub fn bottom_right(&self) -> Point {
         point(
             self.col.saturating_add(self.width),
@@ -192,14 +200,17 @@ impl Window {
         )
     }
     /// The col/row coordinates of the top left corner
+    #[must_use]
     pub fn position(&self) -> Point {
         point(self.col, self.row)
     }
     /// The width/height coordinates of the rectangle
+    #[must_use]
     pub fn size(&self) -> Point {
         point(self.width, self.height)
     }
     /// If the window has zero area
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.width == 0 || self.height == 0
     }
@@ -237,13 +248,13 @@ impl<RHS: Borrow<Window>> ops::BitAnd<RHS> for &Window {
 impl ops::SubAssign for Point {
     /// move point closer by given coordinates
     fn sub_assign(&mut self, o: Self) {
-        *self = *self - o
+        *self = *self - o;
     }
 }
 impl ops::AddAssign for Point {
     /// move point away by given coordinates
     fn add_assign(&mut self, o: Self) {
-        *self = *self + o
+        *self = *self + o;
     }
 }
 impl<RHS: Borrow<Point>> ops::Sub<RHS> for Point {
@@ -286,13 +297,13 @@ impl<RHS: Borrow<Point>> ops::Add<RHS> for &Point {
 impl ops::AddAssign<Point> for Window {
     /// move window away by given coordinates
     fn add_assign(&mut self, o: Point) {
-        *self = *self + o
+        *self = *self + o;
     }
 }
 impl ops::SubAssign<Point> for Window {
     /// move window closer by given coordinates
     fn sub_assign(&mut self, o: Point) {
-        *self = *self - o
+        *self = *self - o;
     }
 }
 

@@ -1,6 +1,6 @@
 //! the main termit application facilitator.
 
-use crate::geometry::*;
+use crate::geometry::Window;
 use crate::input::events::{AppEvent, Event};
 use crate::input::InputWatcher;
 use crate::output::command::{
@@ -71,7 +71,7 @@ impl<'a, A: AppEvent> Termit<'a, A> {
     /// prints ui updates to the terminal using double-buffered diffing.
     ///
     /// # errors
-    /// returns io::Error if terminal writing fails.
+    /// returns `io::Error` if terminal writing fails.
     pub fn print(&mut self, scope: Option<Window>) -> io::Result<()> {
         let mut out = CountingWrites::new(self.out.as_mut());
         let commander = (self.control.as_ref(), &mut out);
@@ -96,7 +96,7 @@ impl<'a, A: AppEvent> Termit<'a, A> {
     /// starts watching terminal input using yokio's non-blocking watcher.
     ///
     /// # errors
-    /// returns io::Error if watcher registration fails.
+    /// returns `io::Error` if watcher registration fails.
     pub fn watch_input<F: FnMut(io::Result<Event<A>>) + 'static>(
         &self,
         on_event: F,

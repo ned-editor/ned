@@ -6,7 +6,7 @@ use crate::prelude::*;
 ///
 /// The widget wraps the inner widget.
 ///
-/// It is different from StyledContent and plan String/&str
+/// It is different from `StyledContent` and plan String/&str
 /// - it claims the whole available space
 /// - it fills the space first with background color
 ///

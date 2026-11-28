@@ -9,61 +9,74 @@
 pub enum Color {
     /// ANSI 8-bit color index (0-255).
     Ansi(u8),
-    /// 24-bit RGB TrueColor.
+    /// 24-bit RGB `TrueColor`.
     Rgb(u8, u8, u8),
 }
 
 impl Color {
     /// Creates an ANSI indexed color.
+    #[must_use]
     pub const fn ansi(ansi: u8) -> Self {
         Color::Ansi(ansi)
     }
-    /// Creates an RGB TrueColor.
+    /// Creates an RGB `TrueColor`.
+    #[must_use]
     pub const fn rgb(red: u8, green: u8, blue: u8) -> Self {
         Color::Rgb(red, green, blue)
     }
     /// Standard black color.
+    #[must_use]
     pub const fn black() -> Self {
         Self::ansi(0)
     }
     /// Standard white color.
+    #[must_use]
     pub const fn white() -> Self {
         Self::ansi(15)
     }
     /// Grey color with optional light intensity.
+    #[must_use]
     pub const fn grey(light: bool) -> Self {
         Self::ansi(if light { 7 } else { 8 })
     }
     /// Red color with optional light intensity.
+    #[must_use]
     pub const fn red(light: bool) -> Self {
         Self::ansi(if light { 1 + 8 } else { 1 })
     }
     /// Green color with optional light intensity.
+    #[must_use]
     pub const fn green(light: bool) -> Self {
         Self::ansi(if light { 2 + 8 } else { 2 })
     }
     /// Blue color with optional light intensity.
+    #[must_use]
     pub const fn blue(light: bool) -> Self {
         Self::ansi(if light { 4 + 8 } else { 4 })
     }
     /// Yellow color with optional light intensity.
+    #[must_use]
     pub const fn yellow(light: bool) -> Self {
         Self::ansi(if light { 3 + 8 } else { 3 })
     }
     /// Magenta color with optional light intensity.
+    #[must_use]
     pub const fn magenta(light: bool) -> Self {
         Self::ansi(if light { 5 + 8 } else { 5 })
     }
     /// Cyan color with optional light intensity.
+    #[must_use]
     pub const fn cyan(light: bool) -> Self {
         Self::ansi(if light { 6 + 8 } else { 6 })
     }
 
     /// Converts to 3-bit color value.
+    #[must_use]
     pub const fn to_3b(self) -> u8 {
         self.to_4b() % 8
     }
     /// Converts to 4-bit color value (0-15).
+    #[must_use]
     pub const fn to_4b(self) -> u8 {
         match self {
             Color::Ansi(ansi) => ansi_to_4b(ansi),
@@ -71,6 +84,7 @@ impl Color {
         }
     }
     /// Converts to 8-bit ANSI palette index (0-255).
+    #[must_use]
     pub const fn to_8b(self) -> u8 {
         match self {
             Color::Ansi(ansi) => ansi,
@@ -78,6 +92,7 @@ impl Color {
         }
     }
     /// Converts to 24-bit (r, g, b) tuple.
+    #[must_use]
     pub const fn to_24b(self) -> (u8, u8, u8) {
         match self {
             Color::Ansi(ansi) => rgb_from_8bit(ansi),
@@ -85,6 +100,7 @@ impl Color {
         }
     }
     /// Returns true if this color is an ANSI indexed color.
+    #[must_use]
     pub const fn is_ansi(&self) -> bool {
         matches!(self, Color::Ansi(_))
     }

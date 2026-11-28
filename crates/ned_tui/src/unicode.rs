@@ -91,7 +91,7 @@ impl<'a> Iterator for Graphemes<'a> {
         let mut cluster_end = first_char.len_utf8();
 
         // combine subsequent zero-width joiners, skin tones, or combining marks
-        while let Some((idx, next_char)) = chars.next() {
+        for (idx, next_char) in chars {
             let cp = next_char as u32;
             let is_combining = (0x0300..=0x036F).contains(&cp)
                 || (0x1AB0..=0x1AFF).contains(&cp)

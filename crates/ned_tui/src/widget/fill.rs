@@ -1,4 +1,6 @@
-use crate::widget::*;
+use crate::widget::{
+    AnchorPlacementEnabled, AppEvent, Event, Painter, Screen, Widget, Window,
+};
 
 /// A widget to fill/wipe all available space (with painter background) before drawing the content.
 ///

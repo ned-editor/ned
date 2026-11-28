@@ -168,7 +168,7 @@ impl selection {
         }
 
         let mut primary = self.ranges[self.primary_index];
-        self.ranges.sort_unstable_by_key(|r| r.from());
+        self.ranges.sort_unstable_by_key(super::ranges::range::from);
 
         let mut deduped: Vec<range> = Vec::with_capacity(self.ranges.len());
         for r in self.ranges {

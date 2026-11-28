@@ -40,19 +40,15 @@ fn default_bar_cursor() -> cursor_shape {
 /// Display mode for the top bufferline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum bufferline_style {
     /// Never show bufferline.
+    #[default]
     never,
     /// Always show bufferline.
     always,
     /// Show bufferline only when multiple buffers are open.
     multiple,
-}
-
-impl Default for bufferline_style {
-    fn default() -> Self {
-        Self::never
-    }
 }
 
 /// Configuration for cursor shape per editor mode.
@@ -511,12 +507,11 @@ impl editor_config {
     /// Applies a layer of raw TOML configuration onto self, validating fields,
     /// enforcing bounds, and recording warnings for unknown or invalid values.
     pub fn apply_toml_layer(&mut self, val: &Value, warnings: &mut Vec<config_warning>) {
-        let tbl = match val {
-            Value::Table(t) => t,
-            _ => {
-                warnings.push(config_warning::new("Expected table for [editor] config"));
-                return;
-            }
+        let tbl = if let Value::Table(t) = val {
+            t
+        } else {
+            warnings.push(config_warning::new("Expected table for [editor] config"));
+            return;
         };
 
         for (k, v) in tbl {

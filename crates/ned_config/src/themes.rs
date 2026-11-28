@@ -309,7 +309,7 @@ fn parse_style_entry(entry: &Value, palette: &HashMap<String, String>) -> style 
     let mut s = style::new();
 
     let resolve_color = |name: &str| -> Option<color> {
-        let actual_color = palette.get(name).map(|s| s.as_str()).unwrap_or(name);
+        let actual_color = palette.get(name).map_or(name, std::string::String::as_str);
         color::parse(actual_color)
     };
 

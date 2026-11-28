@@ -98,7 +98,12 @@ impl fuzzy_matcher {
     ///
     /// Returns a list of `(original_index, fuzzy_match)` sorted descending by score,
     /// with deterministic tie-breaking preserving original item index order.
-    pub fn filter_and_rank<T, F>(&self, query: &str, items: &[T], key: F) -> Vec<(usize, fuzzy_match)>
+    pub fn filter_and_rank<T, F>(
+        &self,
+        query: &str,
+        items: &[T],
+        key: F,
+    ) -> Vec<(usize, fuzzy_match)>
     where
         F: Fn(&T) -> &str,
     {
@@ -147,9 +152,7 @@ impl fuzzy_matcher {
         let m = q_chars.len();
         let n = c_chars.len().min(MAX_DP_CANDIDATE_LEN);
 
-        let last_slash_idx = c_chars[..n]
-            .iter()
-            .rposition(|&c| c == '/' || c == '\\');
+        let last_slash_idx = c_chars[..n].iter().rposition(|&c| c == '/' || c == '\\');
 
         // Matrix dimensions: m rows by n columns
         // dp[i * n + j] = best score matching query prefix 0..=i ending at candidate index j

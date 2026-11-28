@@ -9,6 +9,7 @@ pub struct Text<'a> {
 
 impl<'a> Text<'a> {
     /// Creates a new rich text widget from styled string parts.
+    #[must_use]
     pub fn new(parts: Vec<StylishStringy<'a>>) -> Self {
         Self { parts }
     }
@@ -20,8 +21,8 @@ impl<'a> Text<'a> {
         self
     }
 }
-impl<'a> AnchorPlacementEnabled for Text<'a> {}
-impl<'a, M, A: AppEvent> Widget<M, A> for Text<'a> {
+impl AnchorPlacementEnabled for Text<'_> {}
+impl<M, A: AppEvent> Widget<M, A> for Text<'_> {
     fn update(
         &mut self,
         _model: &mut M,
