@@ -53,7 +53,22 @@ pub fn render_editor(
     let cursorline_style = style_for_scope(theme, "ui.cursorline.primary");
 
     let sel_primary_style = style_for_scope(theme, "ui.selection.primary");
-    let sel_secondary_style = style_for_scope(theme, "ui.selection");
+    let sel_secondary_style = {
+        let sec = style_for_scope(theme, "ui.selection.secondary");
+        if sec.back_color.is_some() || sec.front_color.is_some() {
+            sec
+        } else {
+            style_for_scope(theme, "ui.selection")
+        }
+    };
+    let cursor_secondary_style = {
+        let cs = style_for_scope(theme, "ui.cursor.secondary");
+        if cs.back_color.is_some() || cs.front_color.is_some() {
+            cs
+        } else {
+            style_for_scope(theme, "ui.cursor")
+        }
+    };
 
     let diff_plus_style = merge_style(gutter_style, style_for_scope(theme, "diff.plus"));
     let diff_delta_style = merge_style(gutter_style, style_for_scope(theme, "diff.delta"));
@@ -139,7 +154,6 @@ pub fn render_editor(
 
             let line_str = doc.text().line(line_idx).unwrap_or_default();
             let clean_str = line_str.trim_end_matches(['\r', '\n']);
-            let line_chars: Vec<char> = clean_str.chars().collect();
 
             // Find syntax spans for this line
             let line_spans = highlighted_lines
@@ -151,27 +165,53 @@ pub fn render_editor(
             let line_start_char = doc.text().byte_to_char(line_start_byte);
             let primary_range = doc.selection().primary();
 
-            for (char_idx_in_line, &ch) in line_chars.iter().enumerate() {
-                if char_idx_in_line < col_offset {
+            let tab_size = ed.config.editor.tab_width.max(1);
+            let vp_left = col_offset;
+            let vp_right = col_offset + (text_area_width as usize);
+
+            let mut char_idx_in_line = 0;
+            let mut visual_col_in_line = 0;
+
+            for g in ned_tui::unicode::str_graphemes(clean_str) {
+                let g_chars = g.chars().count();
+                let g_start_char = char_idx_in_line;
+                char_idx_in_line += g_chars;
+
+                let g_width = if g == "\t" {
+                    tab_size
+                        .saturating_sub(visual_col_in_line % tab_size)
+                        .max(1)
+                } else {
+                    ned_tui::unicode::grapheme_width(g)
+                };
+
+                let v_start = visual_col_in_line;
+                let v_end = visual_col_in_line + g_width;
+                visual_col_in_line += g_width;
+
+                if g_width == 0 {
                     continue;
                 }
-                let visual_col = (char_idx_in_line - col_offset) as u16;
-                if visual_col >= text_area_width {
+
+                if v_end <= vp_left {
+                    continue;
+                }
+
+                if v_start >= vp_right {
                     break;
                 }
 
-                let screen_col = gutter_width + visual_col;
-                let global_char_idx = line_start_char + char_idx_in_line;
+                let global_char_idx = line_start_char + g_start_char;
 
                 // Base token style from syntax highlighter
                 let mut token_style =
-                    buffer::resolve_syntax_style(theme, line_spans, char_idx_in_line, line_bg);
+                    buffer::resolve_syntax_style(theme, line_spans, g_start_char, line_bg);
 
                 // Inline diagnostic underline
                 if let Some(ul_color) = diagnostics::diag_underline_color(
                     doc.diagnostics(),
                     line_idx,
-                    char_idx_in_line,
+                    g_start_char,
                     diag_error_style,
                     diag_warning_style,
                     diag_info_style,
@@ -185,14 +225,36 @@ pub fn render_editor(
                 token_style = selection::apply_selection_style(
                     doc.selection(),
                     primary_range,
+                    doc.text(),
                     global_char_idx,
                     token_style,
                     sel_primary_style,
                     sel_secondary_style,
+                    cursor_secondary_style,
                 );
 
-                let s = ch.to_string();
-                screen.set(point(screen_col, row), &token_style, &s);
+                if g == "\t" {
+                    for v_col in v_start..v_end {
+                        if v_col >= vp_left && v_col < vp_right {
+                            let screen_col = gutter_width + (v_col - vp_left) as u16;
+                            screen.set(point(screen_col, row), &token_style, " ");
+                        }
+                    }
+                } else if v_start < vp_left {
+                    // Left edge clipping of wide glyph: emit single blank cell at column 0 of text area
+                    let screen_col = gutter_width;
+                    screen.set(point(screen_col, row), &token_style, " ");
+                } else if v_end > vp_right {
+                    // Right edge clipping of wide glyph: emit single blank cell at rightmost text cell
+                    let screen_col = gutter_width + (v_start - vp_left) as u16;
+                    screen.set(point(screen_col, row), &token_style, " ");
+                } else {
+                    let screen_col = gutter_width + (v_start - vp_left) as u16;
+                    screen.set(point(screen_col, row), &token_style, g);
+                    if g_width == 2 && screen_col + 1 < width {
+                        screen.set(point(screen_col + 1, row), &token_style, "");
+                    }
+                }
             }
 
             // Inline end-of-line diagnostic message (Helix inline-diagnostics parity)
@@ -204,7 +266,7 @@ pub fn render_editor(
                 diag_info_style,
                 diag_hint_style,
             ) {
-                let visible_len = line_chars.len().saturating_sub(col_offset) as u16;
+                let visible_len = visual_col_in_line.saturating_sub(col_offset) as u16;
                 let eol_col = gutter_width + visible_len + 2;
                 if eol_col + 4 < width {
                     let mut inline_style = merge_style(line_bg, diag_fg_style);

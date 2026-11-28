@@ -111,6 +111,7 @@ pub fn render_frame(
             view,
             doc,
             gutter_width,
+            ed.config.editor.tab_width,
             ed.mode,
             &ed.config.editor.cursor_shape,
         );
