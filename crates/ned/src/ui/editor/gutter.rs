@@ -83,6 +83,11 @@ pub fn get_diff_indicator(
 }
 
 /// Paints the full gutter columns for a line row: `[diagnostic] [line-number] [space] [diff]`.
+///
+/// The nine arguments represent distinct visual columns (diagnostic, line number, diff) each
+/// with their own symbol and style; grouping them into a struct would add indirection without
+/// improving clarity, so the argument-count lint is allowed here.
+#[allow(clippy::too_many_arguments)]
 pub fn render_gutter_row(
     screen: &mut Screen,
     row: u16,

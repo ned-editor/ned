@@ -354,8 +354,10 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                 for doc in app.ed.documents.values() {
                     let name = doc
                         .path()
-                        .map(|p| p.to_string_lossy().to_string())
-                        .unwrap_or_else(|| "[scratch]".to_string());
+                        .map_or_else(
+                            || "[scratch]".to_string(),
+                            |p| p.to_string_lossy().to_string(),
+                        );
                     buffers.push(name);
                 }
                 app.picker = Some(picker_state::new_buffer_picker(buffers));

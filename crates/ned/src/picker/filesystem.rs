@@ -5,6 +5,10 @@ use std::path::Path;
 
 /// Recursively traverses directory to collect candidate file paths relative to `root`,
 /// strictly respecting active `.gitignore` rules via `ignore_stack`.
+///
+/// The `map`+`unwrap_or` combination is used here for clarity, so the `map_unwrap_or` lint
+/// is allowed on this function.
+#[allow(clippy::map_unwrap_or)]
 pub fn collect_files(
     root: &Path,
     current: &Path,

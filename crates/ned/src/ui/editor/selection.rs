@@ -7,6 +7,11 @@ use ned_tui::output::style::Style;
 use crate::theme_bridge::merge_style;
 
 /// Applies primary or secondary selection styling if `global_char_idx` falls within any active selection.
+///
+/// The eight arguments represent the selection state, target buffer, cursor position, base style,
+/// and three overlay styles; grouping them would add indirection without improving clarity, so the
+/// argument-count lint is allowed here.
+#[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn apply_selection_style(
     selections: &selection,

@@ -22,6 +22,7 @@ pub fn fill_line_background(
 }
 
 /// Resolves the base syntax highlight style for a character in a line against active spans.
+#[must_use]
 pub fn resolve_syntax_style(
     th: &theme,
     line_spans: &[highlight_span],

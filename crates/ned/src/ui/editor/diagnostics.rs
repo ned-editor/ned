@@ -34,9 +34,7 @@ pub fn get_diagnostic_indicator(
                     }
                 }
                 Some(diagnostic_severity::hint) => {
-                    if highest_severity.is_none() {
-                        highest_severity = Some(diagnostic_severity::hint);
-                    }
+                    highest_severity.get_or_insert(diagnostic_severity::hint);
                 }
                 None => {}
             }
@@ -87,7 +85,7 @@ pub fn diag_underline_color(
                 Some(diagnostic_severity::information) => (2, info_style),
                 Some(diagnostic_severity::hint) | None => (1, hint_style),
             };
-            if best.is_none_or(|(bp, _)| prio > bp) {
+            if best.map_or(true, |(bp, _)| prio > bp) {
                 best = Some((prio, st));
             }
         }
@@ -116,7 +114,7 @@ pub fn get_line_inline_diagnostic(
                 Some(diagnostic_severity::information) => (2, info_style),
                 Some(diagnostic_severity::hint) | None => (1, hint_style),
             };
-            if best.is_none_or(|(bp, _, _)| prio > bp) {
+            if best.map_or(true, |(bp, _, _)| prio > bp) {
                 best = Some((prio, d.message.as_str(), st));
             }
         }

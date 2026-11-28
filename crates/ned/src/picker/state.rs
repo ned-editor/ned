@@ -241,7 +241,7 @@ impl picker_state {
                 }
                 picker_action::cancel
             }
-            KeyCode::Up => {
+            KeyCode::Up | KeyCode::BackTab => {
                 self.move_up();
                 picker_action::none
             }
@@ -255,10 +255,6 @@ impl picker_state {
                 } else {
                     self.move_down();
                 }
-                picker_action::none
-            }
-            KeyCode::BackTab => {
-                self.move_up();
                 picker_action::none
             }
             KeyCode::PageUp => {

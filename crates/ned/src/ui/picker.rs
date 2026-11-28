@@ -159,7 +159,7 @@ pub fn render_picker(
                 } else {
                     *row_style
                 };
-                screen.set(point(char_x, row_y), &char_style, &ch.to_string());
+                screen.set(point(char_x, row_y), &char_style, ch.to_string());
             }
         }
     }
@@ -303,7 +303,7 @@ pub fn render_picker(
                                         char_style = merge_style(char_style, scope_style);
                                     }
 
-                                    screen.set(point(char_col, y), &char_style, &ch.to_string());
+                                    screen.set(point(char_col, y), &char_style, ch.to_string());
                                 }
                             }
                         }

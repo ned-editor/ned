@@ -3,9 +3,13 @@
 /// History storage for submitted interactive prompt commands matching Helix Prompt parity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct prompt_history {
+    /// Submitted command entries, newest at the back.
     entries: Vec<String>,
+    /// Maximum number of entries to retain.
     max_entries: usize,
+    /// Index of the currently navigated entry, if any.
     current_index: Option<usize>,
+    /// Input saved when navigation began, restored when passing the latest entry.
     saved_input: Option<String>,
 }
 
@@ -69,6 +73,7 @@ impl prompt_history {
     }
 
     /// Navigates to the next (newer) history entry, returning saved input when passing the latest entry.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<&str> {
         if self.entries.is_empty() {
             return None;

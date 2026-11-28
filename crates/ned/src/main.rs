@@ -1,6 +1,7 @@
 //! Main entry point for the ned terminal modal text editor.
 
 use std::env;
+use std::fmt::Write;
 use std::fs;
 use std::path::PathBuf;
 use std::process;
@@ -89,7 +90,7 @@ fn main() {
                 content = existing_content;
             }
         }
-        content.push_str(&format!("\n[editor]\ntheme = \"{theme_name}\"\n"));
+        let _ = write!(content, "\n[editor]\ntheme = \"{theme_name}\"\n");
         let temp_path = env::temp_dir().join(format!("ned_cfg_override_{}.toml", process::id()));
         if fs::write(&temp_path, content).is_ok() {
             _temp_guard.0 = Some(temp_path.clone());

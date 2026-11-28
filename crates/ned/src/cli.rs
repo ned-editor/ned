@@ -10,12 +10,16 @@ use ned_config::dirs::{
     config_dir, find_workspace_root, global_config_file, workspace_config_file,
 };
 
-/// Embedded default theme definitions for zero-dependency runtime asset installation.
+/// Embedded default dark theme definition for zero-dependency runtime asset installation.
 const BUNDLED_NED_DARK: &str = include_str!("../../../runtime/themes/ned-dark.toml");
+
+/// Embedded default light theme definition for zero-dependency runtime asset installation.
 const BUNDLED_NED_LIGHT: &str = include_str!("../../../runtime/themes/ned-light.toml");
 
-/// Embedded default grammar definitions for zero-dependency runtime asset installation.
+/// Embedded default Rust grammar definition for zero-dependency runtime asset installation.
 const BUNDLED_RUST_GRAMMAR: &str = include_str!("../../../runtime/grammars/rust.json");
+
+/// Embedded default JSON grammar definition for zero-dependency runtime asset installation.
 const BUNDLED_JSON_GRAMMAR: &str = include_str!("../../../runtime/grammars/json.json");
 
 /// Target file to open into an editor buffer, with an optional one-based initial cursor line.
@@ -72,7 +76,11 @@ impl std::fmt::Display for cli_error {
 impl std::error::Error for cli_error {}
 
 /// Parsed command line options and execution parameters for Ned.
+///
+/// The boolean flags are independent CLI toggles; grouping them into enums would add
+/// indirection without improving clarity, so the excessive-bools lint is allowed here.
 #[allow(non_camel_case_types)]
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct cli_args {
     /// Print help information and exit.
@@ -106,6 +114,11 @@ impl cli_args {
     ///
     /// Returns `cli_error::unknown_option` if an unrecognized option flag is encountered before `--`.
     /// Returns `cli_error::missing_value` if an option requiring a parameter is missing its value.
+    ///
+    /// # Panics
+    ///
+    /// Never panics: the `files.last().unwrap()` call is guarded by a preceding
+    /// `!parsed.files.is_empty()` check.
     pub fn parse<S: AsRef<str>, I: IntoIterator<Item = S>>(args: I) -> Result<Self, cli_error> {
         let mut parsed = Self::default();
         let mut iter = args.into_iter();
@@ -558,6 +571,10 @@ fn parse_file_and_line(s: &str) -> (PathBuf, Option<usize>) {
 }
 
 /// Probes the system for an executable `curl` binary.
+///
+/// The `map`+`unwrap_or` combination is clearer here than `map_or` with a closure,
+/// so the `map_unwrap_or` lint is allowed.
+#[allow(clippy::map_unwrap_or)]
 fn check_curl_available() -> bool {
     Command::new("curl")
         .arg("--version")

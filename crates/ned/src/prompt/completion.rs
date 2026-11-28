@@ -566,7 +566,6 @@ pub fn active_doc(prompt: &prompt_state) -> Option<(&'static str, &'static str)>
     }
     let token = prompt
         .input
-        .trim_start()
         .split_whitespace()
         .next()
         .unwrap_or("");
