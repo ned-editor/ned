@@ -8,52 +8,12 @@ use crate::editors::editor;
 
 /// Inserts a newline with auto-indentation and comment continuation.
 pub fn insert_newline(ed: &mut editor) {
-    let (indent, comment_prefix, is_empty_comment) = {
-        let doc = ed.active_doc();
-        let cursor_char = doc.selection().primary().cursor(doc.text());
-        let cursor_byte = doc.text().char_to_byte(cursor_char);
-        let line_idx = doc.text().byte_to_line(cursor_byte);
-        let line_str = doc.text().line(line_idx).unwrap_or_default();
-        let line_start_byte = doc.text().line_to_byte(line_idx).unwrap_or(0);
-        let col_byte = cursor_byte.saturating_sub(line_start_byte);
-        let prefix_before = &line_str[..col_byte.min(line_str.len())];
-
-        let indent: String = line_str
-            .chars()
-            .take_while(|&c| c == ' ' || c == '\t')
-            .collect();
-        let trimmed = prefix_before.trim();
-
-        if trimmed == "//" || trimmed == "#" || trimmed == "*" {
-            (indent, None, true)
-        } else if trimmed.starts_with("//") {
-            (indent, Some("// "), false)
-        } else if trimmed.starts_with('#') {
-            (indent, Some("# "), false)
-        } else if trimmed.starts_with("/*") || trimmed.starts_with('*') {
-            (indent, Some("* "), false)
-        } else {
-            (indent, None, false)
-        }
-    };
-
-    if is_empty_comment {
-        let mut newline_str = String::from("\n");
-        newline_str.push_str(&indent);
-        delete_backward(ed);
-        insert_string(ed, &newline_str);
-    } else {
-        let mut newline_str = String::from("\n");
-        newline_str.push_str(&indent);
-        if let Some(cp) = comment_prefix {
-            newline_str.push_str(cp);
-        }
-        insert_string(ed, &newline_str);
-    }
+    crate::editors::indent_comment::insert_newline(ed);
 }
 
 /// Inserts a single character literal at all active selection heads.
 pub fn insert_char(ed: &mut editor, ch: char) {
+    let _ = crate::editors::indent_comment::maybe_decrease_indent_on_closer(ed, ch);
     let mut s = String::new();
     s.push(ch);
     insert_string(ed, &s);
@@ -61,7 +21,7 @@ pub fn insert_char(ed: &mut editor, ch: char) {
 
 /// Inserts a string at all active selection ranges.
 pub fn insert_string(ed: &mut editor, s: &str) {
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
@@ -86,12 +46,11 @@ pub fn insert_string(ed: &mut editor, s: &str) {
     let new_sel = cs.map_selection(doc.selection().clone());
     doc.apply(cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Deletes character backward from each selection head.
 pub fn delete_backward(ed: &mut editor) {
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
@@ -122,12 +81,11 @@ pub fn delete_backward(ed: &mut editor) {
     let new_sel = cs.map_selection(doc.selection().clone());
     doc.apply(cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Deletes text covered by all selections and collapses selections to point cursors.
 pub fn delete_selected_text(ed: &mut editor) {
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
@@ -151,7 +109,6 @@ pub fn delete_selected_text(ed: &mut editor) {
     let new_sel = cs.map_selection(doc.selection().clone());
     doc.apply(cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Reads values from register `reg` taking dynamic editor context into account
@@ -241,7 +198,7 @@ pub fn change_selection(ed: &mut editor, yank: bool) {
 
 /// Replaces each selection with a single typed character literal.
 pub fn replace_selection_with_char(ed: &mut editor, ch: char) {
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
@@ -267,7 +224,6 @@ pub fn replace_selection_with_char(ed: &mut editor, ch: char) {
     let new_sel = cs.map_selection(doc.selection().clone());
     doc.apply(cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Replaces each selection range with corresponding text from the active register.
@@ -278,7 +234,7 @@ pub fn replace_with_yanked(ed: &mut editor) {
         _ => return,
     };
 
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
@@ -318,7 +274,6 @@ pub fn replace_with_yanked(ed: &mut editor) {
     let new_sel = ned_text::selection::new(new_ranges, doc.selection().primary_index());
     doc.apply(cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Pastes text from active register after or before cursor with cardinality and linewise rules.
@@ -344,7 +299,7 @@ pub fn paste_register(ed: &mut editor, after: bool) {
         }
     };
 
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let text = doc.text();
     let doc_len = text.char_len();
@@ -430,7 +385,6 @@ pub fn paste_register(ed: &mut editor, after: bool) {
 
     doc.apply(cs, new_sel);
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Applies casing transformations (lowercase, uppercase, switch case) to selections.
@@ -542,7 +496,7 @@ const MAX_SELECTIONS: usize = 10_000;
 
 /// Rotates the textual contents of the selection forward or backward.
 pub fn rotate_selection_contents(ed: &mut editor, forward: bool, count: usize) {
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let sel = doc.selection();
     if sel.len() < 2 {
@@ -604,7 +558,6 @@ pub fn rotate_selection_contents(ed: &mut editor, forward: bool, count: usize) {
     let new_sel = selection::new(new_ranges, new_primary);
     doc.apply(cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Aligns single-line selections in columns by inserting space padding.
@@ -683,7 +636,7 @@ pub fn align_selections(ed: &mut editor) {
 
     insertions.sort_unstable_by_key(|&(pos, _)| pos);
 
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
@@ -704,7 +657,6 @@ pub fn align_selections(ed: &mut editor) {
     let new_sel = cs.map_selection(doc.selection().clone());
     doc.apply(cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Joins lines spanning each selection, optionally inserting a single separating space.
@@ -765,7 +717,7 @@ pub fn join_selections(ed: &mut editor, with_space: bool) {
     del_ranges.sort_unstable_by_key(|&(from, _, _)| from);
     del_ranges.dedup_by_key(|r| r.0);
 
-    let doc_id = ed.active_doc_id;
+    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
@@ -790,7 +742,6 @@ pub fn join_selections(ed: &mut editor, with_space: bool) {
     let new_sel = cs.map_selection(doc.selection().clone());
     doc.apply(cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
-    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Copies current selection ranges to adjacent line above or below.
