@@ -69,13 +69,13 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             match res {
                 Ok(()) => {
                     ed.status_message = Some("written".to_string());
-                    ed.notify_lsp_did_save(doc_id);
+                    super::git_ops::refresh_diff(ed, doc_id);
                 }
                 Err(e) => ed.status_message = Some(format!("write error: {e}")),
             }
         }
         Ok(editor_command::write_quit { path, force }) => {
-            let doc_id = ed.active_doc_id;
+            let _doc_id = ed.active_doc_id;
             if force {
                 if let Some(ref p) = path {
                     if let Some(parent) = Path::new(p).parent() {
@@ -97,7 +97,6 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             };
             match res {
                 Ok(()) => {
-                    ed.notify_lsp_did_save(doc_id);
                     ed.should_quit = true;
                 }
                 Err(e) => ed.status_message = Some(format!("write error: {e}")),
@@ -263,6 +262,7 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
                     }
                 }
                 ed.status_message = Some("reloaded all buffers from disk".to_string());
+                super::git_ops::refresh_diff(ed, ed.active_doc_id);
             } else {
                 let doc = ed.active_doc_mut();
                 if let Some(p) = doc.path().map(Path::to_path_buf) {
@@ -272,6 +272,7 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
                         Ok(new_doc) => {
                             *doc = new_doc;
                             ed.status_message = Some("reloaded buffer from disk".to_string());
+                            super::git_ops::refresh_diff(ed, id);
                         }
                         Err(e) => ed.status_message = Some(format!("reload error: {e}")),
                     }
@@ -287,7 +288,7 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
                 match doc.save() {
                     Ok(()) => {
                         ed.status_message = Some("written".to_string());
-                        ed.notify_lsp_did_save(doc_id);
+                        super::git_ops::refresh_diff(ed, doc_id);
                     }
                     Err(e) => ed.status_message = Some(format!("write error: {e}")),
                 }
@@ -344,7 +345,7 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             }
         }
         Ok(editor_command::goto_line(target_line)) => {
-            let doc_id = ed.active_doc_id;
+            let _doc_id = ed.active_doc_id;
             let doc = ed.active_doc_mut();
             let total = doc.text().line_count().max(1);
             let clamped = target_line.clamp(1, total) - 1;
@@ -352,7 +353,6 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             let char_idx = doc.text().byte_to_char(byte_idx);
             doc.set_selection(selection::single(char_idx, char_idx));
             ed.ensure_active_cursor_visible();
-            ed.notify_lsp_did_change(doc_id);
         }
         Ok(editor_command::earlier(count)) => {
             for _ in 0..count {

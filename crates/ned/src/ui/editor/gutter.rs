@@ -41,12 +41,12 @@ pub fn format_line_number(
     }
 }
 
-/// Computes the diff indicator symbol and style matching Helix layout.
+/// Computes the diff indicator symbol and style matching editor layout.
 ///
 /// Symbols:
-/// - Added: `▍` with `diff.plus` (green)
-/// - Modified: `▍` with `diff.delta` (yellow)
-/// - Deleted: `▔` with `diff.minus` (red)
+/// - Added: `+` with `diff.plus` (green)
+/// - Modified: `~` with `diff.delta` (yellow)
+/// - Deleted: `-` with `diff.minus` (red)
 #[must_use]
 pub fn get_diff_indicator(
     hunks: &[hunk],
@@ -64,17 +64,17 @@ pub fn get_diff_indicator(
         match h.kind {
             diff_tag::added => {
                 if count > 0 && line_idx >= start && line_idx < start + count {
-                    return ("▍", plus_style);
+                    return ("+", plus_style);
                 }
             }
             diff_tag::modified => {
                 if count > 0 && line_idx >= start && line_idx < start + count {
-                    return ("▍", delta_style);
+                    return ("~", delta_style);
                 }
             }
             diff_tag::deleted => {
                 if line_idx == start || (start >= total_lines && line_idx + 1 == total_lines) {
-                    return ("▔", minus_style);
+                    return ("-", minus_style);
                 }
             }
         }

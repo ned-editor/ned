@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use ::ned_config::{action, key_event, key_trie_node, mode, ned_config};
-use ned_lsp::client;
 use ned_text::{
     apply_motion, direction, extend_line, move_first_non_whitespace, move_horizontally,
     move_line_end, move_line_start, move_long_word_backward, move_long_word_end,
@@ -18,7 +17,8 @@ use crate::views::{view, view_id};
 
 pub mod command_exec;
 pub mod edit_ops;
-pub mod lsp_actions;
+pub mod git_ops;
+pub mod indent_comment;
 pub mod mode_dispatch;
 pub mod view_ops;
 
@@ -58,8 +58,6 @@ pub struct editor {
     pub hover_popup: Option<String>,
     /// Active search pattern query string.
     pub search_query: Option<String>,
-    /// Connected LSP language clients keyed by language name.
-    pub lsp_clients: HashMap<String, client>,
     /// Termination flag signaling editor exit.
     pub should_quit: bool,
     /// Optional exit status code when quitting via :cquit.
@@ -107,7 +105,6 @@ impl editor {
             status_message,
             hover_popup: None,
             search_query: None,
-            lsp_clients: HashMap::new(),
             should_quit: false,
             exit_code: None,
             next_doc_id: 2,
@@ -154,7 +151,7 @@ impl editor {
         }
 
         self.ensure_active_cursor_visible();
-        self.start_lsp_for_doc(doc_id);
+        git_ops::refresh_diff(self, doc_id);
         Ok(doc_id)
     }
 
@@ -379,18 +376,12 @@ impl editor {
                 self.paste_register(false);
             }
             action::undo => {
-                let changed = self.active_doc_mut().undo();
+                let _changed = self.active_doc_mut().undo();
                 self.ensure_active_cursor_visible();
-                if changed {
-                    self.notify_lsp_did_change(self.active_doc_id);
-                }
             }
             action::redo => {
-                let changed = self.active_doc_mut().redo();
+                let _changed = self.active_doc_mut().redo();
                 self.ensure_active_cursor_visible();
-                if changed {
-                    self.notify_lsp_did_change(self.active_doc_id);
-                }
             }
             action::switch_case | action::switch_to_lowercase | action::switch_to_uppercase => {
                 self.transform_selection_case(act);
@@ -400,6 +391,12 @@ impl editor {
             }
             action::unindent => {
                 self.indent_lines(true);
+            }
+            action::toggle_line_comment => {
+                self.toggle_line_comment();
+            }
+            action::toggle_block_comment => {
+                self.toggle_block_comment();
             }
 
             // --- Selection operations ---
@@ -523,7 +520,7 @@ impl editor {
                 match res {
                     Ok(()) => {
                         self.status_message = Some("written".to_string());
-                        self.notify_lsp_did_save(self.active_doc_id);
+                        git_ops::refresh_diff(self, self.active_doc_id);
                     }
                     Err(e) => self.status_message = Some(format!("write error: {e}")),
                 }
@@ -555,21 +552,17 @@ impl editor {
                 // Delete word backward
             }
 
-            // --- LSP & other actions ---
-            action::goto_next_diag => {
-                self.goto_diagnostic(true);
+            // --- Language & editor actions ---
+            action::goto_next_diag
+            | action::goto_prev_diag
+            | action::hover
+            | action::goto_definition
+            | action::goto_reference => {}
+            action::goto_next_hunk => {
+                self.goto_next_hunk();
             }
-            action::goto_prev_diag => {
-                self.goto_diagnostic(false);
-            }
-            action::hover => {
-                self.request_hover();
-            }
-            action::goto_definition => {
-                self.request_definition();
-            }
-            action::goto_reference => {
-                self.status_message = Some("LSP references queried".to_string());
+            action::goto_prev_hunk => {
+                self.goto_prev_hunk();
             }
             action::file_picker => {
                 self.status_message = Some("picker:file".to_string());
@@ -878,6 +871,18 @@ impl editor {
         edit_ops::indent_lines(self, unindent);
     }
 
+    /// Toggles line comments on active selections.
+    #[inline]
+    pub fn toggle_line_comment(&mut self) {
+        indent_comment::toggle_line_comment(self);
+    }
+
+    /// Toggles block comments enclosing active selections.
+    #[inline]
+    pub fn toggle_block_comment(&mut self) {
+        indent_comment::toggle_block_comment(self);
+    }
+
     /// Rotates selected contents forward or backward.
     #[inline]
     fn rotate_selection_contents(&mut self, forward: bool, count: usize) {
@@ -983,47 +988,26 @@ impl editor {
         command_exec::execute_command(self, cmd_str);
     }
 
-    /// Starts or connects the language server for `doc_id`.
-    #[inline]
-    pub fn start_lsp_for_doc(&mut self, doc_id: document_id) {
-        lsp_actions::start_lsp_for_doc(self, doc_id);
+    /// Jumps to the start of the next diff hunk in the active document.
+    pub fn goto_next_hunk(&mut self) {
+        git_ops::goto_next_hunk(self);
     }
 
-    /// Notifies the connected LSP server that `doc_id` contents changed.
-    #[inline]
-    pub fn notify_lsp_did_change(&self, doc_id: document_id) {
-        lsp_actions::notify_lsp_did_change(self, doc_id);
+    /// Jumps to the start of the previous diff hunk in the active document.
+    pub fn goto_prev_hunk(&mut self) {
+        git_ops::goto_prev_hunk(self);
     }
 
-    /// Notifies the connected LSP server that `doc_id` was saved.
-    #[inline]
-    pub fn notify_lsp_did_save(&self, doc_id: document_id) {
-        lsp_actions::notify_lsp_did_save(self, doc_id);
+    /// Refreshes the diff hunks for the specified document and updates editor status if capped.
+    pub fn refresh_diff(&mut self, doc_id: document_id) {
+        git_ops::refresh_diff(self, doc_id);
     }
 
-    /// Polls diagnostics from connected LSP clients and assigns them to matching documents.
-    ///
-    /// Returns `true` if any diagnostics were received and applied.
+    /// Document change notification (no-op retained for pure editor compatibility).
     #[inline]
-    pub fn poll_lsp(&mut self) -> bool {
-        lsp_actions::poll_lsp(self)
-    }
+    pub fn notify_lsp_did_change(&self, _doc_id: document_id) {}
 
-    /// Jumps cursor to the next or previous diagnostic.
+    /// Document save notification (no-op retained for pure editor compatibility).
     #[inline]
-    pub fn goto_diagnostic(&mut self, next: bool) {
-        lsp_actions::goto_diagnostic(self, next);
-    }
-
-    /// Queries hover documentation for the symbol under cursor.
-    #[inline]
-    pub fn request_hover(&mut self) {
-        lsp_actions::request_hover(self);
-    }
-
-    /// Queries definition location and jumps to it.
-    #[inline]
-    pub fn request_definition(&mut self) {
-        lsp_actions::request_definition(self);
-    }
+    pub fn notify_lsp_did_save(&self, _doc_id: document_id) {}
 }

@@ -6,13 +6,54 @@ use std::path::{Path, PathBuf};
 
 use ned_config::language_config;
 use ned_git::{compute_diff, discover_repo, fetch_file_base, hunk};
-use ned_lsp::diagnostic;
 use ned_rope::rope;
 use ned_text::{change_set, detect_line_ending, line_ending, selection};
 use ned_tree::{highlight_span, syntax_highlighter};
 
 use crate::histories::history;
 use crate::runtime_loader::load_grammar;
+
+/// Position in a text document (zero-based line and character).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct diagnostic_position {
+    /// Zero-based line number.
+    pub line: u32,
+    /// Zero-based character offset.
+    pub character: u32,
+}
+
+/// Range within a text document.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct diagnostic_range {
+    /// Start position.
+    pub start: diagnostic_position,
+    /// End position.
+    pub end: diagnostic_position,
+}
+
+/// Diagnostic severity levels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum diagnostic_severity {
+    /// Error severity.
+    error,
+    /// Warning severity.
+    warning,
+    /// Information severity.
+    information,
+    /// Hint severity.
+    hint,
+}
+
+/// Lightweight diagnostic representation for editor document annotations.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct diagnostic {
+    /// Range of text affected by the diagnostic.
+    pub range: diagnostic_range,
+    /// Severity level.
+    pub severity: Option<diagnostic_severity>,
+    /// Human-readable diagnostic message.
+    pub message: String,
+}
 
 /// Unique identifier for an open document buffer.
 pub type document_id = usize;
@@ -30,6 +71,7 @@ pub struct document {
     highlighter: syntax_highlighter,
     language: Option<language_config>,
     diff_hunks: Vec<hunk>,
+    diff_too_large: bool,
     diagnostics: Vec<diagnostic>,
     version: i32,
 }
@@ -50,6 +92,7 @@ impl document {
             highlighter: syntax_highlighter::new(None),
             language: None,
             diff_hunks: Vec::new(),
+            diff_too_large: false,
             diagnostics: Vec::new(),
             version: 1,
         }
@@ -72,6 +115,7 @@ impl document {
             highlighter: syntax_highlighter::new(None),
             language: None,
             diff_hunks: Vec::new(),
+            diff_too_large: false,
             diagnostics: Vec::new(),
             version: 1,
         }
@@ -116,11 +160,12 @@ impl document {
             highlighter,
             language: lang_cfg,
             diff_hunks: Vec::new(),
+            diff_too_large: false,
             diagnostics: Vec::new(),
             version: 1,
         };
 
-        doc.reload_diff();
+        let _ = doc.reload_diff();
         Ok(doc)
     }
 
@@ -155,7 +200,7 @@ impl document {
         self.path = Some(path_buf);
         self.saved_revision = self.history.current_revision();
         self.modified = false;
-        self.reload_diff();
+        let _ = self.reload_diff();
         Ok(())
     }
 
@@ -213,27 +258,57 @@ impl document {
     }
 
     /// Reloads the git diff hunks against the repository base version.
-    pub fn reload_diff(&mut self) {
+    ///
+    /// # Errors
+    /// Returns `Err("diff too large")` if either base content or document text exceeds 1 MiB or 20,000 lines.
+    pub fn reload_diff(&mut self) -> Result<(), &'static str> {
         let path = match &self.path {
             Some(p) => p,
-            None => return,
+            None => {
+                self.diff_too_large = false;
+                self.diff_hunks.clear();
+                return Ok(());
+            }
         };
 
         let repo_root = match discover_repo(path) {
             Some(r) => r,
-            None => return,
+            None => {
+                self.diff_too_large = false;
+                self.diff_hunks.clear();
+                return Ok(());
+            }
         };
 
         let relative_path = match path.strip_prefix(&repo_root) {
             Ok(rel) => rel,
-            Err(_) => return,
+            Err(_) => {
+                self.diff_too_large = false;
+                self.diff_hunks.clear();
+                return Ok(());
+            }
         };
 
+        if self.text.byte_len() > 1024 * 1024 || self.text.line_count() > 20_000 {
+            self.diff_too_large = true;
+            self.diff_hunks.clear();
+            return Err("diff too large");
+        }
+
         if let Ok(base_content) = fetch_file_base(&repo_root, relative_path) {
+            if base_content.len() > 1024 * 1024 || base_content.lines().count() > 20_000 {
+                self.diff_too_large = true;
+                self.diff_hunks.clear();
+                return Err("diff too large");
+            }
+            self.diff_too_large = false;
             let current_content = self.text.to_string();
             self.diff_hunks = compute_diff(&base_content, &current_content);
+            Ok(())
         } else {
+            self.diff_too_large = false;
             self.diff_hunks.clear();
+            Ok(())
         }
     }
 
@@ -318,7 +393,14 @@ impl document {
         &self.diff_hunks
     }
 
-    /// Returns the monotonically increasing document version for LSP sync.
+    /// Returns true if git diff computation was skipped because file exceeded resource limits.
+    #[inline]
+    #[must_use]
+    pub fn is_diff_too_large(&self) -> bool {
+        self.diff_too_large
+    }
+
+    /// Returns the monotonically increasing document version.
     #[inline]
     #[must_use]
     pub fn version(&self) -> i32 {

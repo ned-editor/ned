@@ -109,6 +109,10 @@ pub enum action {
     indent,
     /// Unindent selected lines (`<`).
     unindent,
+    /// Toggle line comment on selected lines (`C-c`).
+    toggle_line_comment,
+    /// Toggle block comment on selection.
+    toggle_block_comment,
 
     // --- Selection operations ---
     /// Select entire document (`%`).
@@ -179,6 +183,10 @@ pub enum action {
     goto_next_diag,
     /// Jump to previous diagnostic (`[d`).
     goto_prev_diag,
+    /// Jump to next diff hunk (`]g` or `]h`).
+    goto_next_hunk,
+    /// Jump to previous diff hunk (`[g` or `[h`).
+    goto_prev_hunk,
     /// Open file picker (`space f`).
     file_picker,
     /// Open buffer picker (`space b`).

@@ -1,7 +1,6 @@
-//! Statusline rendering displaying mode, file status, LSP diagnostics, and cursor coordinates.
+//! Statusline rendering displaying mode, file status, and cursor coordinates.
 
 use ned_core::editor;
-use ned_lsp::diagnostic_severity;
 use ned_tui::geometry::point;
 use ned_tui::Screen;
 
@@ -67,7 +66,7 @@ pub fn render_statusline(screen: &mut Screen, ed: &editor, width: u16, statuslin
 
     let mod_indicator = if doc.is_modified() { "[+]" } else { "   " };
     let file_display = format!(" {file_title} {mod_indicator} ");
-    draw_str(
+    left_col = draw_str(
         screen,
         left_col,
         statusline_row,
@@ -75,6 +74,28 @@ pub fn render_statusline(screen: &mut Screen, ed: &editor, width: u16, statuslin
         &statusline_style,
         width,
     );
+
+    let git_branch = doc
+        .path()
+        .and_then(ned_git::discover_repo)
+        .or_else(|| {
+            std::env::current_dir()
+                .ok()
+                .and_then(|cwd| ned_git::discover_repo(&cwd))
+        })
+        .and_then(|root| ned_git::read_head(&root));
+
+    if let Some(ref branch) = git_branch {
+        let branch_display = format!("{branch} ");
+        draw_str(
+            screen,
+            left_col,
+            statusline_row,
+            &branch_display,
+            &statusline_style,
+            width,
+        );
+    }
 
     // Right elements matching Helix layout: [Diagnostics] [Selections] [Position]
     let mut right_col = width;
@@ -118,65 +139,4 @@ pub fn render_statusline(screen: &mut Screen, ed: &editor, width: u16, statuslin
         &statusline_style,
         width,
     );
-
-    // 3. Diagnostics: "● {warnings} ● {errors}"
-    let mut err_count = 0usize;
-    let mut warn_count = 0usize;
-    for d in doc.diagnostics() {
-        match d.severity {
-            Some(diagnostic_severity::error) => err_count += 1,
-            Some(diagnostic_severity::warning) => warn_count += 1,
-            _ => {}
-        }
-    }
-
-    if err_count > 0 {
-        let err_text = format!(" {err_count} ");
-        let err_width = err_text.chars().count() as u16 + 1;
-        right_col = right_col.saturating_sub(err_width);
-        let diag_err_style =
-            merge_style(statusline_style, style_for_scope(theme, "diagnostic.error"));
-        let col = draw_str(
-            screen,
-            right_col,
-            statusline_row,
-            "●",
-            &diag_err_style,
-            width,
-        );
-        draw_str(
-            screen,
-            col,
-            statusline_row,
-            &err_text,
-            &statusline_style,
-            width,
-        );
-    }
-
-    if warn_count > 0 {
-        let warn_text = format!(" {warn_count} ");
-        let warn_width = warn_text.chars().count() as u16 + 1;
-        right_col = right_col.saturating_sub(warn_width);
-        let diag_warn_style = merge_style(
-            statusline_style,
-            style_for_scope(theme, "diagnostic.warning"),
-        );
-        let col = draw_str(
-            screen,
-            right_col,
-            statusline_row,
-            "●",
-            &diag_warn_style,
-            width,
-        );
-        draw_str(
-            screen,
-            col,
-            statusline_row,
-            &warn_text,
-            &statusline_style,
-            width,
-        );
-    }
 }

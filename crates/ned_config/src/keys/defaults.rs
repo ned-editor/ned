@@ -68,6 +68,7 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     normal.insert("A-`", action::switch_to_uppercase);
     normal.insert(">", action::indent);
     normal.insert("<", action::unindent);
+    normal.insert("C-c", action::toggle_line_comment);
 
     // Selections
     normal.insert("x", action::extend_line_below);
@@ -183,13 +184,17 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     window.insert("right", action::jump_view_right);
     normal.insert_node("C-w", window.clone());
 
-    // '[' and ']' diagnostic brackets
+    // '[' and ']' bracket navigation (diagnostics and git diff hunks)
     let mut left_bracket = key_trie_node::new("Left bracket");
     left_bracket.insert("d", action::goto_prev_diag);
+    left_bracket.insert("g", action::goto_prev_hunk);
+    left_bracket.insert("h", action::goto_prev_hunk);
     normal.insert_node("[", left_bracket.clone());
 
     let mut right_bracket = key_trie_node::new("Right bracket");
     right_bracket.insert("d", action::goto_next_diag);
+    right_bracket.insert("g", action::goto_next_hunk);
+    right_bracket.insert("h", action::goto_next_hunk);
     normal.insert_node("]", right_bracket.clone());
 
     // Space leader keymap
@@ -274,6 +279,7 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     select.insert("A-`", action::switch_to_uppercase);
     select.insert(">", action::indent);
     select.insert("<", action::unindent);
+    select.insert("C-c", action::toggle_line_comment);
 
     select.insert("x", action::extend_line_below);
     select.insert("X", action::extend_to_line_bounds);
