@@ -54,7 +54,7 @@ pub fn move_vertically(
     let line_idx = buffer.byte_to_line(buffer.char_to_byte(pos));
     let line_start_byte = buffer.line_to_byte(line_idx).unwrap_or(0);
     let line_start_char = buffer.byte_to_char(line_start_byte);
-    let current_col = (pos.saturating_sub(line_start_char)) as u32;
+    let current_col = u32::try_from(pos.saturating_sub(line_start_char)).unwrap_or(u32::MAX);
 
     let sticky_col = r.old_visual_position.map_or(current_col, |(_, col)| col);
 

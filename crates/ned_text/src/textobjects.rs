@@ -56,6 +56,11 @@ pub fn is_escaped_at(buffer: &rope, pos: usize) -> bool {
 }
 
 /// Computes the word or WORD text object range around the cursor.
+///
+/// This is a single function handling both `inside`/`around` modes and normal/WORD variants;
+/// extracting helpers would duplicate the boundary-scanning loop logic, so the line-limit lint
+/// is allowed here.
+#[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn textobject_word(buffer: &rope, r: range, mode: textobject_mode, long: bool) -> range {
     let len = buffer.char_len();
@@ -65,10 +70,7 @@ pub fn textobject_word(buffer: &rope, r: range, mode: textobject_mode, long: boo
     let pos = r.cursor(buffer).min(len.saturating_sub(1));
 
     let (word_start, word_end) = if long {
-        let ch = match buffer.char_at(pos) {
-            Some(c) => c,
-            None => return r,
-        };
+        let Some(ch) = buffer.char_at(pos) else { return r };
         if char_is_whitespace(ch) || char_is_line_ending(ch) {
             (pos, pos)
         } else {
@@ -99,10 +101,7 @@ pub fn textobject_word(buffer: &rope, r: range, mode: textobject_mode, long: boo
             (start, end)
         }
     } else {
-        let ch = match buffer.char_at(pos) {
-            Some(c) => c,
-            None => return r,
-        };
+        let Some(ch) = buffer.char_at(pos) else { return r };
         let cat = categorize_char(ch);
         if cat == char_category::whitespace || cat == char_category::eol {
             (pos, pos)
@@ -179,16 +178,18 @@ pub fn textobject_word(buffer: &rope, r: range, mode: textobject_mode, long: boo
 
 /// Helper function to check if a line in the buffer contains only whitespace or is empty.
 fn is_line_blank(buffer: &rope, line_idx: usize) -> bool {
-    let line_str = match buffer.line(line_idx) {
-        Some(s) => s,
-        None => return true,
-    };
+    let Some(line_str) = buffer.line(line_idx) else { return true };
     line_str
         .chars()
         .all(|c| char_is_whitespace(c) || char_is_line_ending(c))
 }
 
 /// Computes the paragraph text object range around the cursor.
+///
+/// Handles blank-line detection, paragraph-block traversal, `count` advancement, and
+/// `around`-mode trailing-blank consumption in one pass; splitting it would thread `buffer`,
+/// `r`, `mode`, and `count` through several helpers, so the line-limit lint is allowed here.
+#[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn textobject_paragraph(buffer: &rope, r: range, mode: textobject_mode, count: usize) -> range {
     let line_count = buffer.line_count();
@@ -250,6 +251,11 @@ pub fn textobject_paragraph(buffer: &rope, r: range, mode: textobject_mode, coun
 const MAX_SCAN_CHARS: usize = 1_000_000;
 
 /// Finds the `(open_pos, close_pos)` offsets of the `n`-th pair of `ch` enclosing `r`.
+///
+/// Handles symmetric pairs (quotes), asymmetric pairs (brackets), enclosing-pair search, and
+/// fallback left/right delimiter scanning; the line-limit lint is allowed here since splitting
+/// would thread `buffer`, `ch`, `r`, and `count` through several helpers.
+#[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn find_nth_pairs_pos(
     buffer: &rope,
@@ -434,7 +440,7 @@ pub fn textobject_pair_surround(
     count: usize,
 ) -> Option<range> {
     let (open_pos, close_pos) = find_nth_pairs_pos(buffer, ch, r, count)?;
-    build_pair_range(buffer, r, mode, open_pos, close_pos)
+    Some(build_pair_range(buffer, r, mode, open_pos, close_pos))
 }
 
 /// Selects inside or around the closest surrounding delimiter pair (`m`).
@@ -446,30 +452,34 @@ pub fn textobject_pair_surround_closest(
     count: usize,
 ) -> Option<range> {
     let (open_pos, close_pos) = find_nth_closest_pairs_pos(buffer, r, count)?;
-    build_pair_range(buffer, r, mode, open_pos, close_pos)
+    Some(build_pair_range(buffer, r, mode, open_pos, close_pos))
 }
 
+/// Builds the text-object range for a delimiter pair.
+///
+/// Returns the inside range (content between delimiters) or around range (including delimiters),
+/// adjusted to grapheme boundaries and respecting the selection direction.
 fn build_pair_range(
     buffer: &rope,
     r: range,
     mode: textobject_mode,
     open_pos: usize,
     close_pos: usize,
-) -> Option<range> {
+) -> range {
     match mode {
         textobject_mode::inside => {
             let from = next_grapheme_boundary(buffer, open_pos);
             let to = close_pos;
             if from <= to {
-                Some(range::new(from, to).with_direction(r.direction()))
+                range::new(from, to).with_direction(r.direction())
             } else {
-                Some(range::new(from, from).with_direction(r.direction()))
+                range::new(from, from).with_direction(r.direction())
             }
         }
         textobject_mode::around => {
             let from = open_pos;
             let to = next_grapheme_boundary(buffer, close_pos);
-            Some(range::new(from, to).with_direction(r.direction()))
+            range::new(from, to).with_direction(r.direction())
         }
     }
 }

@@ -13,7 +13,9 @@ use crate::ranges::range;
 /// - Exactly one range is designated as the primary selection.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct selection {
+    /// Ordered, non-overlapping ranges making up the selection.
     ranges: Vec<range>,
+    /// Index of the primary (focused) range within `ranges`.
     primary_index: usize,
 }
 

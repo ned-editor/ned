@@ -61,8 +61,11 @@ impl std::error::Error for change_error {}
 /// Ordered sequence of retain, delete, and insert operations affecting a document.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct change_set {
+    /// The individual edit operations in order.
     changes: Vec<operation>,
+    /// Original document length in characters before applying changes.
     len: usize,
+    /// Document length in characters after applying changes.
     len_after: usize,
 }
 
