@@ -203,7 +203,7 @@ pub fn maybe_decrease_indent_on_closer(ed: &mut editor, ch: char) -> bool {
     let is_closer = ch == '}'
         || ch == ')'
         || ch == ']'
-        || custom_decrease.map_or(false, |decs| decs.iter().any(|tok| tok.starts_with(ch)));
+        || custom_decrease.is_some_and(|decs| decs.iter().any(|tok| tok.starts_with(ch)));
 
     if !is_closer {
         return false;
