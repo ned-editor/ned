@@ -1,6 +1,6 @@
-//! LSP diagnostic gutter indicators, inline underlines, and end-of-line messages.
+//! Document diagnostic gutter indicators, inline underlines, and end-of-line messages.
 
-use ned_lsp::{diagnostic, diagnostic_severity};
+use ned_core::{diagnostic, diagnostic_severity};
 use ned_tui::output::color::Color;
 use ned_tui::output::style::Style;
 

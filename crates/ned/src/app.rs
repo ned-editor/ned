@@ -43,7 +43,6 @@ struct app_state {
 impl app_state {
     /// Paints the editor frame and flushes updates to the terminal.
     fn render(&mut self) -> io::Result<()> {
-        self.ed.poll_lsp();
         let c_info = render_frame(
             self.termit.screen_mut(),
             &mut self.ed,
@@ -178,19 +177,6 @@ pub fn run_with_config<P: AsRef<std::path::Path>>(
     };
 
     state.borrow_mut().input_watcher = Some(watcher);
-
-    // Poll LSP diagnostics asynchronously so UI updates immediately when servers respond
-    let lsp_state = Rc::clone(&state);
-    let _lsp_ticker = yokio::every(std::time::Duration::from_millis(100), move || {
-        if let Ok(mut app) = lsp_state.try_borrow_mut() {
-            if app.ed.should_quit {
-                return;
-            }
-            if app.ed.poll_lsp() {
-                let _ = app.render();
-            }
-        }
-    });
 
     // Drive event loop until quit
     rt.run().map_err(|e| io::Error::other(e.to_string()))?;
@@ -381,10 +367,10 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                     let mut items = Vec::with_capacity(diags.len());
                     for d in diags {
                         let sev = match d.severity {
-                            Some(ned_lsp::diagnostic_severity::error) => "ERROR",
-                            Some(ned_lsp::diagnostic_severity::warning) => "WARN",
-                            Some(ned_lsp::diagnostic_severity::information) => "INFO",
-                            Some(ned_lsp::diagnostic_severity::hint) | None => "HINT",
+                            Some(ned_core::diagnostic_severity::error) => "ERROR",
+                            Some(ned_core::diagnostic_severity::warning) => "WARN",
+                            Some(ned_core::diagnostic_severity::information) => "INFO",
+                            Some(ned_core::diagnostic_severity::hint) | None => "HINT",
                         };
                         let first_line = d.message.lines().next().unwrap_or("");
                         items.push(format!(

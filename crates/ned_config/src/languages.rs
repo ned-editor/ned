@@ -1,6 +1,5 @@
-//! Language definitions, syntax grammar binding, and root resolution for language servers.
+//! Language definitions, syntax grammar binding, and root resolution.
 
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -47,20 +46,6 @@ impl Default for indent_config {
     }
 }
 
-/// Language server command, arguments, and environment variables.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct lsp_server_config {
-    /// Executable binary or command name.
-    pub command: String,
-    /// Arguments to pass to the server subprocess.
-    #[serde(default)]
-    pub args: Vec<String>,
-    /// Environment variables to pass to the server subprocess.
-    #[serde(default)]
-    pub env: HashMap<String, String>,
-}
-
 /// Configuration options and tool associations for a single programming language.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct language_config {
@@ -87,15 +72,12 @@ pub struct language_config {
     /// Workspace root indicator file patterns (e.g. ["Cargo.toml", ".git"]).
     #[serde(default)]
     pub roots: Vec<String>,
-    /// Configured language server, if available.
-    #[serde(default, alias = "language-server")]
-    pub language_server: Option<lsp_server_config>,
     /// Default tab indentation width.
     #[serde(default = "default_tab_width")]
     pub tab_width: usize,
 }
 
-/// Registry managing all available language definitions and LSP associations.
+/// Registry managing all available language definitions and file type associations.
 #[derive(Debug, Clone, Default)]
 pub struct language_registry {
     languages: Vec<language_config>,
@@ -205,23 +187,6 @@ impl language_registry {
         }
 
         Some(parent.to_path_buf())
-    }
-
-    /// Constructs a [`ned_lsp::server_config`] for the specified file path, if an LSP is configured.
-    #[must_use]
-    pub fn server_config_for(
-        &self,
-        path: &Path,
-        root_path: Option<String>,
-    ) -> Option<ned_lsp::server_config> {
-        let lang = self.detect_by_path(path)?;
-        let lsp = lang.language_server.as_ref()?;
-        Some(ned_lsp::server_config::new(
-            &lang.name,
-            &lsp.command,
-            lsp.args.clone(),
-            root_path,
-        ))
     }
 
     /// Loads language definitions, merging runtime `runtime/languages.toml`,

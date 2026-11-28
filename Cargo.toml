@@ -6,7 +6,6 @@ members = [
     "crates/ned_core",
     "crates/ned_fuzz",
     "crates/ned_git",
-    "crates/ned_lsp",
     "crates/ned_regex",
     "crates/ned_rope",
     "crates/ned_text",

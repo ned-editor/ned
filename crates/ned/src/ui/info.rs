@@ -157,7 +157,7 @@ pub fn render_autoinfo(
     }
 }
 
-/// Renders the floating LSP hover documentation popup near the cursor (matching Helix).
+/// Renders the floating info documentation popup near the cursor (matching Helix).
 pub fn render_hover_popup(
     screen: &mut Screen,
     ed: &editor,

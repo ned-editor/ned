@@ -13,7 +13,9 @@ pub mod surround;
 pub mod views;
 
 pub use command_parser::{editor_command, parse_command};
-pub use documents::{document, document_id};
+pub use documents::{
+    diagnostic, diagnostic_position, diagnostic_range, diagnostic_severity, document, document_id,
+};
 pub use editors::editor;
 pub use histories::{history, history_entry};
 pub use registers::register_storage;

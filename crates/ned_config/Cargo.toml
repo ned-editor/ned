@@ -9,7 +9,6 @@ license.workspace = true
 [dependencies]
 serde = { workspace = true }
 toml = { workspace = true }
-ned_lsp = { path = "../ned_lsp" }
 
 [lints]
 workspace = true
