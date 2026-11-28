@@ -9,6 +9,7 @@ use crate::tree_node::{max_children, max_leaf_bytes, node};
 /// a balanced, chunked b-tree rope for text editing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct rope {
+    /// the root node of the b-tree
     root: node,
 }
 
@@ -29,7 +30,7 @@ impl rope {
 
     /// creates a rope from an existing string.
     #[must_use]
-    pub fn from_str(text: &str) -> Self {
+    pub fn from_string(text: &str) -> Self {
         if text.len() <= max_leaf_bytes {
             return Self {
                 root: node::new_leaf(text.to_string()),
@@ -124,6 +125,11 @@ impl rope {
     }
 
     /// deletes a range of bytes from the rope.
+    ///
+    /// # Panics
+    ///
+    /// Never panics: the only `unwrap` (on `children.pop`) is guarded by a
+    /// `children.len() == 1` check, so it is always safe.
     pub fn delete_bytes(&mut self, range: Range<usize>) {
         if range.start >= range.end || range.start >= self.byte_len() {
             return;

@@ -259,7 +259,7 @@ pub fn render_picker(
                                 let mut highlighter =
                                     ned_tree::syntax_highlighter::new(Some(grammar));
                                 let preview_text = lines.join("\n");
-                                let rope_buf = ned_rope::rope::from_str(&preview_text);
+                                let rope_buf = ned_rope::rope::from_string(&preview_text);
                                 highlighter.highlight_viewport(
                                     &rope_buf,
                                     0,

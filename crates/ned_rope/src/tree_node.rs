@@ -202,12 +202,10 @@ impl node {
     pub fn char_to_byte(&self, char_idx: usize) -> usize {
         match self {
             Self::leaf { text, .. } => {
-                let mut chars_seen = 0;
-                for (byte_idx, _) in text.char_indices() {
+                for (chars_seen, (byte_idx, _)) in text.char_indices().enumerate() {
                     if chars_seen == char_idx {
                         return byte_idx;
                     }
-                    chars_seen += 1;
                 }
                 text.len()
             }

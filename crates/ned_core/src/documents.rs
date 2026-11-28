@@ -101,7 +101,7 @@ impl document {
     /// Creates a new document from an existing text string.
     #[must_use]
     pub fn from_string(id: document_id, text: &str) -> Self {
-        let r = rope::from_str(text);
+        let r = rope::from_string(text);
         let le = ned_text::detect_line_ending(&r);
         Self {
             id,
@@ -140,7 +140,7 @@ impl document {
             path_ref.to_path_buf()
         };
         let content = fs::read_to_string(&path_buf)?;
-        let buffer = rope::from_str(&content);
+        let buffer = rope::from_string(&content);
         let line_end = detect_line_ending(&buffer);
 
         let grammar = lang_cfg
