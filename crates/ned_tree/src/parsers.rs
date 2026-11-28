@@ -51,6 +51,11 @@ fn find_matching_delimiter(
 }
 
 /// Recursively parses AST nodes within a character range `[start, end)`.
+///
+/// This is a compact recursive-descent pass; extracting helpers would thread `text`, `chars`,
+/// `grammar`, `rules` and `depth` through many signatures for little clarity gain, so the
+/// line-limit lint is allowed here.
+#[allow(clippy::too_many_lines)]
 fn parse_nodes(
     text: &str,
     chars: &[(usize, char)],
@@ -377,6 +382,11 @@ fn create_argument_node(
 }
 
 /// Scans parameters `(...)` and body block `{ ... }` for a function declaration.
+///
+/// The grammar context (`text`, `chars`, `grammar`, `rules`, `depth`) is threaded through many
+/// parser helpers; grouping it into a struct would add indirection without a clear win, so the
+/// argument-count lint is allowed here.
+#[allow(clippy::too_many_arguments)]
 fn scan_params_and_body(
     text: &str,
     chars: &[(usize, char)],
@@ -441,6 +451,11 @@ fn scan_params_and_body(
 }
 
 /// Evaluates a single declarative [`grammar_rule`] at `start_idx`.
+///
+/// The rule arms (span, keyword, etc.) share little structure, so splitting this match into
+/// helpers would pass most of the same arguments through each one. The line-limit lint is
+/// allowed here.
+#[allow(clippy::too_many_lines)]
 fn try_match_rule(
     rule: &grammar_rule,
     text: &str,

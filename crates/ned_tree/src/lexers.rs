@@ -8,6 +8,11 @@ use crate::tokens::syntax_kind;
 /// Tokenizes a single line of text against a language grammar and incoming multiline state.
 ///
 /// Appends resulting highlight spans to `out_spans` and returns the state at the end of the line.
+///
+/// This is a single-pass state-machine lexer; splitting it into smaller helpers would thread
+/// the same cursor/state through many functions without improving clarity, so the line-limit
+/// lint is allowed here.
+#[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn lex_line(
     line: &str,

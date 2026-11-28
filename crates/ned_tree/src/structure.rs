@@ -206,9 +206,9 @@ pub fn find_syntax_textobject(
             }
             'c' => {
                 // Strip comment tokens ('//', '/*', '*/', '#')
-                let start = if node.kind == syntax_kind::comment_line {
-                    node.start.saturating_add(2)
-                } else if node.kind == syntax_kind::comment_block {
+                let start = if node.kind == syntax_kind::comment_line
+                    || node.kind == syntax_kind::comment_block
+                {
                     node.start.saturating_add(2)
                 } else {
                     node.start
@@ -227,6 +227,10 @@ pub fn find_syntax_textobject(
     }
 }
 
+/// Walks the AST looking for the deepest node enclosing `[from, to)` that matches `category`.
+///
+/// Updates `best` with the innermost match found and increments `count` for every node
+/// visited, bailing early once `MAX_STRUCTURAL_NODES` is reached.
 fn find_category_node<'a>(
     node: &'a ast_node,
     from: usize,

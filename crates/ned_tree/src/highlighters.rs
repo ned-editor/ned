@@ -197,8 +197,7 @@ impl syntax_highlighter {
                 }
 
                 // Intermediate lines
-                for l in (l1 + 1)..l2 {
-                    let (ls, le) = line_bounds[l];
+                for (l, &(ls, le)) in line_bounds.iter().enumerate().take(l2).skip(l1 + 1) {
                     let line_len = le.saturating_sub(ls);
                     if line_len > 0 {
                         self.line_spans[l].push(highlight_span::new(0, line_len, span.kind));
