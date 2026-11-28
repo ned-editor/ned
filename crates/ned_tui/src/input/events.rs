@@ -169,6 +169,7 @@ pub struct KeyEvent {
 }
 
 impl KeyEvent {
+    /// Creates a new `KeyEvent` with `Press` kind and no state.
     pub(crate) fn new(
         keycode: KeyCode,
         modifiers: impl IntoIterator<Item = KeyModifier>,
@@ -176,6 +177,7 @@ impl KeyEvent {
         KeyEvent::new_with_kind(keycode, modifiers, KeyEventKind::Press)
     }
 
+    /// Creates a new `KeyEvent` with the given kind and no state.
     pub(crate) fn new_with_kind(
         keycode: KeyCode,
         modifiers: impl IntoIterator<Item = KeyModifier>,
@@ -184,6 +186,7 @@ impl KeyEvent {
         KeyEvent::new_with_kind_and_state(keycode, modifiers, kind, None)
     }
 
+    /// Creates a new `KeyEvent` with the given kind and state.
     pub(crate) fn new_with_kind_and_state(
         keycode: KeyCode,
         modifiers: impl IntoIterator<Item = KeyModifier>,

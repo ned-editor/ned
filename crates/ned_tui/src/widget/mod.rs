@@ -290,8 +290,11 @@ where
 pub struct WidgetPropertyBinder<W, M, D, A: AppEvent> {
     /// The inner widget bound to model properties.
     pub bound_widget: W,
+    /// Closure that binds widget state to model data.
     widget_property: Box<dyn Fn(&mut W) -> &mut D>,
+    /// Closure that binds model data to widget state.
     model_property: Box<dyn Fn(&mut M) -> &mut D>,
+    /// Phantom type parameter for the app event type.
     phantom_app_event: PhantomData<A>,
 }
 impl<W, M, D, A: AppEvent> AnchorPlacementEnabled for WidgetPropertyBinder<W, M, D, A> {}
@@ -337,8 +340,11 @@ pub type Loader<W, M> = Box<dyn Fn(&mut W, &M)>;
 pub struct WidgetBinder<W, M, A: AppEvent> {
     /// The inner widget bound to model loader/saver functions.
     pub bound_widget: W,
+    /// Saves widget state back into the model.
     saver: Option<Saver<W, M>>,
+    /// Loads widget state from the model.
     loader: Option<Loader<W, M>>,
+    /// Phantom type parameter for the app event type.
     phantom_app_event: PhantomData<A>,
 }
 

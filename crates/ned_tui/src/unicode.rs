@@ -73,7 +73,9 @@ pub fn grapheme_width(g: &str) -> usize {
 
 /// an iterator yielding extended grapheme cluster string slices.
 pub struct Graphemes<'a> {
+    /// Remaining text to iterate.
     text: &'a str,
+    /// Current byte offset in the text.
     byte_offset: usize,
 }
 

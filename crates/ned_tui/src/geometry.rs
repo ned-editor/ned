@@ -74,13 +74,20 @@ impl Point {
             && w.row.saturating_add(w.height) > self.row
     }
     /// What is the col/row coordinate of the nth point within the bounds of self?
+    ///
+    /// # Panics
+    ///
+    /// Panics if the computed column or row exceeds `u16::MAX` (should not happen given
+    /// the bounds check above).
     #[must_use]
     pub fn point_at_idx(&self, idx: u32) -> Option<Point> {
         if idx >= self.area() {
             None
         } else {
-            let col = (idx % u32::from(self.col)) as u16;
-            let row = (idx / u32::from(self.col)) as u16;
+            let col = u16::try_from(idx % u32::from(self.col))
+                .expect("column fits in u16");
+            let row = u16::try_from(idx / u32::from(self.col))
+                .expect("row fits in u16");
             Some(point(col, row))
         }
     }
@@ -118,6 +125,7 @@ impl Window {
     ///                           { relative other }
     ///                           {================}
     /// ```
+    #[must_use]
     pub fn relative_crop(&self, w: impl Borrow<Window>) -> Window {
         let w = w.borrow() + self.position();
         self.intersection(w)
@@ -143,6 +151,7 @@ impl Window {
     ///                           { absolute other }
     ///                           {================}
     /// ```
+    #[must_use]
     pub fn intersection(&self, w: impl Borrow<Window>) -> Window {
         let o = w.borrow();
         let pos = point(u16::max(self.col, o.col), u16::max(self.row, o.row));
@@ -188,6 +197,7 @@ impl Window {
     ///               ---------------------
     ///
     /// ```
+    #[must_use]
     pub fn trim(&self, p: impl Borrow<Point>) -> Window {
         self.intersection(p.borrow().window())
     }

@@ -1,3 +1,4 @@
+//! Terminal screen buffer with diff-based rendering.
 use crate::{
     geometry::{point, Point},
     output::{
@@ -20,15 +21,21 @@ use std::{cell::RefCell, io};
 /// If you do, however, it should be fairly straightforward.
 #[derive(Debug, Default)]
 pub struct Screen {
+    /// Screen width in columns.
     width: u16,
+    /// Screen height in rows.
     height: u16,
     /// Whether to wipe the screen completely on print.
     pub wipe: bool,
     /// Whether truecolor (24-bit RGB) is enabled.
     pub true_color: bool,
+    /// Number of rows the screen grew taller since last resize.
     grow_taller: u16,
+    /// Linear index of the last written cell, if any.
     last_write: Option<usize>,
+    /// Current frame screen cells.
     current: Vec<ScreenSpot>,
+    /// Previous frame screen cells (interior mutability for diff caching).
     previous: RefCell<Vec<ScreenSpot>>,
 }
 
@@ -47,6 +54,10 @@ impl Screen {
         self.last_write = None;
     }
     /// Resizes screen buffer to target dimensions.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `width * height` overflows `usize` (allocation capacity).
     pub fn resize(&mut self, size: Point) {
         let height = size.row;
         let width = size.col;
@@ -70,12 +81,19 @@ impl Screen {
     pub fn set_last_write(&mut self, pos: Point) {
         self.last_write = Some((pos.row * self.width + pos.col) as usize);
     }
-    /// Get the position of the last write
+    /// Get the position of the last write.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the stored linear index does not fit in `u16` (should not happen given
+    /// screen dimensions are bounded by `u16`).
     pub fn last_write(&self) -> Option<Point> {
         self.last_write.map(|idx| {
             point(
-                (idx % self.width as usize) as u16,
-                (idx / self.width as usize) as u16,
+                u16::try_from(idx % self.width as usize)
+                    .expect("screen column fits in u16"),
+                u16::try_from(idx / self.width as usize)
+                    .expect("screen row fits in u16"),
             )
         })
     }
@@ -144,14 +162,23 @@ impl Screen {
 
         self.last_write = Some(idx);
     }
-    /// Dump all the currently set screen symbols
+    /// Dump all the currently set screen symbols.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a cell index exceeds `u16::MAX` (should not happen given screen dimensions).
     pub fn symbols(&self) -> impl Iterator<Item = (Point, &ScreenStyle, &str)> + '_ {
         self.current.iter().enumerate().filter_map(|(i, s)| {
             if s.is_empty() {
                 None
             } else {
                 Some((
-                    point(i as u16 % self.width, i as u16 / self.width),
+                    point(
+                        u16::try_from(i % self.width as usize)
+                            .expect("screen column fits in u16"),
+                        u16::try_from(i / self.width as usize)
+                            .expect("screen row fits in u16"),
+                    ),
                     s.style().unwrap_or(&ScreenStyle::DEFAULT),
                     s.symbol(),
                 ))
@@ -167,6 +194,7 @@ impl Screen {
     ) -> impl Iterator<Item = (Point, &ScreenStyle, &str)> {
         DiffIterator::new(self, scope, refresh)
     }
+    /// Returns the diff for a single screen spot if it changed since the previous frame.
     fn diff_spot(&self, spot: Point, refresh: bool) -> Option<(&ScreenStyle, &str)> {
         if !self.size().contains(&spot) {
             //out of range
@@ -193,6 +221,7 @@ impl Screen {
     // so we do not care too much about it's correctness
     // as the cache is only used to detect changes.
     // All this because of missing 'a iterator support
+    /// Stores a screen spot in the previous-frame cache, growing it if needed.
     fn remember(&self, idx: usize, spot: ScreenSpot) {
         let mut remember = self.previous.borrow_mut();
         let grow = idx >= remember.len();
@@ -204,6 +233,7 @@ impl Screen {
         }
     }
 
+    /// Renders the screen diff to the terminal via the provided commander.
     pub(crate) fn print(
         &mut self,
         scope: Option<Window>,
@@ -214,7 +244,7 @@ impl Screen {
         if self.wipe && self.grow_taller != 0 {
             busy = true;
             trace!("clearing screen");
-            commander.send(MoveCursorBy(0, self.height as i16))?;
+            commander.send(MoveCursorBy(0, i16::try_from(self.height).expect("screen height fits in i16")))?;
             for _ in (0..self.grow_taller).skip(1) {
                 commander.send(AnsiPrint("\n").raw(true))?;
             }
@@ -248,20 +278,29 @@ impl Screen {
             commander.send(AnsiPrint(symbol))?;
         }
         if busy {
-            commander.send(MoveCursorBy(self.width as i16, self.height as i16))?;
+            commander.send(MoveCursorBy(
+                i16::try_from(self.width).expect("screen width fits in i16"),
+                i16::try_from(self.height).expect("screen height fits in i16"),
+            ))?;
         }
         Ok(())
     }
 }
 
+/// Iterator yielding diff entries between current and previous screen frames.
 struct DiffIterator<'a> {
+    /// Reference to the screen being iterated.
     pub screen: &'a Screen,
+    /// Visible window scope for the diff.
     pub scope: Window,
+    /// Whether to force a full refresh of all cells.
     refresh: bool,
+    /// Current cell index being iterated.
     idx: usize,
 }
 
 impl<'a> DiffIterator<'a> {
+    /// Creates a new diff iterator for the given screen and scope.
     pub fn new(screen: &'a mut Screen, scope: Option<Window>, mut refresh: bool) -> Self {
         // forced refresh or refresh on init
         refresh |= screen.previous.borrow().is_empty();
@@ -295,8 +334,10 @@ impl<'a> Iterator for DiffIterator<'a> {
                 + pos % self.scope.width as usize;
 
             let spot = point(
-                (pos % self.screen.width as usize) as u16,
-                (pos / self.screen.width as usize) as u16,
+                u16::try_from(pos % self.screen.width as usize)
+                    .expect("screen column fits in u16"),
+                u16::try_from(pos / self.screen.width as usize)
+                    .expect("screen row fits in u16"),
             );
             // check if it's within our scope
             let spot = (self.scope.contains_point(spot))?;
@@ -309,17 +350,23 @@ impl<'a> Iterator for DiffIterator<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
+/// A screen cell storage variant, avoiding heap allocation for short symbols.
 enum ScreenSpot {
+    /// Empty cell with no symbol.
     #[default]
     Empty,
-    /// str pointer is usually larger than a few bytes
-    /// This one avoids heap for short utf-8 symbols
+    /// Short symbol (<= 14 bytes) stored inline to avoid heap allocation.
+    /// str pointer is usually larger than a few bytes.
+    /// This one avoids heap for short utf-8 symbols.
     Short(ScreenStyle, u8, [u8; 14]),
+    /// Long symbol stored as a heap-allocated boxed string.
     Long(ScreenStyle, Box<str>),
 }
 
 impl ScreenSpot {
+    /// The empty screen spot constant.
     pub const EMPTY: ScreenSpot = ScreenSpot::Empty;
+    /// Creates a new screen spot from a style and symbol string.
     pub fn new(style: ScreenStyle, symbol: &str) -> Self {
         let len = symbol.len();
         if len == 0 {
@@ -327,17 +374,19 @@ impl ScreenSpot {
         } else if len <= 14 {
             let mut short = [0; 14];
             short[0..len].copy_from_slice(symbol.as_bytes());
-            ScreenSpot::Short(style, len as u8, short)
+            ScreenSpot::Short(style, u8::try_from(len).expect("symbol length fits in u8"), short)
         } else {
             ScreenSpot::Long(style, symbol.into())
         }
     }
+    /// Returns the screen style of this spot, if any.
     pub fn style(&self) -> Option<&ScreenStyle> {
         match &self {
             ScreenSpot::Empty => None,
             ScreenSpot::Short(s, _, _) | ScreenSpot::Long(s, _) => Some(s),
         }
     }
+    /// Returns the symbol text of this spot.
     pub fn symbol(&self) -> &str {
         match &self {
             ScreenSpot::Empty => " ",
@@ -347,6 +396,7 @@ impl ScreenSpot {
             ScreenSpot::Long(_, s) => s,
         }
     }
+    /// Returns true if this screen spot is empty.
     fn is_empty(&self) -> bool {
         matches!(self, Self::Empty)
     }

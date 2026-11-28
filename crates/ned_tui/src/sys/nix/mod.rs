@@ -14,6 +14,7 @@ pub type ControlOut = fs::File;
 /// control input file type.
 pub type ControlIn = fs::File;
 
+/// Creates the default terminal implementation for Unix.
 pub(crate) fn terminal() -> io::Result<Terminal<DefaultControl, DefaultInput, DefaultOutput>> {
     let control = get_tty()?;
     Ok(Terminal::new(
@@ -60,6 +61,7 @@ pub fn get_tty() -> io::Result<DefaultControl> {
 
 /// wraps tty handles and restores terminal attributes on drop.
 pub struct NixTty {
+    /// Reset guard that restores terminal attributes on drop.
     reset: Arc<Reset>,
 }
 
@@ -123,9 +125,13 @@ impl Control for NixTty {
     }
 }
 
+/// Terminal state snapshot and file handles for reset on drop.
 struct Reset {
+    /// Saved terminal attributes.
     state: libc::termios,
+    /// Input file handle.
     input: fs::File,
+    /// Output file handle.
     output: fs::File,
 }
 

@@ -12,6 +12,10 @@ use std::io;
 /// Who executes terminal commands?
 pub trait TerminalCommander {
     /// Sends a terminal request command.
+    ///
+    /// # Errors
+    ///
+    /// Returns `io::Error` if the terminal write operation fails.
     fn send<T: TerminalRequest>(&mut self, request: T) -> io::Result<()>;
 }
 
@@ -48,6 +52,10 @@ impl<C: Control, W: io::Write> TerminalCommander for (C, W) {
 /// Request is a nicer word for command
 pub trait TerminalRequest: Debug {
     /// The command is sent via output byte stream, ANSI TTY way.
+    ///
+    /// # Errors
+    ///
+    /// Returns `io::Error` if the terminal write operation fails.
     fn apply(&self, _write: impl io::Write) -> io::Result<bool> {
         Ok(false)
     }
@@ -59,6 +67,10 @@ pub trait TerminalRequest: Debug {
     /// because control actions are immediate while ANSI sequences are buffered.
     /// We flush the output when control is to be invoked.
     /// TODO: return `Option<closure>` instead to make this more efficient on non-sys.
+    ///
+    /// # Errors
+    ///
+    /// Returns `io::Error` if the terminal control operation fails.
     fn control(&self, _control: &impl Control) -> io::Result<bool> {
         Ok(false)
     }
@@ -72,8 +84,8 @@ pub trait TerminalRequest: Debug {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EnterRawMode;
 impl TerminalRequest for EnterRawMode {
-    fn control(&self, _control: &impl Control) -> io::Result<bool> {
-        _control.enable_raw_mode().map(|()| true)
+    fn control(&self, control: &impl Control) -> io::Result<bool> {
+        control.enable_raw_mode().map(|()| true)
     }
 }
 
@@ -105,13 +117,13 @@ impl TerminalRequest for MoveCursorBy {
     fn apply(&self, mut write: impl io::Write) -> io::Result<bool> {
         let Self(x, y) = *self;
         let mut dimension = |x, p, n| {
-            if x > 0 {
-                write.write_all(format!("{CSI}{x}{p}").as_bytes())
-            } else if x < 0 {
-                let x = i16::abs(x);
-                write.write_all(format!("{CSI}{x}{n}").as_bytes())
-            } else {
-                Ok(())
+            match x {
+                x if x > 0 => write.write_all(format!("{CSI}{x}{p}").as_bytes()),
+                x if x < 0 => {
+                    let x = i16::abs(x);
+                    write.write_all(format!("{CSI}{x}{n}").as_bytes())
+                }
+                _ => Ok(()),
             }
         };
 

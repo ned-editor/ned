@@ -1,3 +1,4 @@
+//! Placement utilities for positioning widgets within their container.
 use crate::geometry::{point, window, Window};
 use crate::widget::{AppEvent, Event, Painter, Screen, Widget};
 

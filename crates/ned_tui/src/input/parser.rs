@@ -7,6 +7,7 @@ use crate::{
     prelude::point,
 };
 
+/// Result type used by input parser functions, with a static string error.
 type Result<T> = std::result::Result<T, &'static str>;
 
 // Event<A> parsing
@@ -21,6 +22,14 @@ type Result<T> = std::result::Result<T, &'static str>;
 // Ok(Some(event)) -> we have event, clear the buffer
 //
 
+/// Parses an escape sequence starting with ESC (0x1B) from the input buffer.
+///
+/// Returns `Ok(None)` if more bytes are needed, `Ok(Some(event))` if a complete
+/// event was parsed, or `Err` if the sequence is invalid.
+///
+/// The two ESC match arms both produce `Event::Key(KeyCode::Esc.into())` but
+/// cannot be merged due to differing slice pattern lengths.
+#[allow(clippy::match_same_arms)]
 pub(crate) fn parse_esc<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Option<Event<A>>> {
     assert_ne!(buffer, []);
     Ok(Some(match buffer {
@@ -57,6 +66,13 @@ pub(crate) fn parse_esc<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Op
     }))
 }
 
+/// Parses a single character key event (non-ESC sequence).
+///
+/// Returns `Ok(None)` if more bytes are needed, `Ok(Some(event))` if a complete
+/// event was parsed, or `Err` if the input is invalid.
+///
+/// The `Result` wrapper is retained for consistency with other parser functions
+/// that can return errors.
 pub(crate) fn parse_key<A: AppEvent>(key: char, raw_mode: bool) -> Result<Option<Event<A>>> {
     Ok(Some(Event::Key(match key {
         '\r' => KeyCode::Enter.into(),
@@ -80,6 +96,10 @@ pub(crate) fn parse_key<A: AppEvent>(key: char, raw_mode: bool) -> Result<Option
     })))
 }
 
+/// Parses a CSI (Control Sequence Introducer) escape sequence starting with ESC [.
+///
+/// Returns `Ok(None)` if more bytes are needed, `Ok(Some(event))` if a complete
+/// event was parsed, or `Err` if the sequence is invalid.
 pub(crate) fn parse_csi<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Option<Event<A>>> {
     assert!(buffer.starts_with(b"\x1B[")); // ESC [
 
@@ -119,23 +139,22 @@ pub(crate) fn parse_csi<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Op
             // Numbered escape code.
             if buffer.len() == 3 {
                 return Ok(None);
-            } else {
-                // The final byte of a CSI sequence can be in the range 64-126, so
-                // let's keep reading anything else.
-                let last_byte = buffer[buffer.len() - 1];
-                if !(64..=126).contains(&last_byte) {
-                    return Ok(None);
-                }
-                if buffer.starts_with(b"\x1B[200~") {
-                    return parse_csi_bracketed_paste(buffer);
-                }
-                match last_byte {
-                    b'M' => return parse_csi_rxvt_mouse(buffer),
-                    b'~' => return parse_csi_special_key_code(buffer),
-                    b'u' => return parse_csi_u_encoded_key_code(buffer, raw_mode),
-                    b'R' => return parse_csi_cursor_position(buffer),
-                    _ => return parse_csi_modifier_key_code(buffer),
-                }
+            }
+            // The final byte of a CSI sequence can be in the range 64-126, so
+            // let's keep reading anything else.
+            let last_byte = buffer[buffer.len() - 1];
+            if !(64..=126).contains(&last_byte) {
+                return Ok(None);
+            }
+            if buffer.starts_with(b"\x1B[200~") {
+                return parse_csi_bracketed_paste(buffer);
+            }
+            match last_byte {
+                b'M' => return parse_csi_rxvt_mouse(buffer),
+                b'~' => return parse_csi_special_key_code(buffer),
+                b'u' => return parse_csi_u_encoded_key_code(buffer, raw_mode),
+                b'R' => return parse_csi_cursor_position(buffer),
+                _ => return parse_csi_modifier_key_code(buffer),
             }
         }
         _ => return Err("Invalid CSI - ESC [ <...>"),
@@ -144,6 +163,7 @@ pub(crate) fn parse_csi<A: AppEvent>(buffer: &[u8], raw_mode: bool) -> Result<Op
     Ok(Some(input_event))
 }
 
+/// Parses the next item from the iterator as type `T`.
 pub(crate) fn next_parsed<T>(iter: &mut dyn Iterator<Item = &str>) -> Result<T>
 where
     T: std::str::FromStr,
@@ -154,6 +174,7 @@ where
         .map_err(|_| "error parsing iter")
 }
 
+/// Parses a modifier mask and optional kind code from a colon-separated iterator.
 fn modifier_and_kind_parsed(iter: &mut dyn Iterator<Item = &str>) -> Result<(u8, u8)> {
     let mut sub_split = iter.next().ok_or("could not split modifier")?.split(':');
 
@@ -166,6 +187,7 @@ fn modifier_and_kind_parsed(iter: &mut dyn Iterator<Item = &str>) -> Result<(u8,
     }
 }
 
+/// Parses a CSI cursor position report (ESC [ Cy ; Cx R).
 pub(crate) fn parse_csi_cursor_position<A: AppEvent>(buffer: &[u8]) -> Result<Option<Event<A>>> {
     // ESC [ Cy ; Cx R
     //   Cy - cursor row number (starting from 1)
@@ -184,6 +206,7 @@ pub(crate) fn parse_csi_cursor_position<A: AppEvent>(buffer: &[u8]) -> Result<Op
     Ok(Some(Event::CursorPosition(point(x, y))))
 }
 
+/// Converts a mouse modifier mask byte into `KeyModifiers`.
 fn parse_modifiers(mask: u8) -> KeyModifiers {
     let modifier_mask = mask.saturating_sub(1);
     let mut modifiers = KeyModifiers::default();
@@ -208,6 +231,7 @@ fn parse_modifiers(mask: u8) -> KeyModifiers {
     modifiers
 }
 
+/// Converts a mouse modifier mask byte into `KeyEventStates`.
 fn parse_modifiers_to_state(mask: u8) -> KeyEventStates {
     let modifier_mask = mask.saturating_sub(1);
     let mut state = KeyEventStates::default();
@@ -220,15 +244,18 @@ fn parse_modifiers_to_state(mask: u8) -> KeyEventStates {
     state
 }
 
+/// Converts a numeric kind code into a `KeyEventKind`.
+///
+/// Defaults to `Press` for any unrecognized code.
 fn parse_key_event_kind(kind: u8) -> KeyEventKind {
     match kind {
-        1 => KeyEventKind::Press,
         2 => KeyEventKind::Repeat,
         3 => KeyEventKind::Release,
         _ => KeyEventKind::Press,
     }
 }
 
+/// Parses a CSI modifier key code sequence.
 pub(crate) fn parse_csi_modifier_key_code<A: AppEvent>(buffer: &[u8]) -> Result<Option<Event<A>>> {
     assert!(buffer.starts_with(b"\x1B[")); // ESC [
                                            //
@@ -250,7 +277,8 @@ pub(crate) fn parse_csi_modifier_key_code<A: AppEvent>(buffer: &[u8]) -> Result<
             parse_modifiers(
                 (buffer[buffer.len() - 2] as char)
                     .to_digit(10)
-                    .ok_or("Could not parse digits for CSI modifier code")? as u8,
+                    .and_then(|d| u8::try_from(d).ok())
+                    .ok_or("Could not parse digits for CSI modifier code")?,
             ),
             KeyEventKind::Press,
         )
@@ -278,6 +306,8 @@ pub(crate) fn parse_csi_modifier_key_code<A: AppEvent>(buffer: &[u8]) -> Result<
     Ok(Some(input_event))
 }
 
+/// Translates a functional key codepoint (e.g. keypad, media, modifier keys)
+/// into a `KeyCode` and optional `KeyEventStates`.
 fn translate_functional_key_code(codepoint: u32) -> Option<(KeyCode, KeyEventStates)> {
     if let Some(keycode) = match codepoint {
         57399 => Some(KeyCode::Char('0')),
@@ -379,6 +409,7 @@ fn translate_functional_key_code(codepoint: u32) -> Option<(KeyCode, KeyEventSta
     None
 }
 
+/// Parses a CSI u-encoded key code sequence (ESC [ codepoint ; modifiers u).
 pub(crate) fn parse_csi_u_encoded_key_code<A: AppEvent>(
     buffer: &[u8],
     raw_mode: bool,
@@ -477,6 +508,7 @@ pub(crate) fn parse_csi_u_encoded_key_code<A: AppEvent>(
     Ok(Some(input_event))
 }
 
+/// Parses a CSI special key code sequence (ESC [ ... ~).
 pub(crate) fn parse_csi_special_key_code<A: AppEvent>(buffer: &[u8]) -> Result<Option<Event<A>>> {
     assert!(buffer.starts_with(b"\x1B[")); // ESC [
     assert!(buffer.ends_with(b"~"));
@@ -514,6 +546,7 @@ pub(crate) fn parse_csi_special_key_code<A: AppEvent>(buffer: &[u8]) -> Result<O
     Ok(Some(input_event))
 }
 
+/// Parses a CSI rxvt mouse sequence.
 pub(crate) fn parse_csi_rxvt_mouse<A: AppEvent>(buffer: &[u8]) -> Result<Option<Event<A>>> {
     // rxvt mouse encoding:
     // ESC [ Cb ; Cx ; Cy ; M
@@ -541,6 +574,7 @@ pub(crate) fn parse_csi_rxvt_mouse<A: AppEvent>(buffer: &[u8]) -> Result<Option<
     })))
 }
 
+/// Parses a CSI normal mouse sequence (ESC [ M CB Cx Cy).
 pub(crate) fn parse_csi_normal_mouse<A: AppEvent>(buffer: &[u8]) -> Result<Option<Event<A>>> {
     // Normal mouse encoding: ESC [ M CB Cx Cy (6 characters only).
 
@@ -570,6 +604,7 @@ pub(crate) fn parse_csi_normal_mouse<A: AppEvent>(buffer: &[u8]) -> Result<Optio
     })))
 }
 
+/// Parses a CSI SGR mouse sequence (ESC [ < ... ; M or m).
 pub(crate) fn parse_csi_sgr_mouse<A: AppEvent>(buffer: &[u8]) -> Result<Option<Event<A>>> {
     // ESC [ < Cb ; Cx ; Cy (;) (M or m)
 
@@ -662,6 +697,10 @@ fn parse_cb(cb: u8) -> Result<(MouseEventKind, KeyModifiers)> {
     Ok((kind, modifiers))
 }
 
+/// Parses a CSI bracketed paste sequence (ESC [ 200 ~ ... ESC [ 201 ~).
+///
+/// The `Result` wrapper is retained for consistency with other parser functions
+/// that can return errors.
 pub(crate) fn parse_csi_bracketed_paste<A: AppEvent>(buffer: &[u8]) -> Result<Option<Event<A>>> {
     // ESC [ 2 0 0 ~ pasted text ESC 2 0 1 ~
     assert!(buffer.starts_with(b"\x1B[200~"));
@@ -674,6 +713,10 @@ pub(crate) fn parse_csi_bracketed_paste<A: AppEvent>(buffer: &[u8]) -> Result<Op
     }
 }
 
+/// Parses the next UTF-8 character from a byte buffer.
+///
+/// Returns `Ok(None)` if more bytes are needed for an incomplete sequence,
+/// `Ok(Some(ch))` if a complete character was parsed, or `Err` if invalid.
 pub(crate) fn parse_utf8_char(buffer: &[u8]) -> Result<Option<char>> {
     if let Ok(s) = std::str::from_utf8(buffer) {
         let ch = s.chars().next().ok_or("missing utf-8 char")?;

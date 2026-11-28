@@ -1,3 +1,4 @@
+//! Canvas widget for custom drawing operations.
 use crate::prelude::*;
 
 /// A styling widget
@@ -18,12 +19,13 @@ use crate::prelude::*;
 /// ```
 #[derive(Debug)]
 pub struct Canvas<W> {
+    /// Inner pretty-styled fill widget.
     content: Pretty<Fill<W>>,
 }
 impl Default for Canvas<()> {
     fn default() -> Self {
         Self {
-            content: Default::default(),
+            content: Pretty::default(),
         }
     }
 }

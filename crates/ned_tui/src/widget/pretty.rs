@@ -1,3 +1,4 @@
+//! Pretty-printing widget utilities.
 use std::ops::DerefMut;
 
 use crate::prelude::*;

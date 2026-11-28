@@ -1,3 +1,4 @@
+//! Fill widget that wipes available space before drawing content.
 use crate::widget::{AnchorPlacementEnabled, AppEvent, Event, Painter, Screen, Widget, Window};
 
 /// A widget to fill/wipe all available space (with painter background) before drawing the content.
@@ -12,6 +13,7 @@ use crate::widget::{AnchorPlacementEnabled, AppEvent, Event, Painter, Screen, Wi
 ///
 #[derive(Debug, Default)]
 pub struct Fill<W> {
+    /// Inner widget to fill space around.
     content: W,
 }
 

@@ -25,7 +25,9 @@ use std::{
 /// [`Pretty`] is also a widget so you can use it in your UI.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Pretty<T> {
+    /// The wrapped content value.
     content: T,
+    /// The style applied to the content.
     style: Style,
 }
 impl<T> Pretty<T> {
@@ -210,6 +212,7 @@ impl<T> DerefMut for Pretty<T> {
     }
 }
 
+/// Implements [`Styled`] for a type, enabling `.pretty()` conversion.
 macro_rules! with_default_style {
     ($type:ty) => {
         impl Styled for $type {

@@ -130,6 +130,7 @@ const fn rgb_to_4bit(r: u8, g: u8, b: u8) -> u8 {
     }
 }
 
+/// Converts an ANSI 8-bit color index to a 4-bit color index.
 const fn ansi_to_4b(ansi: u8) -> u8 {
     if ansi < 16 {
         ansi
@@ -139,6 +140,7 @@ const fn ansi_to_4b(ansi: u8) -> u8 {
     }
 }
 
+/// Converts RGB values to the closest ANSI color index.
 const fn rgb_to_ansi(r: u8, g: u8, b: u8) -> u8 {
     let c = rgb_to_4bit(r, g, b);
     let (pr, pg, pb) = rgb_from_8bit(c);
@@ -151,19 +153,30 @@ const fn rgb_to_ansi(r: u8, g: u8, b: u8) -> u8 {
         rgb_to_ansi_idx(r, g, b)
     }
 }
+/// Converts a 256-color grayscale index to an ANSI grayscale index.
 const fn c256_to_ansi_grey(c: u8) -> u8 {
     match 232u8.checked_add(c / 10) {
         Some(c) => c,
         None => 255,
     }
 }
+
+/// Converts RGB values to a 256-color palette index.
 const fn rgb_to_ansi_idx(r: u8, g: u8, b: u8) -> u8 {
     16 + 36 * (r / 51) + 6 * (g / 51) + (b / 51)
 }
+
+/// Decodes a 24-bit color value from the 256-color palette into RGB components.
+///
+/// Byte extraction from u32 always produces values 0..=255, so the truncating
+/// casts are safe.
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 const fn rgb_from_8bit(ansi: u8) -> (u8, u8, u8) {
     let c = COLOR_256[ansi as usize];
     ((c >> 16) as u8, (c >> 8) as u8, c as u8)
 }
+/// 256-color palette entries as 24-bit RGB values.
 const COLOR_256: [u32; 256] = [
     0x00_00_00, 0x80_00_00, 0x00_80_00, 0x80_80_00, 0x00_00_EE, 0x80_00_80, 0x00_80_80, 0xc0_c0_c0, // darks
     0x80_80_80, 0xff_66_00, 0x00_ff_00, 0xff_ff_00, 0x66_99_ff, 0xff_00_ff, 0x00_ff_ff, 0xff_ff_ff, // brights

@@ -12,9 +12,17 @@ use crate::prelude::Point;
 /// Essential part of a terminal application - controlling the tty.
 pub trait Control {
     /// Enable raw terminal mode to receive ANSI input.
+    ///
+    /// # Errors
+    ///
+    /// Returns `io::Error` if the terminal attributes cannot be changed.
     #[must_use = "Resets on drop"]
     fn enable_raw_mode(&self) -> std::io::Result<()>;
     /// Get terminal window size.
+    ///
+    /// # Errors
+    ///
+    /// Returns `io::Error` if the terminal size cannot be determined.
     fn get_size(&self) -> std::io::Result<Point>;
     /// Check if it's a tty.
     fn is_tty(&self) -> bool;
@@ -27,6 +35,7 @@ pub trait Control {
     /// Returns reference to input stream handle.
     fn input(&self) -> &ControlIn;
     /// Creates a cloned control handle.
+    #[must_use]
     fn clone(&self) -> Self
     where
         Self: Sized;

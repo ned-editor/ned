@@ -1,3 +1,4 @@
+//! Stack widget for layering widgets on top of each other.
 use std::ops::DerefMut;
 
 use crate::{
@@ -17,7 +18,9 @@ use crate::{
 /// Convenience `*_box*` methods are added for `Box`ed widgets.
 #[derive(Debug, Default)]
 pub struct Stack<S> {
+    /// Layout strategy for stacking widgets.
     layout: StackLayout,
+    /// Child widgets contained in the stack.
     widgets: S,
 }
 
@@ -37,6 +40,7 @@ impl<S> Stack<S> {
         }
     }
     /// Creates a layered stack layout overlaying widgets on top of each other.
+    #[must_use]
     pub fn layered(widgets: S) -> Self {
         Self {
             layout: StackLayout::Layered,
@@ -56,6 +60,7 @@ impl<S> Stack<S> {
 impl<S> Stack<Vec<S>> {
     // Builder-style accumulation, unrelated to `std::ops::Add`.
     /// Adds a widget to the stack.
+    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add(mut self, widget: S) -> Self {
         self.widgets.push(widget);
@@ -80,6 +85,7 @@ impl<'a, M, A: AppEvent> Stack<Vec<Box<dyn Widget<M, A> + 'a>>> {
         Self::layered(widgets)
     }
     /// Adds a boxed widget to the stack.
+    #[must_use]
     pub fn add_box(mut self, widget: impl Widget<M, A> + 'a) -> Self {
         self.widgets.push(Box::new(widget));
         self
@@ -140,10 +146,14 @@ where
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+/// Layout strategy for stacking widgets.
 enum StackLayout {
+    /// Layer widgets on top of each other.
     #[default]
     Layered,
+    /// Place widgets horizontally, wrapping vertically.
     EastSouth,
+    /// Place widgets vertically, wrapping horizontally.
     SouthEast,
 }
 #[cfg(test)]

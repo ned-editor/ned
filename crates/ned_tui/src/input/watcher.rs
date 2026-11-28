@@ -11,9 +11,11 @@ use std::io::{self, Read};
 use std::rc::Rc;
 use yokio::io::{Interest, Mode, Watch};
 
+/// Write end of the resize notification pipe (Unix only).
 #[cfg(unix)]
 static RESIZE_PIPE_WRITE_FD: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(-1);
 
+/// SIGWINCH signal handler that writes to the resize pipe.
 #[cfg(unix)]
 extern "C" fn sigwinch_handler(_: libc::c_int) {
     let fd = RESIZE_PIPE_WRITE_FD.load(std::sync::atomic::Ordering::Relaxed);
@@ -26,6 +28,10 @@ extern "C" fn sigwinch_handler(_: libc::c_int) {
 }
 
 /// Helper to query current terminal window size across platforms.
+///
+/// # Errors
+///
+/// Returns `io::Error` if the terminal size cannot be determined.
 pub fn query_terminal_size() -> io::Result<Point> {
     #[cfg(unix)]
     {
@@ -51,14 +57,21 @@ pub fn query_terminal_size() -> io::Result<Point> {
 
 /// watcher handle for terminal input events.
 pub struct InputWatcher {
+    /// Yokio watcher for terminal input readiness.
     _watch: Watch,
+    /// Optional yokio watcher for terminal resize signals (Unix only).
     #[cfg(unix)]
     _resize_watch: Option<Watch>,
 }
 
 /// starts watching terminal input using yokio event loop.
+///
+/// # Errors
+///
+/// Returns `io::Error` if watcher registration or file operations fail.
+#[allow(clippy::too_many_lines)]
 pub fn watch_terminal_input<A: AppEvent, F: FnMut(io::Result<Event<A>>) + 'static>(
-    _control: &(impl Control + ?Sized),
+    control: &(impl Control + ?Sized),
     raw_mode: bool,
     on_event: F,
 ) -> io::Result<InputWatcher> {
@@ -67,7 +80,7 @@ pub fn watch_terminal_input<A: AppEvent, F: FnMut(io::Result<Event<A>>) + 'stati
     let last_size = Rc::new(Cell::new(initial_size));
 
     #[cfg(unix)]
-    let reader = _control
+    let reader = control
         .input()
         .try_clone()
         .or_else(|_| fs::File::open("/dev/tty"))
@@ -82,7 +95,7 @@ pub fn watch_terminal_input<A: AppEvent, F: FnMut(io::Result<Event<A>>) + 'stati
         })?;
 
     #[cfg(windows)]
-    let reader = _control.input().clone();
+    let reader = control.input().clone();
 
     #[cfg(unix)]
     unsafe {

@@ -1,3 +1,4 @@
+//! Grid layout widget for arranging child widgets.
 use super::{AnchorPlacementEnabled, AppEvent, Event, Painter, Screen, Widget};
 use crate::geometry::{point, window, Point, Window};
 
@@ -9,16 +10,19 @@ use crate::geometry::{point, window, Point, Window};
 /// The plain Grid is for a single inner widget type,
 /// but convenience methods are there to support boxed widgets.
 pub struct Grid<W> {
+    /// Weight of each row for layout distribution.
     row_weights: Vec<u8>,
+    /// Weight of each column for layout distribution.
     col_weights: Vec<u8>,
+    /// Grid cells containing (column, row, widget) tuples.
     cells: Vec<(usize, usize, W)>,
 }
 impl<W> Default for Grid<W> {
     fn default() -> Self {
         Self {
-            row_weights: Default::default(),
-            col_weights: Default::default(),
-            cells: Default::default(),
+            row_weights: vec![],
+            col_weights: vec![],
+            cells: vec![],
         }
     }
 }
@@ -33,6 +37,7 @@ impl<W> Grid<W> {
     /// For each row and column the max value of all cells' weights apply.
     ///
     /// If you just add just one widget to cell 3,5, the grid will have 4 columns and 6 rows.
+    #[must_use]
     pub fn add(mut self, cell: (usize, usize), weight: (u8, u8), widget: W) -> Self {
         let (col, row) = cell;
         let (col_weight, row_weight) = weight;
@@ -52,6 +57,7 @@ impl<W> Grid<W> {
         self.cells.push((col, row, widget));
         self
     }
+    /// Computes the window scope for a grid cell at the given element index.
     fn cell_scope(size: Point, element: usize, col_weights: &[u8], row_weights: &[u8]) -> Window {
         let cols = col_weights.len();
         let rows = row_weights.len();
@@ -70,7 +76,12 @@ impl<W> Grid<W> {
         window(point(cell_x.0, cell_y.0), point(cell_x.1, cell_y.1))
     }
 
-    /// Calculate the start and width of the cell relative to the size
+    /// Calculate the start and width of the cell relative to the size.
+    ///
+    /// The f32 intermediate computations always produce values in [0, size],
+    /// so the truncating casts to u16 are safe.
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
     fn cell_size(grid: &[u8], idx: usize, size: u16) -> (u16, u16) {
         if idx >= grid.len() {
             // beyond the defined cells, take all the space
@@ -149,12 +160,13 @@ impl<'a, M, A: AppEvent> Grid<Box<dyn Widget<M, A> + 'a>> {
     #[must_use]
     pub fn boxed() -> Self {
         Self {
-            row_weights: Default::default(),
-            col_weights: Default::default(),
-            cells: Default::default(),
+            row_weights: vec![],
+            col_weights: vec![],
+            cells: vec![],
         }
     }
     /// Add a boxed widget to the cell
+    #[must_use]
     pub fn add_box(
         self,
         cell: (usize, usize),

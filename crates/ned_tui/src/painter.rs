@@ -1,3 +1,4 @@
+//! Terminal painter for rendering widgets to the screen.
 use super::Screen;
 use crate::{
     output::ansi::ScreenStyle,
@@ -13,7 +14,9 @@ use crate::{
 ///
 #[derive(Debug, Clone)]
 pub struct Painter {
+    /// Clipping scope for painting operations.
     scope: Window,
+    /// Current text style applied during painting.
     style: Style,
 }
 impl Default for Painter {
@@ -21,7 +24,7 @@ impl Default for Painter {
     fn default() -> Self {
         Self {
             scope: point(u16::MAX, u16::MAX).window(),
-            style: Default::default(),
+            style: Style::default(),
         }
     }
 }
@@ -173,12 +176,19 @@ impl Styled for &mut Painter {
     }
 }
 
+/// Iterator yielding text symbols with positions for painting.
 struct TextSymbols<'a> {
+    /// Whether to insert a carriage return on new lines.
     return_carriage_on_new_line: bool,
+    /// Size of the text area.
     size: Point,
+    /// Grapheme iterator for the text.
     graphemes: Graphemes<'a>,
+    /// Current cursor position.
     pos: Point,
+    /// Whether text wrapping is enabled.
     wrapped: bool,
+    /// Number of wipe characters remaining.
     wipe: usize,
 }
 
@@ -217,14 +227,20 @@ impl<'a> Iterator for TextSymbols<'a> {
                 grapheme => {
                     let (display_width, char_width) = display_width_char(grapheme);
                     self.wipe = char_width.saturating_sub(1);
-                    self.wrapped =
-                        self.pos.col.saturating_add(display_width as u16) >= self.size.col;
+                    self.wrapped = self
+                        .pos
+                        .col
+                        .saturating_add(u16::try_from(display_width).expect("display width fits in u16"))
+                        >= self.size.col;
 
                     if let Some(idx) = self.size.idx_at_point(self.pos) {
                         let stroke = (self.pos, grapheme);
 
                         // set next position
-                        if let Some(next) = self.size.point_at_idx(idx + display_width as u32) {
+                        if let Some(next) = self
+                            .size
+                            .point_at_idx(idx + u32::try_from(display_width).expect("display width fits in u32"))
+                        {
                             self.pos = next;
                         } else {
                             // beyond scope so next loop will be None
@@ -253,6 +269,7 @@ fn display_width_char(string: &str) -> (usize, usize) {
     (width, width)
 }
 
+/// Creates a text symbol iterator for painting text within a given size.
 fn text_symbols(
     text: &impl AsRef<str>,
     size: Point,

@@ -1,3 +1,4 @@
+//! Textbox widget for editable text input.
 use super::Widget;
 use crate::{
     geometry::{point, Window},
@@ -21,8 +22,11 @@ use std::marker::PhantomData;
 ///
 /// The last part of the string that fits is visible (tail).
 pub struct TextBox<F, M, A: AppEvent> {
+    /// Accessor closure to get the editable string from the model.
     accessor: F,
+    /// Phantom type parameter for the model type.
     phantom: PhantomData<M>,
+    /// Phantom type parameter for the app event type.
     phantom_app_event: PhantomData<A>,
     /// Whether the text box is currently focused and active for input.
     pub active: bool,

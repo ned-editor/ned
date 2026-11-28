@@ -35,13 +35,14 @@ pub fn get_terminal_size_from_tput() -> Option<Point> {
     }
 }
 
+/// Parses a numeric value from `tput` command output.
 fn tput_value(arg: &str) -> Option<u16> {
     let output = std::process::Command::new("tput").arg(arg).output().ok()?;
     let value = output
         .stdout
         .into_iter()
         .filter_map(|b| char::from(b).to_digit(10))
-        .fold(0, |v, n| v * 10 + n as u16);
+        .fold(0, |v, n| v * 10 + u16::try_from(n).expect("digit fits in u16"));
 
     if value > 0 {
         Some(value)

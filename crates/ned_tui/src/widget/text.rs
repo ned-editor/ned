@@ -1,9 +1,11 @@
+//! Text widget for displaying formatted text content.
 use crate::prelude::*;
 use std::borrow::Cow;
 
 /// Allows for rich text flow composed of multiple parts formatted independently
 #[derive(Default, Debug, Clone)]
 pub struct Text<'a> {
+    /// Styled text parts.
     parts: Vec<Pretty<Cow<'a, str>>>,
 }
 
@@ -15,6 +17,7 @@ impl<'a> Text<'a> {
     }
     // Builder-style accumulation, unrelated to `std::ops::Add`.
     /// Appends a styled text part to the widget.
+    #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn add(mut self, part: impl Into<StylishStringy<'a>>) -> Self {
         self.parts.push(part.into());

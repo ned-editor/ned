@@ -34,15 +34,16 @@ where
     }
 }
 
+/// No-op terminal I/O handle for disconnected or headless environments.
 #[derive(Default, Copy, Clone)]
 struct NoIo;
 
 impl Default for Terminal<NoIo, NoIo, NoIo> {
     fn default() -> Self {
         Self {
-            control: Default::default(),
-            input: Default::default(),
-            output: Default::default(),
+            control: NoIo,
+            input: NoIo,
+            output: NoIo,
         }
     }
 }
@@ -50,8 +51,9 @@ impl Default for Terminal<NoIo, NoIo, NoIo> {
 impl Terminal<DefaultControl, DefaultInput, DefaultOutput> {
     /// tries to get default system terminal configuration.
     ///
-    /// # errors
-    /// returns `io::Error` if no tty is available.
+    /// # Errors
+    ///
+    /// Returns `io::Error` if no tty is available.
     pub fn try_system_default() -> io::Result<Self> {
         crate::sys::terminal()
     }

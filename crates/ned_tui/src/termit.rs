@@ -16,12 +16,17 @@ use std::marker::PhantomData;
 
 /// the terminal application facilitator managing screen rendering, diffing, and yokio input watching.
 pub struct Termit<'a, A: AppEvent> {
+    /// Terminal control handle for size queries and mode switching.
     control: Box<dyn Control + 'a>,
+    /// Buffered terminal output writer.
     out: Box<dyn io::Write + 'a>,
+    /// Double-buffered screen state.
     screen: Screen,
+    /// Painter for rendering widgets to the screen.
     painter: Painter,
     /// Whether input stream has closed.
     pub input_closed: bool,
+    /// Phantom type parameter for the app event type.
     _marker: PhantomData<A>,
 }
 
@@ -70,8 +75,9 @@ impl<'a, A: AppEvent> Termit<'a, A> {
 
     /// prints ui updates to the terminal using double-buffered diffing.
     ///
-    /// # errors
-    /// returns `io::Error` if terminal writing fails.
+    /// # Errors
+    ///
+    /// Returns `io::Error` if terminal writing fails.
     pub fn print(&mut self, scope: Option<Window>) -> io::Result<()> {
         let mut out = CountingWrites::new(self.out.as_mut());
         let commander = (self.control.as_ref(), &mut out);
@@ -83,6 +89,9 @@ impl<'a, A: AppEvent> Termit<'a, A> {
     }
 
     /// handles input events, updating terminal size if resized and dispatching to widget tree.
+    ///
+    /// The `input` event is consumed by pattern matching but may also be borrowed afterwards
+    /// depending on the variant, so it is passed by value.
     pub fn update<M>(&mut self, model: &mut M, input: Event<A>, root: &mut impl Widget<M, A>) {
         if let Event::Resize(new_size) = input {
             if self.screen.size() != new_size {
@@ -95,8 +104,9 @@ impl<'a, A: AppEvent> Termit<'a, A> {
 
     /// starts watching terminal input using yokio's non-blocking watcher.
     ///
-    /// # errors
-    /// returns `io::Error` if watcher registration fails.
+    /// # Errors
+    ///
+    /// Returns `io::Error` if watcher registration fails.
     pub fn watch_input<F: FnMut(io::Result<Event<A>>) + 'static>(
         &self,
         on_event: F,
@@ -118,6 +128,7 @@ impl<'a, A: AppEvent, C: Control + 'a, I: 'a, O: io::Write + 'a> From<Terminal<C
     }
 }
 
+/// Terminal output writer that resets terminal state on drop.
 struct TerminalResetOnDrop<C: Control, O: io::Write>(C, O);
 
 impl<C: Control, O: io::Write> io::Write for TerminalResetOnDrop<C, O> {

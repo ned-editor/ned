@@ -1,3 +1,4 @@
+//! Button widget for clickable UI elements.
 use super::Widget;
 use crate::{
     geometry::{point, Window},
@@ -25,6 +26,7 @@ impl<W, M> Button<W, M> {
         }
     }
     /// Adds an action to be executed when the button is clicked.
+    #[must_use]
     pub fn on_click(mut self, action: impl Fn(&mut W, &mut M) + 'static) -> Self
     where
         Self: 'static,

@@ -16,6 +16,9 @@ use std::{
 /// we print all the kinds of color sequences. You'd do that
 /// to be most compatible without having to detect terminal
 /// capabilities.
+///
+/// Five boolean flags are needed to represent independent ANSI capabilities.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Copy)]
 pub struct AnsiConfig {
     /// print color in 3 bits (8 colors ANSI palette)
@@ -56,10 +59,12 @@ impl<T> AnsiPrint<T> {
         self.default().raw(raw)
     }
 
+    /// Configures compatible color mode (4b, 8b, and 24-bit color).
     pub(crate) fn compatible_color(self) -> AnsiPrintConfigured<T> {
         self.default().compatible_color()
     }
 
+    /// Configures true color mode (24-bit RGB).
     pub(crate) fn true_color(self) -> AnsiPrintConfigured<T> {
         self.default().true_color()
     }
@@ -81,10 +86,12 @@ where
     }
 }
 impl<T> AnsiPrintConfigured<T> {
+    /// Sets raw mode (disables CR-to-LF translation).
     fn raw(mut self, raw: bool) -> Self {
         self.1.add_cr_to_lf = !raw;
         self
     }
+    /// Enables 4-bit, 8-bit, and 24-bit color.
     fn compatible_color(mut self) -> Self {
         self.1.color_4b = true;
         self.1.color_8b = true;
@@ -92,6 +99,7 @@ impl<T> AnsiPrintConfigured<T> {
         self
     }
 
+    /// Enables 24-bit true color.
     fn true_color(mut self) -> Self {
         self.1.color_24b = true;
         self
@@ -106,7 +114,13 @@ impl Default for AnsiConfig {
 }
 impl AnsiConfig {
     /// full control
+    ///
+    /// Five boolean parameters represent independent ANSI capabilities;
+    /// `color_4b` and `color_24b` have similar names by design.
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::similar_names)]
+    #[allow(clippy::fn_params_excessive_bools)]
     pub fn new(
         color_3b: bool,
         color_4b: bool,
@@ -328,6 +342,7 @@ impl std::fmt::Display for AnsiPrintConfigured<&'_ ScreenStyle> {
     }
 }
 
+/// Computes the 4-bit ANSI color code for a color value.
 pub(crate) fn ansi_color_code_4b(mut c: u8, background: bool) -> u8 {
     if c >= 8 {
         c += 52;
@@ -359,9 +374,13 @@ pub const CSI: &str = "\x1b[";
 /// Terminal screen cell style representation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ScreenStyle {
+    /// Bitmask of style flags.
     flags: u8,
+    /// Foreground color.
     front: Color,
+    /// Background color.
     back: Color,
+    /// Underline color.
     under: Color,
 }
 impl ScreenStyle {
@@ -392,11 +411,17 @@ impl ScreenStyle {
     }
 }
 impl ScreenStyle {
+    /// Flag bit for foreground color.
     const FRONT: u8 = 0;
+    /// Flag bit for background color.
     const BACK: u8 = 1;
+    /// Flag bit for underline color.
     const UNDER: u8 = 2;
+    /// Flag bit for bold style.
     const BOLD: u8 = 3;
+    /// Flag bit for italic style.
     const ITALIC: u8 = 4;
+    /// Flag bit for blink style.
     const BLINK: u8 = 5;
 }
 
