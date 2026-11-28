@@ -1,0 +1,70 @@
+{
+  "name": "markdown",
+  "file_types": ["md", "markdown"],
+  "line_comment": null,
+  "block_comment": ["<!--", "-->"],
+  "raw_strings": false,
+  "triple_strings": false,
+  "keywords": [],
+  "control_keywords": [],
+  "function_keywords": [],
+  "builtin_types": [],
+  "rules": [
+    {
+      "type": "span",
+      "begin": "<!--",
+      "end": "-->",
+      "kind": "comment_block",
+      "multiline": true
+    },
+    {
+      "type": "paired_span",
+      "prefix": "",
+      "repeat_char": "`",
+      "min_repeats": 3,
+      "kind": "string_literal"
+    },
+    {
+      "type": "span",
+      "begin": "`",
+      "end": "`",
+      "kind": "string_literal",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "**",
+      "end": "**",
+      "kind": "type_name",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "*",
+      "end": "*",
+      "kind": "type_builtin",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "#",
+      "end": "\n",
+      "kind": "keyword",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "[",
+      "end": "]",
+      "kind": "function_name",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "(",
+      "end": ")",
+      "kind": "attribute",
+      "multiline": false
+    }
+  ]
+}

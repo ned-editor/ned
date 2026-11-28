@@ -1,0 +1,65 @@
+{
+  "name": "toml",
+  "file_types": ["toml"],
+  "line_comment": "#",
+  "block_comment": null,
+  "raw_strings": false,
+  "triple_strings": true,
+  "keywords": ["false", "inf", "nan", "true"],
+  "control_keywords": [],
+  "function_keywords": [],
+  "builtin_types": [],
+  "rules": [
+    {
+      "type": "span",
+      "begin": "#",
+      "end": "\n",
+      "kind": "comment_line",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "kind": "string_literal",
+      "escape": "\\",
+      "multiline": true
+    },
+    {
+      "type": "span",
+      "begin": "'''",
+      "end": "'''",
+      "kind": "string_literal",
+      "multiline": true
+    },
+    {
+      "type": "span",
+      "begin": "\"",
+      "end": "\"",
+      "kind": "string_literal",
+      "escape": "\\",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "'",
+      "end": "'",
+      "kind": "string_literal",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "[[",
+      "end": "]]",
+      "kind": "type_name",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "[",
+      "end": "]",
+      "kind": "type_name",
+      "multiline": false
+    }
+  ]
+}

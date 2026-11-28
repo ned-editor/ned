@@ -104,7 +104,22 @@ pub fn theme_dirs() -> Vec<PathBuf> {
         dirs.push(ws_dir.join("themes"));
     }
     dirs.push(config_dir().join("themes"));
+    dirs.push(config_dir().join("runtime").join("themes"));
     dirs.push(find_workspace_root().join("runtime").join("themes"));
+    dirs
+}
+
+/// Returns grammar search directories ordered from highest to lowest priority.
+#[must_use]
+pub fn grammar_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(ws_dir) = workspace_ned_dir() {
+        dirs.push(ws_dir.join("runtime").join("grammars"));
+        dirs.push(ws_dir.join("grammars"));
+    }
+    dirs.push(config_dir().join("runtime").join("grammars"));
+    dirs.push(config_dir().join("grammars"));
+    dirs.push(find_workspace_root().join("runtime").join("grammars"));
     dirs
 }
 
@@ -125,11 +140,36 @@ pub fn runtime_languages_file() -> Option<PathBuf> {
 /// Searches theme directories for a theme file matching `<theme_name>.toml`.
 #[must_use]
 pub fn find_theme_file(theme_name: &str) -> Option<PathBuf> {
-    let filename = format!("{theme_name}.toml");
+    let variants = [
+        format!("{theme_name}.toml"),
+        format!("{}.toml", theme_name.replace('_', "-")),
+        format!("{}.toml", theme_name.replace('-', "_")),
+    ];
     for dir in theme_dirs() {
-        let candidate = dir.join(&filename);
-        if candidate.is_file() {
-            return Some(candidate);
+        for filename in &variants {
+            let candidate = dir.join(filename);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
+/// Searches grammar directories for a grammar file matching `<lang_name>.json`.
+#[must_use]
+pub fn find_grammar_file(lang_name: &str) -> Option<PathBuf> {
+    let variants = [
+        format!("{lang_name}.json"),
+        format!("{}.json", lang_name.replace('_', "-")),
+        format!("{}.json", lang_name.replace('-', "_")),
+    ];
+    for dir in grammar_dirs() {
+        for filename in &variants {
+            let candidate = dir.join(filename);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
         }
     }
     None

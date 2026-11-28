@@ -1,0 +1,27 @@
+{
+  "name": "json",
+  "file_types": ["json"],
+  "line_comment": null,
+  "block_comment": null,
+  "raw_strings": false,
+  "triple_strings": false,
+  "keywords": ["false", "null", "true"],
+  "control_keywords": [],
+  "function_keywords": [],
+  "builtin_types": [],
+  "rules": [
+    {
+      "type": "span",
+      "begin": "\"",
+      "end": "\"",
+      "kind": "string_literal",
+      "escape": "\\",
+      "multiline": false
+    },
+    {
+      "type": "pattern",
+      "body": "digits",
+      "kind": "number_literal"
+    }
+  ]
+}

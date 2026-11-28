@@ -1,0 +1,40 @@
+# Ned Light - Default light theme with clear contrast matching Helix keys.
+
+"keyword" = { fg = "#d73a49", modifiers = ["bold"] }
+"type" = { fg = "#005cc5" }
+"function" = { fg = "#6f42c1" }
+"string" = { fg = "#22863a" }
+"comment" = { fg = "#6a737d", modifiers = ["italic"] }
+"constant" = { fg = "#e36209" }
+"variable" = { fg = "#24292e" }
+"operator" = { fg = "#d73a49" }
+"punctuation" = { fg = "#586069" }
+"attribute" = { fg = "#b08800" }
+
+"ui.text" = "#24292e"
+"ui.text.focus" = { fg = "#000000", modifiers = ["bold"] }
+"ui.background" = "#ffffff"
+"ui.cursor" = { fg = "#ffffff", bg = "#24292e" }
+"ui.cursor.normal" = { fg = "#ffffff", bg = "#24292e" }
+"ui.cursor.insert" = { fg = "#ffffff", bg = "#22863a" }
+"ui.cursor.select" = { fg = "#ffffff", bg = "#005cc5" }
+"ui.selection" = { bg = "#c8e1ff" }
+"ui.selection.primary" = { bg = "#b3d7ff" }
+"ui.statusline" = { fg = "#24292e", bg = "#f1f2f4" }
+"ui.statusline.inactive" = { fg = "#959da5", bg = "#fafbfc" }
+"ui.linenr" = "#959da5"
+"ui.linenr.selected" = { fg = "#24292e", modifiers = ["bold"] }
+"ui.popup" = { fg = "#24292e", bg = "#f6f8fa" }
+"ui.menu" = { fg = "#24292e", bg = "#f6f8fa" }
+"ui.menu.selected" = { fg = "#ffffff", bg = "#0366d6" }
+"ui.window" = "#e1e4e8"
+"ui.help" = { fg = "#24292e", bg = "#f6f8fa" }
+
+"diagnostic.error" = { fg = "#cb2431", modifiers = ["bold"] }
+"diagnostic.warning" = { fg = "#b08800" }
+"diagnostic.info" = { fg = "#0366d6" }
+"diagnostic.hint" = { fg = "#22863a" }
+
+"diff.plus" = "#22863a"
+"diff.minus" = "#cb2431"
+"diff.delta" = "#b08800"

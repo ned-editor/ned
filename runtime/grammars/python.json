@@ -1,0 +1,69 @@
+{
+  "name": "python",
+  "file_types": ["py", "pyi"],
+  "line_comment": "#",
+  "block_comment": null,
+  "raw_strings": false,
+  "triple_strings": true,
+  "keywords": [
+    "and", "as", "assert", "async", "await", "class", "del", "False", "from",
+    "global", "import", "in", "is", "lambda", "None", "nonlocal", "not", "or",
+    "pass", "self", "True", "with", "yield"
+  ],
+  "control_keywords": [
+    "break", "continue", "elif", "else", "except", "finally", "for", "if",
+    "raise", "return", "try", "while"
+  ],
+  "function_keywords": ["def"],
+  "builtin_types": [
+    "bool", "bytearray", "bytes", "dict", "float", "frozenset", "int", "list",
+    "object", "set", "str", "tuple"
+  ],
+  "rules": [
+    {
+      "type": "span",
+      "begin": "#",
+      "end": "\n",
+      "kind": "comment_line",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "kind": "string_literal",
+      "escape": "\\",
+      "multiline": true
+    },
+    {
+      "type": "span",
+      "begin": "'''",
+      "end": "'''",
+      "kind": "string_literal",
+      "escape": "\\",
+      "multiline": true
+    },
+    {
+      "type": "span",
+      "begin": "\"",
+      "end": "\"",
+      "kind": "string_literal",
+      "escape": "\\",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "'",
+      "end": "'",
+      "kind": "string_literal",
+      "escape": "\\",
+      "multiline": false
+    },
+    {
+      "type": "pattern",
+      "prefix": "@",
+      "body": "ident",
+      "kind": "attribute"
+    }
+  ]
+}

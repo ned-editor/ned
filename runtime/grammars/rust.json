@@ -1,0 +1,84 @@
+{
+  "name": "rust",
+  "file_types": ["rs"],
+  "line_comment": "//",
+  "block_comment": ["/*", "*/"],
+  "raw_strings": true,
+  "triple_strings": false,
+  "keywords": [
+    "as", "async", "await", "const", "crate", "dyn", "enum", "extern", "false",
+    "impl", "in", "let", "mod", "move", "mut", "pub", "ref", "self", "Self",
+    "static", "struct", "super", "trait", "true", "type", "unsafe", "use", "where"
+  ],
+  "control_keywords": [
+    "break", "continue", "else", "for", "if", "loop", "match", "return", "while", "yield"
+  ],
+  "function_keywords": ["fn"],
+  "builtin_types": [
+    "bool", "char", "f32", "f64", "i128", "i16", "i32", "i64", "i8", "isize",
+    "str", "u128", "u16", "u32", "u64", "u8", "usize",
+    "Option", "Result", "String", "Vec", "Box", "Rc", "Arc"
+  ],
+  "rules": [
+    {
+      "type": "span",
+      "begin": "/*",
+      "end": "*/",
+      "kind": "comment_block",
+      "multiline": true,
+      "nested": true
+    },
+    {
+      "type": "span",
+      "begin": "//",
+      "end": "\n",
+      "kind": "comment_line",
+      "multiline": false
+    },
+    {
+      "type": "paired_span",
+      "prefix": "r",
+      "repeat_char": "#",
+      "min_repeats": 0,
+      "open": "\"",
+      "close": "\"",
+      "kind": "string_literal"
+    },
+    {
+      "type": "span",
+      "begin": "\"",
+      "end": "\"",
+      "kind": "string_literal",
+      "escape": "\\",
+      "multiline": true
+    },
+    {
+      "type": "span",
+      "begin": "'",
+      "end": "'",
+      "kind": "char_literal",
+      "escape": "\\",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "#![",
+      "end": "]",
+      "kind": "attribute",
+      "multiline": false
+    },
+    {
+      "type": "span",
+      "begin": "#[",
+      "end": "]",
+      "kind": "attribute",
+      "multiline": false
+    },
+    {
+      "type": "pattern",
+      "prefix": "'",
+      "body": "ident",
+      "kind": "type_name"
+    }
+  ]
+}
