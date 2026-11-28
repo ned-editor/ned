@@ -232,6 +232,16 @@ pub enum action {
     /// Delete enclosing delimiters around selections (`md`).
     surround_delete,
 
+    // --- Structural syntax navigation ---
+    /// Expand selection to parent syntax node (`A-o`).
+    expand_selection,
+    /// Shrink selection to child syntax node (`A-i`).
+    shrink_selection,
+    /// Select previous sibling syntax node (`A-p`).
+    select_prev_sibling,
+    /// Select next sibling syntax node (`A-n`).
+    select_next_sibling,
+
     // --- Window / View management ---
     /// Split view vertically (`C-w v`).
     vsplit,

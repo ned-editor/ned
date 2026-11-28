@@ -1062,18 +1062,60 @@ pub fn keep_or_remove_matches(ed: &mut editor, pattern: &str, remove: bool) {
 /// Applies a text object selection to each active selection range in the editor.
 pub fn apply_textobject(ed: &mut editor, mode: ned_text::textobject_mode, ch: char, count: usize) {
     let doc = ed.active_doc_mut();
-    let buffer = doc.text();
+    let buffer = doc.text().clone();
+    let is_syntax_cat = matches!(ch, 'f' | 't' | 'c' | 'a' | 'T');
+
+    if is_syntax_cat {
+        doc.highlighter_mut().ensure_parsed(&buffer);
+        let tree = doc.highlighter().syntax_tree().cloned();
+        let Some(tree) = tree else {
+            ed.status_message = Some("No syntax structure available".to_string());
+            return;
+        };
+        let doc_len = buffer.char_len();
+        let sel = doc.selection();
+        let mut new_ranges = Vec::with_capacity(sel.len());
+        let mut any_found = false;
+
+        for r in sel.ranges() {
+            if let Some((start, end)) = ned_tree::find_syntax_textobject(
+                &tree,
+                r.from(),
+                r.to(),
+                ch,
+                mode == ned_text::textobject_mode::inside,
+            ) {
+                let bounded_start = start.min(doc_len);
+                let bounded_end = end.min(doc_len);
+                new_ranges
+                    .push(range::new(bounded_start, bounded_end).with_direction(r.direction()));
+                any_found = true;
+            } else {
+                new_ranges.push(*r);
+            }
+        }
+
+        if any_found {
+            let primary_idx = sel.primary_index();
+            doc.set_selection(selection::new(new_ranges, primary_idx));
+            ed.ensure_active_cursor_visible();
+        } else {
+            ed.status_message = Some("No syntax textobject found".to_string());
+        }
+        return;
+    }
+
     let sel = doc.selection();
     let mut new_ranges = Vec::with_capacity(sel.len());
     let mut any_found = false;
 
     for r in sel.ranges() {
         let new_range = match ch {
-            'w' => Some(ned_text::textobject_word(buffer, *r, mode, false)),
-            'W' => Some(ned_text::textobject_word(buffer, *r, mode, true)),
-            'p' => Some(ned_text::textobject_paragraph(buffer, *r, mode, count)),
-            'm' => ned_text::textobject_pair_surround_closest(buffer, *r, mode, count),
-            delimiter => ned_text::textobject_pair_surround(buffer, *r, mode, delimiter, count),
+            'w' => Some(ned_text::textobject_word(&buffer, *r, mode, false)),
+            'W' => Some(ned_text::textobject_word(&buffer, *r, mode, true)),
+            'p' => Some(ned_text::textobject_paragraph(&buffer, *r, mode, count)),
+            'm' => ned_text::textobject_pair_surround_closest(&buffer, *r, mode, count),
+            delimiter => ned_text::textobject_pair_surround(&buffer, *r, mode, delimiter, count),
         };
         if let Some(nr) = new_range {
             new_ranges.push(nr);
@@ -1089,6 +1131,158 @@ pub fn apply_textobject(ed: &mut editor, mode: ned_text::textobject_mode, ch: ch
         ed.ensure_active_cursor_visible();
     } else {
         ed.status_message = Some("No textobject found".to_string());
+    }
+}
+
+/// Expands the active selection to its parent syntax node (`A-o`).
+pub fn expand_syntax_selection(ed: &mut editor) {
+    let doc_id = ed.active_doc_id;
+    let (tree, sel) = {
+        let doc = ed.active_doc_mut();
+        let buffer = doc.text().clone();
+        doc.highlighter_mut().ensure_parsed(&buffer);
+        let tree = doc.highlighter().syntax_tree().cloned();
+        let sel = doc.selection().clone();
+        (tree, sel)
+    };
+    let Some(tree) = tree else {
+        ed.status_message = Some("No syntax structure available".to_string());
+        return;
+    };
+
+    let mut new_ranges = Vec::with_capacity(sel.len());
+    let mut changed = false;
+
+    for r in sel.ranges() {
+        if let Some((start, end)) = ned_tree::expand_syntax_selection(&tree, r.from(), r.to()) {
+            new_ranges.push(range::new(start, end).with_direction(r.direction()));
+            changed = true;
+        } else {
+            new_ranges.push(*r);
+        }
+    }
+
+    if changed {
+        ed.syntax_history.push((doc_id, sel.clone()));
+        ed.active_doc_mut()
+            .set_selection(selection::new(new_ranges, sel.primary_index()));
+        ed.ensure_active_cursor_visible();
+    } else {
+        ed.status_message = Some("No parent syntax node".to_string());
+    }
+}
+
+/// Shrinks the active selection to a child syntax node (`A-i`).
+pub fn shrink_syntax_selection(ed: &mut editor) {
+    let doc_id = ed.active_doc_id;
+    let current_sel = ed.active_doc().selection().clone();
+
+    while let Some((id, prev_sel)) = ed.syntax_history.pop() {
+        if id == doc_id
+            && prev_sel
+                .ranges()
+                .iter()
+                .all(|pr| current_sel.ranges().iter().any(|cr| cr.contains_range(pr)))
+        {
+            ed.active_doc_mut().set_selection(prev_sel);
+            ed.ensure_active_cursor_visible();
+            return;
+        }
+    }
+
+    let tree = {
+        let doc = ed.active_doc_mut();
+        let buffer = doc.text().clone();
+        doc.highlighter_mut().ensure_parsed(&buffer);
+        doc.highlighter().syntax_tree().cloned()
+    };
+    let Some(tree) = tree else {
+        ed.status_message = Some("No syntax structure available".to_string());
+        return;
+    };
+
+    let mut new_ranges = Vec::with_capacity(current_sel.len());
+    let mut changed = false;
+
+    for r in current_sel.ranges() {
+        if let Some((start, end)) = ned_tree::shrink_syntax_selection(&tree, r.from(), r.to()) {
+            new_ranges.push(range::new(start, end).with_direction(r.direction()));
+            changed = true;
+        } else {
+            new_ranges.push(*r);
+        }
+    }
+
+    if changed {
+        ed.active_doc_mut()
+            .set_selection(selection::new(new_ranges, current_sel.primary_index()));
+        ed.ensure_active_cursor_visible();
+    } else {
+        ed.status_message = Some("No child syntax node".to_string());
+    }
+}
+
+/// Selects the next sibling syntax node sharing the same parent (`A-n`).
+pub fn select_next_syntax_sibling(ed: &mut editor) {
+    let doc = ed.active_doc_mut();
+    let buffer = doc.text().clone();
+    doc.highlighter_mut().ensure_parsed(&buffer);
+    let tree = doc.highlighter().syntax_tree().cloned();
+    let Some(tree) = tree else {
+        ed.status_message = Some("No syntax structure available".to_string());
+        return;
+    };
+
+    let sel = doc.selection();
+    let mut new_ranges = Vec::with_capacity(sel.len());
+    let mut changed = false;
+
+    for r in sel.ranges() {
+        if let Some((start, end)) = ned_tree::select_next_syntax_sibling(&tree, r.from(), r.to()) {
+            new_ranges.push(range::new(start, end).with_direction(r.direction()));
+            changed = true;
+        } else {
+            new_ranges.push(*r);
+        }
+    }
+
+    if changed {
+        doc.set_selection(selection::new(new_ranges, sel.primary_index()));
+        ed.ensure_active_cursor_visible();
+    } else {
+        ed.status_message = Some("No next sibling node".to_string());
+    }
+}
+
+/// Selects the previous sibling syntax node sharing the same parent (`A-p`).
+pub fn select_prev_syntax_sibling(ed: &mut editor) {
+    let doc = ed.active_doc_mut();
+    let buffer = doc.text().clone();
+    doc.highlighter_mut().ensure_parsed(&buffer);
+    let tree = doc.highlighter().syntax_tree().cloned();
+    let Some(tree) = tree else {
+        ed.status_message = Some("No syntax structure available".to_string());
+        return;
+    };
+
+    let sel = doc.selection();
+    let mut new_ranges = Vec::with_capacity(sel.len());
+    let mut changed = false;
+
+    for r in sel.ranges() {
+        if let Some((start, end)) = ned_tree::select_prev_syntax_sibling(&tree, r.from(), r.to()) {
+            new_ranges.push(range::new(start, end).with_direction(r.direction()));
+            changed = true;
+        } else {
+            new_ranges.push(*r);
+        }
+    }
+
+    if changed {
+        doc.set_selection(selection::new(new_ranges, sel.primary_index()));
+        ed.ensure_active_cursor_visible();
+    } else {
+        ed.status_message = Some("No previous sibling node".to_string());
     }
 }
 

@@ -50,6 +50,8 @@ pub enum syntax_kind {
     attribute_item,
     /// Call expression item with arguments.
     call_item,
+    /// Argument or parameter item in a call or function signature.
+    argument_item,
 }
 
 impl syntax_kind {
@@ -67,7 +69,7 @@ impl syntax_kind {
             Self::function_name | Self::function_call | Self::function_item | Self::call_item => {
                 "function"
             }
-            Self::variable_name => "variable",
+            Self::variable_name | Self::argument_item => "variable",
             Self::string_literal => "string",
             Self::number_literal => "constant.numeric",
             Self::char_literal => "string.special",

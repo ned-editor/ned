@@ -9,6 +9,7 @@ pub mod lexers;
 pub mod parsers;
 pub mod spans;
 pub mod states;
+pub mod structure;
 pub mod tokens;
 pub mod tree;
 
@@ -18,5 +19,9 @@ pub use lexers::lex_line;
 pub use parsers::parse_document_ast;
 pub use spans::highlight_span;
 pub use states::{line_state, state_cache};
+pub use structure::{
+    expand_syntax_selection, find_syntax_textobject, select_next_syntax_sibling,
+    select_prev_syntax_sibling, shrink_syntax_selection, MAX_STRUCTURAL_NODES,
+};
 pub use tokens::syntax_kind;
 pub use tree::{ast_node, syntax_tree};

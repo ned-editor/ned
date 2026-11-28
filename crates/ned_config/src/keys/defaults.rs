@@ -97,6 +97,12 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     normal.insert("K", action::keep_matching_selections);
     normal.insert("A-K", action::remove_matching_selections);
 
+    // Syntax tree navigation
+    normal.insert("A-o", action::expand_selection);
+    normal.insert("A-i", action::shrink_selection);
+    normal.insert("A-p", action::select_prev_sibling);
+    normal.insert("A-n", action::select_next_sibling);
+
     // Search
     normal.insert("/", action::search);
     normal.insert("?", action::rsearch);
@@ -295,6 +301,12 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     select.insert("A-J", action::join_selections_space);
     select.insert("K", action::keep_matching_selections);
     select.insert("A-K", action::remove_matching_selections);
+
+    // Syntax tree navigation
+    select.insert("A-o", action::expand_selection);
+    select.insert("A-i", action::shrink_selection);
+    select.insert("A-p", action::select_prev_sibling);
+    select.insert("A-n", action::select_next_sibling);
 
     select.insert("/", action::search);
     select.insert("?", action::rsearch);

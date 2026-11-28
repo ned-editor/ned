@@ -52,6 +52,22 @@ impl syntax_highlighter {
         self.tree.as_ref()
     }
 
+    /// Ensures that the AST syntax tree is parsed and up to date with the buffer.
+    pub fn ensure_parsed(&mut self, buffer: &rope) {
+        if self.dirty {
+            self.reparse(buffer);
+        }
+    }
+
+    /// Returns a reference to the parsed AST syntax tree, ensuring it is up to date with `buffer`.
+    #[must_use]
+    pub fn ensure_syntax_tree(&mut self, buffer: &rope) -> Option<&syntax_tree> {
+        if self.dirty {
+            self.reparse(buffer);
+        }
+        self.tree.as_ref()
+    }
+
     /// Invalidates cached AST and line spans starting from `_line_idx`.
     pub fn invalidate_from(&mut self, _line_idx: usize) {
         self.dirty = true;

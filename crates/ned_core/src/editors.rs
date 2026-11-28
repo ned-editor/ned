@@ -48,6 +48,8 @@ pub struct editor {
     pub pending_textobject: Option<ned_text::textobject_mode>,
     /// Pending surround operation (`ms`, `md`, `mr`).
     pub pending_surround: Option<crate::surround::surround_op>,
+    /// History of selections before syntax expansions for shrink navigation (`Alt-i`).
+    pub syntax_history: Vec<(usize, ned_text::selection)>,
     /// Pending key prefix tree for multi-keystroke combinations (e.g. `g`, `]`, `[`).
     pub key_prefix: Option<key_trie_node>,
     /// Ephemeral status line message.
@@ -100,6 +102,7 @@ impl editor {
             pending_replace: false,
             pending_textobject: None,
             pending_surround: None,
+            syntax_history: Vec::new(),
             key_prefix: None,
             status_message,
             hover_popup: None,
@@ -690,6 +693,20 @@ impl editor {
             action::surround_delete => {
                 self.pending_surround = Some(crate::surround::surround_op::delete);
                 self.status_message = Some("surround delete: ".to_string());
+            }
+
+            // --- Structural syntax navigation ---
+            action::expand_selection => {
+                crate::editors::edit_ops::expand_syntax_selection(self);
+            }
+            action::shrink_selection => {
+                crate::editors::edit_ops::shrink_syntax_selection(self);
+            }
+            action::select_next_sibling => {
+                crate::editors::edit_ops::select_next_syntax_sibling(self);
+            }
+            action::select_prev_sibling => {
+                crate::editors::edit_ops::select_prev_syntax_sibling(self);
             }
 
             // --- Window / View management ---
