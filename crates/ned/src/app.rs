@@ -250,14 +250,24 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                 app.prompt = None;
             }
             prompt_action::submit(cmd) => {
+                let prefix = p.prefix.clone();
                 app.prompt = None;
-                let trimmed = cmd.trim();
-                if trimmed == "o" || trimmed == "open" {
-                    let cwd =
-                        std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-                    app.picker = Some(picker_state::new_file_picker(&cwd));
+                if prefix == "/" || prefix == "?" {
+                    let forward = prefix == "/";
+                    let trimmed = cmd.trim();
+                    if !trimmed.is_empty() {
+                        app.ed.search_query = Some(trimmed.to_string());
+                        app.ed.jump_search(forward);
+                    }
                 } else {
-                    app.ed.execute_command(&cmd);
+                    let trimmed = cmd.trim();
+                    if trimmed == "o" || trimmed == "open" {
+                        let cwd = std::env::current_dir()
+                            .unwrap_or_else(|_| std::path::PathBuf::from("."));
+                        app.picker = Some(picker_state::new_file_picker(&cwd));
+                    } else {
+                        app.ed.execute_command(&cmd);
+                    }
                 }
             }
         }
@@ -266,12 +276,19 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
 
     // 3. Normal, Insert, or Select mode handling
     if app.ed.mode != mode::insert
-        && key_ev.keycode == KeyCode::Char(':')
         && !key_ev.modifiers.contains(&KeyModifier::Control)
         && !key_ev.modifiers.contains(&KeyModifier::Alt)
     {
-        app.prompt = Some(prompt_state::new(":"));
-        return;
+        if key_ev.keycode == KeyCode::Char(':') {
+            app.prompt = Some(prompt_state::new(":"));
+            return;
+        } else if key_ev.keycode == KeyCode::Char('/') {
+            app.prompt = Some(prompt_state::new("/"));
+            return;
+        } else if key_ev.keycode == KeyCode::Char('?') {
+            app.prompt = Some(prompt_state::new("?"));
+            return;
+        }
     }
 
     if let Some(modal_ev) = translate_key_event(key_ev) {
@@ -281,6 +298,8 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
         if let Some(msg) = app.ed.status_message.take() {
             if msg == ":" {
                 app.prompt = Some(prompt_state::new(":"));
+            } else if msg == "/" || msg == "?" {
+                app.prompt = Some(prompt_state::new(&msg));
             } else if msg == "picker:file" {
                 let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
                 app.picker = Some(picker_state::new_file_picker(&cwd));

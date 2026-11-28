@@ -107,29 +107,29 @@ impl theme {
         let mut t = Self::new("dacctal");
 
         // Named palette derived from dacctal custom stylesheet
-        let obsidian = color::rgb(15, 15, 15);     // #0f0f0f - --cl-black
-        let basalt = color::rgb(20, 21, 20);       // #141514 - --cl-gray-0
-        let coal = color::rgb(30, 31, 30);         // #1e1f1e - --cl-gray-1
-        let slate = color::rgb(39, 42, 40);        // #272a28 - --cl-gray-2
-        let pebble = color::rgb(59, 64, 60);       // #3b403c - --cl-gray-3
-        let flint = color::rgb(88, 95, 91);        // #585f5b - --cl-gray-4
-        let ash = color::rgb(108, 117, 111);       // #6c756f - --cl-gray-5
-        let lichen = color::rgb(136, 142, 123);    // #888e7b - --cl-gray-6
-        let moss = color::rgb(154, 156, 139);      // #9a9c8b - --cl-gray-7
+        let obsidian = color::rgb(15, 15, 15); // #0f0f0f - --cl-black
+        let basalt = color::rgb(20, 21, 20); // #141514 - --cl-gray-0
+        let coal = color::rgb(30, 31, 30); // #1e1f1e - --cl-gray-1
+        let slate = color::rgb(39, 42, 40); // #272a28 - --cl-gray-2
+        let pebble = color::rgb(59, 64, 60); // #3b403c - --cl-gray-3
+        let flint = color::rgb(88, 95, 91); // #585f5b - --cl-gray-4
+        let ash = color::rgb(108, 117, 111); // #6c756f - --cl-gray-5
+        let lichen = color::rgb(136, 142, 123); // #888e7b - --cl-gray-6
+        let moss = color::rgb(154, 156, 139); // #9a9c8b - --cl-gray-7
         let sandstone = color::rgb(182, 182, 154); // #b6b69a - --cl-gray-8
-        let clay = color::rgb(227, 214, 201);      // #e3d6c9 - --cl-gray-10
+        let clay = color::rgb(227, 214, 201); // #e3d6c9 - --cl-gray-10
         let parchment = color::rgb(244, 222, 205); // #f4decd - --cl-white
 
-        let cinnabar = color::rgb(241, 110, 101);  // #f16e65 - --cl-red-6
+        let cinnabar = color::rgb(241, 110, 101); // #f16e65 - --cl-red-6
         let terracotta = color::rgb(239, 147, 77); // #ef934d - --cl-orange-6
-        let apricot = color::rgb(244, 181, 133);   // #f4b585 - --cl-orange-7
-        let amber = color::rgb(239, 191, 113);     // #efbf71 - --cl-yellow
-        let sage = color::rgb(126, 201, 126);      // #7ec97e - --cl-green-6
-        let mint = color::rgb(164, 218, 164);      // #a4daa4 - --cl-green-7
+        let apricot = color::rgb(244, 181, 133); // #f4b585 - --cl-orange-7
+        let amber = color::rgb(239, 191, 113); // #efbf71 - --cl-yellow
+        let sage = color::rgb(126, 201, 126); // #7ec97e - --cl-green-6
+        let mint = color::rgb(164, 218, 164); // #a4daa4 - --cl-green-7
         let verdigris = color::rgb(126, 201, 176); // #7ec9b0 - --cl-cyan-6
-        let cerulean = color::rgb(113, 180, 214);  // #71b4d6 - --cl-blue-6
-        let glacier = color::rgb(176, 212, 232);   // #b0d4e8 - --cl-blue-8
-        let heather = color::rgb(226, 141, 198);   // #e28dc6 - --cl-magenta-7
+        let cerulean = color::rgb(113, 180, 214); // #71b4d6 - --cl-blue-6
+        let glacier = color::rgb(176, 212, 232); // #b0d4e8 - --cl-blue-8
+        let heather = color::rgb(226, 141, 198); // #e28dc6 - --cl-magenta-7
 
         // UI scopes
         t.insert("ui.background", style::new().bg(obsidian));
@@ -163,10 +163,7 @@ impl theme {
             }),
         );
         t.insert("ui.statusline", style::new().fg(parchment).bg(basalt));
-        t.insert(
-            "ui.statusline.inactive",
-            style::new().fg(ash).bg(basalt),
-        );
+        t.insert("ui.statusline.inactive", style::new().fg(ash).bg(basalt));
         t.insert("ui.gutter", style::new().bg(obsidian));
         t.insert("ui.popup", style::new().fg(parchment).bg(coal));
         t.insert("ui.menu", style::new().fg(parchment).bg(coal));

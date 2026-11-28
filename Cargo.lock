@@ -50,6 +50,7 @@ dependencies = [
  "ned_core",
  "ned_git",
  "ned_lsp",
+ "ned_regex",
  "ned_rope",
  "ned_text",
  "ned_tree",
@@ -73,6 +74,7 @@ dependencies = [
  "ned_config",
  "ned_git",
  "ned_lsp",
+ "ned_regex",
  "ned_rope",
  "ned_text",
  "ned_tree",
@@ -96,6 +98,10 @@ dependencies = [
  "serde_json",
  "yokio",
 ]
+
+[[package]]
+name = "ned_regex"
+version = "0.1.0"
 
 [[package]]
 name = "ned_rope"

@@ -556,11 +556,7 @@ impl editor {
                 let doc_ids: Vec<document_id> = self.documents.keys().copied().collect();
                 if doc_ids.len() > 1 {
                     if let Some(pos) = doc_ids.iter().position(|&id| id == self.active_doc_id) {
-                        let prev_pos = if pos == 0 {
-                            doc_ids.len() - 1
-                        } else {
-                            pos - 1
-                        };
+                        let prev_pos = if pos == 0 { doc_ids.len() - 1 } else { pos - 1 };
                         let prev_id = doc_ids[prev_pos];
                         self.active_doc_id = prev_id;
                         if let Some(v) = self.views.get_mut(&self.active_view_id) {
@@ -721,20 +717,32 @@ impl editor {
         edit_ops::indent_lines(self, unindent);
     }
 
-    /// Jumps to next or previous match of `self.search_query`.
-    fn jump_search(&mut self, forward: bool) {
+    /// Jumps to next or previous match of `self.search_query` using `ned_regex`.
+    pub fn jump_search(&mut self, forward: bool) {
         let query = match &self.search_query {
             Some(q) if !q.is_empty() => q.clone(),
             _ => return,
+        };
+
+        let re = match ned_regex::regex::smart_case(&query) {
+            Ok(r) => r,
+            Err(e) => {
+                self.status_message = Some(format!("regex error: {e}"));
+                return;
+            }
         };
 
         let doc = self.active_doc_mut();
         let text_content = doc.text().to_string();
         let cursor_char = doc.selection().primary().cursor(doc.text());
 
-        let matches: Vec<usize> = text_content
-            .match_indices(&query)
-            .map(|(byte_idx, _)| doc.text().byte_to_char(byte_idx))
+        let matches: Vec<(usize, usize)> = re
+            .find_iter(&text_content)
+            .map(|m| {
+                let start_char = doc.text().byte_to_char(m.start);
+                let end_char = doc.text().byte_to_char(m.end);
+                (start_char, end_char)
+            })
             .collect();
 
         if matches.is_empty() {
@@ -746,18 +754,17 @@ impl editor {
             matches
                 .iter()
                 .copied()
-                .find(|&pos| pos > cursor_char)
+                .find(|&(start, _)| start > cursor_char)
                 .unwrap_or(matches[0])
         } else {
             matches
                 .iter()
                 .copied()
-                .rfind(|&pos| pos < cursor_char)
-                .unwrap_or(*matches.last().unwrap_or(&0))
+                .rfind(|&(start, _)| start < cursor_char)
+                .unwrap_or(*matches.last().unwrap_or(&(0, 0)))
         };
 
-        let match_len = query.chars().count();
-        doc.set_selection(selection::single(target_match, target_match + match_len));
+        doc.set_selection(selection::single(target_match.0, target_match.1));
         self.ensure_active_cursor_visible();
     }
 

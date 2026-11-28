@@ -534,9 +534,7 @@ impl editor_config {
                             )));
                         }
                     } else {
-                        warnings.push(config_warning::new(
-                            "Invalid editor.theme; expected string",
-                        ));
+                        warnings.push(config_warning::new("Invalid editor.theme; expected string"));
                     }
                 }
                 "line-number" | "line_number" => {
@@ -774,45 +772,35 @@ impl editor_config {
                     if let Ok(g) = v.clone().try_into::<gutters_config>() {
                         self.gutters = g;
                     } else {
-                        warnings.push(config_warning::new(
-                            "Invalid editor.gutters configuration",
-                        ));
+                        warnings.push(config_warning::new("Invalid editor.gutters configuration"));
                     }
                 }
                 "search" => {
                     if let Ok(s) = v.clone().try_into::<search_config>() {
                         self.search = s;
                     } else {
-                        warnings.push(config_warning::new(
-                            "Invalid editor.search configuration",
-                        ));
+                        warnings.push(config_warning::new("Invalid editor.search configuration"));
                     }
                 }
                 "picker" => {
                     if let Ok(p) = v.clone().try_into::<picker_config>() {
                         self.picker = p;
                     } else {
-                        warnings.push(config_warning::new(
-                            "Invalid editor.picker configuration",
-                        ));
+                        warnings.push(config_warning::new("Invalid editor.picker configuration"));
                     }
                 }
                 "lsp" => {
                     if let Ok(l) = v.clone().try_into::<lsp_config>() {
                         self.lsp = l;
                     } else {
-                        warnings.push(config_warning::new(
-                            "Invalid editor.lsp configuration",
-                        ));
+                        warnings.push(config_warning::new("Invalid editor.lsp configuration"));
                     }
                 }
                 "git" => {
                     if let Ok(g) = v.clone().try_into::<git_config>() {
                         self.git = g;
                     } else {
-                        warnings.push(config_warning::new(
-                            "Invalid editor.git configuration",
-                        ));
+                        warnings.push(config_warning::new("Invalid editor.git configuration"));
                     }
                 }
                 other => {

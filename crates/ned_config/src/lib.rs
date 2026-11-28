@@ -22,10 +22,10 @@ pub use dirs::{
     workspace_ned_dir,
 };
 pub use editor::{
-    bufferline_style, config_warning, cursor_shape, cursor_shape_config, editor_config,
-    git_config, gutter_element, gutters_config, indent_guides_config, line_number_style,
-    lsp_config, picker_config, search_config, soft_wrap_config, statusline_config,
-    statusline_element, whitespace_config,
+    bufferline_style, config_warning, cursor_shape, cursor_shape_config, editor_config, git_config,
+    gutter_element, gutters_config, indent_guides_config, line_number_style, lsp_config,
+    picker_config, search_config, soft_wrap_config, statusline_config, statusline_element,
+    whitespace_config,
 };
 pub use keys::{
     action, default_keymaps, key_code, key_event, key_modifiers, key_trie, key_trie_node, mode,

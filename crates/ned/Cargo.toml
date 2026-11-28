@@ -19,6 +19,7 @@ ned_core = { path = "../ned_core" }
 ned_tui = { path = "../ned_tui" }
 ned_config = { path = "../ned_config" }
 ned_tree = { path = "../ned_tree" }
+ned_regex = { path = "../ned_regex" }
 ned_git = { path = "../ned_git" }
 ned_lsp = { path = "../ned_lsp" }
 ned_text = { path = "../ned_text" }
