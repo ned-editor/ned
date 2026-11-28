@@ -109,6 +109,11 @@ impl view {
 
     /// Computes the relative terminal screen coordinates `(col, row)` for the primary cursor,
     /// or `None` if the cursor lies outside the visible viewport.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the cursor line or column offset exceeds `u16::MAX` (should not happen given the
+    /// viewport bounds checks above).
     #[must_use]
     pub fn cursor_coords(&self, doc: &document) -> Option<(u16, u16)> {
         let buffer = doc.text();
@@ -127,8 +132,10 @@ impl view {
             return None;
         }
 
-        let row = (cursor_line - self.row_offset) as u16;
-        let col = (cursor_col - self.col_offset) as u16;
+        let row = u16::try_from(cursor_line - self.row_offset)
+            .expect("cursor row offset fits within view height");
+        let col = u16::try_from(cursor_col - self.col_offset)
+            .expect("cursor col offset fits within view width");
         Some((col, row))
     }
 }

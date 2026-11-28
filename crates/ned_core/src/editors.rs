@@ -62,7 +62,9 @@ pub struct editor {
     pub should_quit: bool,
     /// Optional exit status code when quitting via :cquit.
     pub exit_code: Option<i32>,
+    /// Next document identifier to assign.
     pub(crate) next_doc_id: usize,
+    /// Next view identifier to assign.
     pub(crate) next_view_id: usize,
 }
 
@@ -162,6 +164,10 @@ impl editor {
     }
 
     /// Returns a reference to the active document.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the active document ID is not present in `self.documents`.
     #[inline]
     #[must_use]
     pub fn active_doc(&self) -> &document {
@@ -171,6 +177,10 @@ impl editor {
     }
 
     /// Returns a mutable reference to the active document.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the active document ID is not present in `self.documents`.
     #[inline]
     pub fn active_doc_mut(&mut self) -> &mut document {
         self.documents
@@ -227,6 +237,11 @@ impl editor {
     }
 
     /// Dispatches an editor action.
+    ///
+    /// The `no_op` arm and the unimplemented-action group both have empty bodies intentionally:
+    /// `no_op` is a deliberate no-op, while the others are placeholders for future features.
+    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::match_same_arms)]
     pub fn dispatch(&mut self, act: action) {
         match act {
             // --- Motions ---
@@ -548,12 +563,9 @@ impl editor {
             action::delete_char_backward => {
                 self.delete_backward();
             }
-            action::delete_word_backward => {
-                // Delete word backward
-            }
-
             // --- Language & editor actions ---
-            action::goto_next_diag
+            action::delete_word_backward
+            | action::goto_next_diag
             | action::goto_prev_diag
             | action::hover
             | action::goto_definition
@@ -588,11 +600,11 @@ impl editor {
                 view_ops::align_view(self, view_ops::view_align::bottom);
             }
             action::scroll_down => {
-                let lines = (self.count.take().unwrap_or(1) as isize) * 5;
+                let lines = isize::try_from(self.count.take().unwrap_or(1)).unwrap_or(1) * 5;
                 view_ops::scroll_view_by(self, lines);
             }
             action::scroll_up => {
-                let lines = (self.count.take().unwrap_or(1) as isize) * 5;
+                let lines = isize::try_from(self.count.take().unwrap_or(1)).unwrap_or(1) * 5;
                 view_ops::scroll_view_by(self, -lines);
             }
 

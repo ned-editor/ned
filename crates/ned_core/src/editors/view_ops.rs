@@ -16,6 +16,10 @@ pub fn create_view(ed: &mut editor, doc_id: document_id, width: u16, height: u16
 }
 
 /// Returns a reference to the active view.
+///
+/// # Panics
+///
+/// Panics if the active view ID is not present in `ed.views`.
 #[inline]
 #[must_use]
 pub fn active_view(ed: &editor) -> &view {
@@ -25,6 +29,10 @@ pub fn active_view(ed: &editor) -> &view {
 }
 
 /// Returns a mutable reference to the active view.
+///
+/// # Panics
+///
+/// Panics if the active view ID is not present in `ed.views`.
 #[inline]
 pub fn active_view_mut(ed: &mut editor) -> &mut view {
     ed.views
@@ -43,6 +51,10 @@ pub fn ensure_active_cursor_visible(ed: &mut editor) {
 }
 
 /// Handles a mouse click event at screen coordinates `(col, row)`.
+///
+/// # Panics
+///
+/// Panics if the active document or active view ID is not present in their respective maps.
 pub fn handle_mouse_click(
     ed: &mut editor,
     col: u16,
@@ -86,6 +98,10 @@ pub fn handle_mouse_click(
 /// Scrolls the active view vertically by `delta` lines matching Helix scroll behavior.
 ///
 /// Preserves primary cursor position unless scrolled past the viewport margins (scrolloff).
+///
+/// # Panics
+///
+/// Panics if the active document ID is not present in `ed.documents`.
 pub fn scroll_view_by(ed: &mut editor, delta: isize) {
     let doc_id = ed.active_doc_id;
     let view_id = ed.active_view_id;
@@ -95,9 +111,8 @@ pub fn scroll_view_by(ed: &mut editor, delta: isize) {
         .get(&doc_id)
         .map_or(1, |d| d.text().line_count().max(1));
 
-    let view = match ed.views.get_mut(&view_id) {
-        Some(v) => v,
-        None => return,
+    let Some(view) = ed.views.get_mut(&view_id) else {
+        return;
     };
 
     let height = view.height as usize;
@@ -109,7 +124,7 @@ pub fn scroll_view_by(ed: &mut editor, delta: isize) {
     let max_row_offset = total_lines.saturating_sub(1);
 
     if delta > 0 {
-        let offset = delta as usize;
+        let offset = delta.unsigned_abs();
         view.row_offset = (view.row_offset + offset).min(max_row_offset);
     } else if delta < 0 {
         let offset = delta.unsigned_abs();
@@ -180,13 +195,11 @@ pub fn align_view(ed: &mut editor, align: view_align) {
     let doc_id = ed.active_doc_id;
     let view_id = ed.active_view_id;
 
-    let doc = match ed.documents.get(&doc_id) {
-        Some(d) => d,
-        None => return,
+    let Some(doc) = ed.documents.get(&doc_id) else {
+        return;
     };
-    let view = match ed.views.get_mut(&view_id) {
-        Some(v) => v,
-        None => return,
+    let Some(view) = ed.views.get_mut(&view_id) else {
+        return;
     };
 
     let height = view.height as usize;

@@ -111,6 +111,7 @@ pub enum editor_command {
 /// # Errors
 ///
 /// Returns an error if the command is empty or unrecognized.
+#[allow(clippy::too_many_lines)]
 pub fn parse_command(input: &str) -> Result<editor_command, String> {
     let trimmed = input.trim();
     let command_str = trimmed.strip_prefix(':').unwrap_or(trimmed).trim();
@@ -250,6 +251,7 @@ pub fn parse_command(input: &str) -> Result<editor_command, String> {
     }
 }
 
+/// Splits a command input string into whitespace-separated arguments, honoring quotes.
 fn parse_args(input: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current = String::new();

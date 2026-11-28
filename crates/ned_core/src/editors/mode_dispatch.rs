@@ -51,6 +51,7 @@ fn handle_insert_key(ed: &mut editor, ev: key_event) -> bool {
 }
 
 /// Dispatches a key event in Normal or Select mode.
+#[allow(clippy::too_many_lines)]
 fn handle_modal_key(ed: &mut editor, ev: key_event) -> bool {
     // 1. Escape clears any pending prefix, count, register selection, and status message
     if ev.code == key_code::escape {

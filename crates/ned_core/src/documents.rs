@@ -60,19 +60,33 @@ pub type document_id = usize;
 
 /// In-memory representation of an open text file or scratch buffer.
 pub struct document {
+    /// Unique identifier for this document buffer.
     id: document_id,
+    /// Underlying text rope buffer.
     text: rope,
+    /// Active multi-selection.
     selection: selection,
+    /// Optional file path this document is backed by.
     path: Option<PathBuf>,
+    /// Detected line ending format.
     line_ending: line_ending,
+    /// Whether the document has unpersisted changes.
     modified: bool,
+    /// History revision at last save.
     saved_revision: usize,
+    /// Edit history for undo/redo.
     history: history,
+    /// Syntax highlighter for this document.
     highlighter: syntax_highlighter,
+    /// Associated language configuration, if any.
     language: Option<language_config>,
+    /// Computed git diff hunks.
     diff_hunks: Vec<hunk>,
+    /// True if git diff was skipped due to size limits.
     diff_too_large: bool,
+    /// Active compiler diagnostics.
     diagnostics: Vec<diagnostic>,
+    /// Monotonically increasing document version.
     version: i32,
 }
 
@@ -205,7 +219,7 @@ impl document {
     }
 
     /// Applies an atomic changeset to the document buffer and updates history.
-    pub fn apply(&mut self, changes: change_set, new_selection: Option<selection>) {
+    pub fn apply(&mut self, changes: &change_set, new_selection: Option<selection>) {
         if changes.is_empty() {
             if let Some(sel) = new_selection {
                 self.selection = sel;
@@ -262,19 +276,19 @@ impl document {
     /// # Errors
     /// Returns `Err("diff too large")` if either base content or document text exceeds 1 MiB or 20,000 lines.
     pub fn reload_diff(&mut self) -> Result<(), &'static str> {
-        let path = if let Some(p) = &self.path { p } else {
+        let Some(path) = &self.path else {
             self.diff_too_large = false;
             self.diff_hunks.clear();
             return Ok(());
         };
 
-        let repo_root = if let Some(r) = discover_repo(path) { r } else {
+        let Some(repo_root) = discover_repo(path) else {
             self.diff_too_large = false;
             self.diff_hunks.clear();
             return Ok(());
         };
 
-        let relative_path = if let Ok(rel) = path.strip_prefix(&repo_root) { rel } else {
+        let Ok(relative_path) = path.strip_prefix(&repo_root) else {
             self.diff_too_large = false;
             self.diff_hunks.clear();
             return Ok(());

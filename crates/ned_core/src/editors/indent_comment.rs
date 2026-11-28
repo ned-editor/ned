@@ -161,7 +161,7 @@ pub fn insert_newline(ed: &mut editor) {
                 cs.retain(doc_len - cursor_char);
             }
             let new_sel = cs.map_selection(doc.selection().clone());
-            doc.apply(cs, Some(new_sel));
+            doc.apply(&cs, Some(new_sel));
         }
         let newline_str = format!("{le}{base_indent}");
         insert_string(ed, &newline_str);
@@ -244,12 +244,13 @@ pub fn maybe_decrease_indent_on_closer(ed: &mut editor, ch: char) -> bool {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
     true
 }
 
 /// Toggles line comments across lines intersecting active selections.
+#[allow(clippy::too_many_lines)]
 pub fn toggle_line_comment(ed: &mut editor) {
     let doc = ed.active_doc_mut();
     let buffer = doc.text();
@@ -372,7 +373,7 @@ pub fn toggle_line_comment(ed: &mut editor) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
@@ -479,6 +480,6 @@ pub fn toggle_block_comment(ed: &mut editor) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }

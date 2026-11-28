@@ -40,14 +40,20 @@ enum provider_kind {
 
 /// State for caching provider detection and last written multi-selection fragments.
 struct clipboard_manager {
+    /// Detected clipboard provider kind, cached after first probe.
     provider: Mutex<Option<provider_kind>>,
+    /// Cached multi-selection clipboard text joined by newlines.
     cached_clipboard_joined: Mutex<Option<String>>,
+    /// Cached multi-selection clipboard pieces.
     cached_clipboard_pieces: Mutex<Option<Vec<String>>>,
+    /// Cached primary selection text joined by newlines.
     cached_primary_joined: Mutex<Option<String>>,
+    /// Cached multi-selection primary selection pieces.
     cached_primary_pieces: Mutex<Option<Vec<String>>>,
 }
 
 impl clipboard_manager {
+    /// Creates a new empty clipboard manager.
     const fn new() -> Self {
         Self {
             provider: Mutex::new(None),
@@ -59,6 +65,7 @@ impl clipboard_manager {
     }
 }
 
+/// Global clipboard manager shared across the process.
 static GLOBAL_CLIPBOARD: clipboard_manager = clipboard_manager::new();
 
 /// Detects the available system clipboard provider once per process.
@@ -183,6 +190,11 @@ pub fn provider_name() -> &'static str {
 ///
 /// Returns an error if the provider is unavailable, unsupported on the current platform,
 /// or if process invocation fails.
+///
+/// # Panics
+///
+/// Panics if the global clipboard mutex is poisoned (a thread panicked while holding it).
+#[allow(clippy::too_many_lines)]
 pub fn read(target: clipboard_target) -> Result<Vec<String>, String> {
     let prov = detect_provider();
     if prov == provider_kind::none {
@@ -313,6 +325,10 @@ pub fn read(target: clipboard_target) -> Result<Vec<String>, String> {
 ///
 /// Returns an error if the provider is unavailable, payload exceeds 4 MiB,
 /// or child process execution fails.
+///
+/// # Panics
+///
+/// Panics if the global clipboard mutex is poisoned (a thread panicked while holding it).
 pub fn write(target: clipboard_target, values: &[String]) -> Result<(), String> {
     let prov = detect_provider();
     if prov == provider_kind::none {

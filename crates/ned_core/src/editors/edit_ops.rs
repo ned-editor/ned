@@ -7,11 +7,19 @@ use ned_text::{change_set, prev_grapheme_boundary, range, selection};
 use crate::editors::editor;
 
 /// Inserts a newline with auto-indentation and comment continuation.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn insert_newline(ed: &mut editor) {
     crate::editors::indent_comment::insert_newline(ed);
 }
 
 /// Inserts a single character literal at all active selection heads.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn insert_char(ed: &mut editor, ch: char) {
     let _ = crate::editors::indent_comment::maybe_decrease_indent_on_closer(ed, ch);
     let mut s = String::new();
@@ -20,9 +28,12 @@ pub fn insert_char(ed: &mut editor, ch: char) {
 }
 
 /// Inserts a string at all active selection ranges.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn insert_string(ed: &mut editor, s: &str) {
-    let _doc_id = ed.active_doc_id;
-    let doc = ed.active_doc_mut();
+        let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
     let mut last_pos = 0;
@@ -44,14 +55,17 @@ pub fn insert_string(ed: &mut editor, s: &str) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Deletes character backward from each selection head.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn delete_backward(ed: &mut editor) {
-    let _doc_id = ed.active_doc_id;
-    let doc = ed.active_doc_mut();
+        let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
     let mut last_pos = 0;
@@ -79,14 +93,17 @@ pub fn delete_backward(ed: &mut editor) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Deletes text covered by all selections and collapses selections to point cursors.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn delete_selected_text(ed: &mut editor) {
-    let _doc_id = ed.active_doc_id;
-    let doc = ed.active_doc_mut();
+        let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
     let mut last_pos = 0;
@@ -107,12 +124,16 @@ pub fn delete_selected_text(ed: &mut editor) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Reads values from register `reg` taking dynamic editor context into account
 /// (e.g. `.` for current selections, `#` for selection indices, `%` for file path).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 #[must_use]
 pub fn read_register(ed: &editor, reg: char) -> Option<Vec<String>> {
     match reg {
@@ -147,6 +168,10 @@ pub fn read_register(ed: &editor, reg: char) -> Option<Vec<String>> {
 }
 
 /// Yanks text from active selection ranges into the chosen register.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn yank_selection(ed: &mut editor) {
     let reg = ed.selected_register.take().unwrap_or('"');
     let doc = ed.active_doc();
@@ -173,6 +198,10 @@ pub fn yank_selection(ed: &mut editor) {
 }
 
 /// Deletes selected text with or without yanking to active register.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn delete_selection(ed: &mut editor, yank: bool) {
     let reg = ed.selected_register.take().unwrap_or('"');
     if yank && reg != '_' {
@@ -191,15 +220,22 @@ pub fn delete_selection(ed: &mut editor, yank: bool) {
 }
 
 /// Changes selected text with or without yanking, entering insert mode.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn change_selection(ed: &mut editor, yank: bool) {
     delete_selection(ed, yank);
     ed.mode = ned_config::mode::insert;
 }
 
 /// Replaces each selection with a single typed character literal.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn replace_selection_with_char(ed: &mut editor, ch: char) {
-    let _doc_id = ed.active_doc_id;
-    let doc = ed.active_doc_mut();
+        let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
     let mut last_pos = 0;
@@ -222,11 +258,15 @@ pub fn replace_selection_with_char(ed: &mut editor, ch: char) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Replaces each selection range with corresponding text from the active register.
+///
+/// # Panics
+///
+/// May panic if the yank register is empty or text indices are out of bounds.
 pub fn replace_with_yanked(ed: &mut editor) {
     let reg = ed.selected_register.take().unwrap_or('"');
     let values = match read_register(ed, reg) {
@@ -234,7 +274,6 @@ pub fn replace_with_yanked(ed: &mut editor) {
         _ => return,
     };
 
-    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
@@ -261,10 +300,10 @@ pub fn replace_with_yanked(ed: &mut editor) {
         };
         cs.insert(repl);
         let repl_char_len = repl.chars().count();
-        let new_anchor = (from as isize + current_offset) as usize;
+        let new_anchor = usize::try_from(isize::try_from(from).unwrap_or(0).saturating_add(current_offset)).unwrap_or(0);
         let new_head = new_anchor + repl_char_len;
         new_ranges.push(ned_text::range::new(new_anchor, new_head));
-        current_offset += repl_char_len as isize - (to - from) as isize;
+        current_offset += isize::try_from(repl_char_len).unwrap_or(0) - isize::try_from(to - from).unwrap_or(0);
         last_pos = to;
     }
     if last_pos < doc_len {
@@ -272,12 +311,21 @@ pub fn replace_with_yanked(ed: &mut editor) {
     }
 
     let new_sel = ned_text::selection::new(new_ranges, doc.selection().primary_index());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Pastes text from active register after or before cursor with cardinality and linewise rules.
+///
+/// # Panics
+///
+/// May panic if the yank register is empty or text indices are out of bounds.
 pub fn paste_register(ed: &mut editor, after: bool) {
+    struct paste_op {
+        target_char: usize,
+        content: String,
+    }
+
     let is_normal_mode = ed.mode == ned_config::mode::normal;
     let reg = ed.selected_register.take().unwrap_or('"');
     let values = match read_register(ed, reg) {
@@ -299,7 +347,6 @@ pub fn paste_register(ed: &mut editor, after: bool) {
         }
     };
 
-    let _doc_id = ed.active_doc_id;
     let doc = ed.active_doc_mut();
     let text = doc.text();
     let doc_len = text.char_len();
@@ -309,11 +356,6 @@ pub fn paste_register(ed: &mut editor, after: bool) {
         .any(|v| v.ends_with('\n') || v.ends_with("\r\n"));
     let sel_ranges: Vec<_> = doc.selection().ranges().to_vec();
     let num_selections = sel_ranges.len();
-
-    struct paste_op {
-        target_char: usize,
-        content: String,
-    }
 
     let mut ops = Vec::with_capacity(num_selections);
 
@@ -365,10 +407,10 @@ pub fn paste_register(ed: &mut editor, after: bool) {
         }
         cs.insert(&op.content);
         let content_char_len = op.content.chars().count();
-        let new_anchor = (op.target_char as isize + current_offset) as usize;
+        let new_anchor = usize::try_from(isize::try_from(op.target_char).unwrap_or(0).saturating_add(current_offset)).unwrap_or(0);
         let new_head = new_anchor + content_char_len;
         new_ranges.push(ned_text::range::new(new_anchor, new_head));
-        current_offset += content_char_len as isize;
+        current_offset += isize::try_from(content_char_len).unwrap_or(0);
     }
     if last_pos < doc_len {
         cs.retain(doc_len - last_pos);
@@ -383,11 +425,15 @@ pub fn paste_register(ed: &mut editor, after: bool) {
         None
     };
 
-    doc.apply(cs, new_sel);
+    doc.apply(&cs, new_sel);
     ed.ensure_active_cursor_visible();
 }
 
 /// Applies casing transformations (lowercase, uppercase, switch case) to selections.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn transform_selection_case(ed: &mut editor, act: action) {
     let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
@@ -425,11 +471,15 @@ pub fn transform_selection_case(ed: &mut editor, act: action) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Indents or unindents the lines intersecting selections.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn indent_lines(ed: &mut editor, unindent: bool) {
     let tab_width = ed.config.editor.tab_width;
     let tab_str = " ".repeat(tab_width);
@@ -487,7 +537,7 @@ pub fn indent_lines(ed: &mut editor, unindent: bool) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
@@ -495,9 +545,12 @@ pub fn indent_lines(ed: &mut editor, unindent: bool) {
 const MAX_SELECTIONS: usize = 10_000;
 
 /// Rotates the textual contents of the selection forward or backward.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn rotate_selection_contents(ed: &mut editor, forward: bool, count: usize) {
-    let _doc_id = ed.active_doc_id;
-    let doc = ed.active_doc_mut();
+        let doc = ed.active_doc_mut();
     let sel = doc.selection();
     if sel.len() < 2 {
         return;
@@ -528,7 +581,7 @@ pub fn rotate_selection_contents(ed: &mut editor, forward: bool, count: usize) {
         let old_len = to - from;
         let frag_len = frag.chars().count();
 
-        let new_from = ((from as isize) + current_offset) as usize;
+        let new_from = usize::try_from(isize::try_from(from).unwrap_or(0).saturating_add(current_offset)).unwrap_or(0);
         let new_to = new_from + frag_len;
         let new_r = if r.anchor > r.head {
             range::new(new_to, new_from)
@@ -536,7 +589,7 @@ pub fn rotate_selection_contents(ed: &mut editor, forward: bool, count: usize) {
             range::new(new_from, new_to)
         };
         new_ranges.push(new_r);
-        current_offset += (frag_len as isize) - (old_len as isize);
+        current_offset += isize::try_from(frag_len).unwrap_or(0) - isize::try_from(old_len).unwrap_or(0);
 
         if from > last_pos {
             cs.retain(from - last_pos);
@@ -556,12 +609,22 @@ pub fn rotate_selection_contents(ed: &mut editor, forward: bool, count: usize) {
         (sel.primary_index() + sel.len() - rotate_by) % sel.len()
     };
     let new_sel = selection::new(new_ranges, new_primary);
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Aligns single-line selections in columns by inserting space padding.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn align_selections(ed: &mut editor) {
+    struct range_coord {
+        from: usize,
+        line: usize,
+        col: usize,
+    }
+
     let doc = ed.active_doc();
     let buffer = doc.text();
     let sel = doc.selection();
@@ -574,12 +637,6 @@ pub fn align_selections(ed: &mut editor) {
             ed.status_message = Some("align cannot work with multi line selections".to_string());
             return;
         }
-    }
-
-    struct range_coord {
-        from: usize,
-        line: usize,
-        col: usize,
     }
 
     let mut coords = Vec::with_capacity(sel.len());
@@ -636,8 +693,7 @@ pub fn align_selections(ed: &mut editor) {
 
     insertions.sort_unstable_by_key(|&(pos, _)| pos);
 
-    let _doc_id = ed.active_doc_id;
-    let doc = ed.active_doc_mut();
+        let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
     let mut last_pos = 0;
@@ -655,11 +711,15 @@ pub fn align_selections(ed: &mut editor) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Joins lines spanning each selection, optionally inserting a single separating space.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn join_selections(ed: &mut editor, with_space: bool) {
     let doc = ed.active_doc();
     let buffer = doc.text();
@@ -717,8 +777,7 @@ pub fn join_selections(ed: &mut editor, with_space: bool) {
     del_ranges.sort_unstable_by_key(|&(from, _, _)| from);
     del_ranges.dedup_by_key(|r| r.0);
 
-    let _doc_id = ed.active_doc_id;
-    let doc = ed.active_doc_mut();
+        let doc = ed.active_doc_mut();
     let doc_len = doc.text().char_len();
     let mut cs = change_set::new(doc_len);
     let mut last_pos = 0;
@@ -740,11 +799,15 @@ pub fn join_selections(ed: &mut editor, with_space: bool) {
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     ed.ensure_active_cursor_visible();
 }
 
 /// Copies current selection ranges to adjacent line above or below.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn copy_selection_on_line(ed: &mut editor, forward: bool, count: usize) {
     let doc = ed.active_doc_mut();
     let buffer = doc.text();
@@ -776,9 +839,8 @@ pub fn copy_selection_on_line(ed: &mut editor, forward: bool, count: usize) {
                 break;
             }
 
-            let t_start_byte = match buffer.line_to_byte(target_line) {
-                Some(b) => b,
-                None => break,
+            let Some(t_start_byte) = buffer.line_to_byte(target_line) else {
+                break;
             };
             let t_start_char = buffer.byte_to_char(t_start_byte);
             let t_line_str = buffer.line(target_line).unwrap_or_default();
@@ -803,6 +865,10 @@ pub fn copy_selection_on_line(ed: &mut editor, forward: bool, count: usize) {
 }
 
 /// Shrinks selection to full line bounds.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn shrink_to_line_bounds(ed: &mut editor) {
     let doc = ed.active_doc_mut();
     let buffer = doc.text();
@@ -849,6 +915,10 @@ pub fn shrink_to_line_bounds(ed: &mut editor) {
 }
 
 /// Selects all sub-matches of `pattern` within existing selection ranges (`s`).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn select_on_matches(ed: &mut editor, pattern: &str) {
     let re = match regex::smart_case(pattern) {
         Ok(r) => r,
@@ -908,6 +978,10 @@ pub fn select_on_matches(ed: &mut editor, pattern: &str) {
 }
 
 /// Splits selection ranges on sub-matches of `pattern` (`S`).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn split_on_matches(ed: &mut editor, pattern: &str) {
     let re = match regex::smart_case(pattern) {
         Ok(r) => r,
@@ -972,6 +1046,10 @@ pub fn split_on_matches(ed: &mut editor, pattern: &str) {
 }
 
 /// Filters selection ranges matching `pattern` (`K` to keep, `Alt-K` to remove).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn keep_or_remove_matches(ed: &mut editor, pattern: &str, remove: bool) {
     let re = match regex::smart_case(pattern) {
         Ok(r) => r,
@@ -1011,6 +1089,10 @@ pub fn keep_or_remove_matches(ed: &mut editor, pattern: &str, remove: bool) {
 }
 
 /// Applies a text object selection to each active selection range in the editor.
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn apply_textobject(ed: &mut editor, mode: ned_text::textobject_mode, ch: char, count: usize) {
     let doc = ed.active_doc_mut();
     let buffer = doc.text().clone();
@@ -1086,6 +1168,10 @@ pub fn apply_textobject(ed: &mut editor, mode: ned_text::textobject_mode, ch: ch
 }
 
 /// Expands the active selection to its parent syntax node (`A-o`).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn expand_syntax_selection(ed: &mut editor) {
     let doc_id = ed.active_doc_id;
     let (tree, sel) = {
@@ -1124,6 +1210,10 @@ pub fn expand_syntax_selection(ed: &mut editor) {
 }
 
 /// Shrinks the active selection to a child syntax node (`A-i`).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn shrink_syntax_selection(ed: &mut editor) {
     let doc_id = ed.active_doc_id;
     let current_sel = ed.active_doc().selection().clone();
@@ -1174,6 +1264,10 @@ pub fn shrink_syntax_selection(ed: &mut editor) {
 }
 
 /// Selects the next sibling syntax node sharing the same parent (`A-n`).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn select_next_syntax_sibling(ed: &mut editor) {
     let doc = ed.active_doc_mut();
     let buffer = doc.text().clone();
@@ -1206,6 +1300,10 @@ pub fn select_next_syntax_sibling(ed: &mut editor) {
 }
 
 /// Selects the previous sibling syntax node sharing the same parent (`A-p`).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn select_prev_syntax_sibling(ed: &mut editor) {
     let doc = ed.active_doc_mut();
     let buffer = doc.text().clone();
@@ -1238,6 +1336,10 @@ pub fn select_prev_syntax_sibling(ed: &mut editor) {
 }
 
 /// Jumps cursor to the matching bracket under cursor (`mm`).
+///
+/// # Panics
+///
+/// May panic if text indices are out of bounds for the document buffer.
 pub fn match_bracket_jump(ed: &mut editor) {
     let doc = ed.active_doc_mut();
     let buffer = doc.text();

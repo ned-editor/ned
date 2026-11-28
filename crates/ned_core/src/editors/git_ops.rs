@@ -21,12 +21,15 @@ pub fn refresh_diff(ed: &mut editor, doc_id: document_id) {
 }
 
 /// Jumps cursor to the start of the next diff hunk in the active document.
+///
+/// # Panics
+///
+/// Panics if the current cursor line number exceeds `u32::MAX`.
 pub fn goto_next_hunk(ed: &mut editor) {
     let doc_id = ed.active_doc_id;
     let target_line = {
-        let doc = match ed.documents.get(&doc_id) {
-            Some(d) => d,
-            None => return,
+        let Some(doc) = ed.documents.get(&doc_id) else {
+            return;
         };
 
         if doc.is_diff_too_large() {
@@ -42,7 +45,8 @@ pub fn goto_next_hunk(ed: &mut editor) {
 
         let cursor_char = doc.selection().primary().cursor(doc.text());
         let cursor_byte = doc.text().char_to_byte(cursor_char);
-        let current_line = doc.text().byte_to_line(cursor_byte) as u32;
+        let current_line = u32::try_from(doc.text().byte_to_line(cursor_byte))
+            .expect("line number fits in u32");
 
         let target_hunk = hunks
             .iter()
@@ -66,12 +70,15 @@ pub fn goto_next_hunk(ed: &mut editor) {
 }
 
 /// Jumps cursor to the start of the previous diff hunk in the active document.
+///
+/// # Panics
+///
+/// Panics if the current cursor line number exceeds `u32::MAX`.
 pub fn goto_prev_hunk(ed: &mut editor) {
     let doc_id = ed.active_doc_id;
     let target_line = {
-        let doc = match ed.documents.get(&doc_id) {
-            Some(d) => d,
-            None => return,
+        let Some(doc) = ed.documents.get(&doc_id) else {
+            return;
         };
 
         if doc.is_diff_too_large() {
@@ -87,7 +94,8 @@ pub fn goto_prev_hunk(ed: &mut editor) {
 
         let cursor_char = doc.selection().primary().cursor(doc.text());
         let cursor_byte = doc.text().char_to_byte(cursor_char);
-        let current_line = doc.text().byte_to_line(cursor_byte) as u32;
+        let current_line = u32::try_from(doc.text().byte_to_line(cursor_byte))
+            .expect("line number fits in u32");
 
         let target_hunk = hunks
             .iter()

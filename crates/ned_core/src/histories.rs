@@ -19,7 +19,9 @@ pub struct history_entry {
 /// Linear undo/redo history manager for a document buffer.
 #[derive(Debug, Default, Clone)]
 pub struct history {
+    /// Recorded edit revisions, oldest first.
     entries: Vec<history_entry>,
+    /// Cursor index into `entries` for undo/redo position.
     cursor: usize,
 }
 

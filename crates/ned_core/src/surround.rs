@@ -20,6 +20,10 @@ pub enum surround_op {
 }
 
 /// Adds delimiter characters around each active selection range.
+///
+/// # Errors
+///
+/// Returns `Err` if a surround pair cannot be determined for the delimiter character.
 pub fn surround_add(doc: &mut document, ch: char) -> Result<(), &'static str> {
     let (open_str, close_str) = if ch == '\n' || ch == '\r' {
         let le = doc.line_ending().as_str();
@@ -70,11 +74,16 @@ pub fn surround_add(doc: &mut document, ch: char) -> Result<(), &'static str> {
 
     let primary_idx = doc.selection().primary_index();
     let new_sel = selection::new(new_ranges, primary_idx);
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     Ok(())
 }
 
 /// Deletes the enclosing delimiter pair around each active selection range.
+///
+/// # Errors
+///
+/// Returns `Err("Surround pair not found around all cursors")` if a matching pair is not found
+/// for any selection, or `Err("Cursors overlap for surround pair")` if deletion positions overlap.
 pub fn surround_delete(doc: &mut document, ch: char, count: usize) -> Result<(), &'static str> {
     let mut del_positions = Vec::new();
 
@@ -118,11 +127,16 @@ pub fn surround_delete(doc: &mut document, ch: char, count: usize) -> Result<(),
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     Ok(())
 }
 
 /// Replaces the enclosing delimiter pair around each active selection range.
+///
+/// # Errors
+///
+/// Returns `Err("Surround pair not found around all cursors")` if a matching pair is not found
+/// for any selection, or `Err("Cursors overlap for surround pair")` if replacement positions overlap.
 pub fn surround_replace(
     doc: &mut document,
     old_ch: char,
@@ -178,6 +192,6 @@ pub fn surround_replace(
     }
 
     let new_sel = cs.map_selection(doc.selection().clone());
-    doc.apply(cs, Some(new_sel));
+    doc.apply(&cs, Some(new_sel));
     Ok(())
 }

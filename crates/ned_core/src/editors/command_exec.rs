@@ -10,6 +10,7 @@ use crate::command_parser::{editor_command, parse_command};
 use crate::editors::editor;
 
 /// Executes an ex-command string parsed from user prompt input.
+#[allow(clippy::too_many_lines)]
 pub fn execute_command(ed: &mut editor, cmd_str: &str) {
     match parse_command(cmd_str) {
         Ok(editor_command::run_shell(cmd)) => {
@@ -75,7 +76,6 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             }
         }
         Ok(editor_command::write_quit { path, force }) => {
-            let _doc_id = ed.active_doc_id;
             if force {
                 if let Some(ref p) = path {
                     if let Some(parent) = Path::new(p).parent() {
@@ -345,7 +345,6 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             }
         }
         Ok(editor_command::goto_line(target_line)) => {
-            let _doc_id = ed.active_doc_id;
             let doc = ed.active_doc_mut();
             let total = doc.text().line_count().max(1);
             let clamped = target_line.clamp(1, total) - 1;
@@ -407,6 +406,7 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
     }
 }
 
+/// Closes the current document buffer, optionally forcing closure with unsaved changes.
 fn close_current_buffer(ed: &mut editor, force: bool) {
     let doc_id = ed.active_doc_id;
     if let Some(doc) = ed.documents.get(&doc_id) {
@@ -444,6 +444,7 @@ fn close_current_buffer(ed: &mut editor, force: bool) {
     }
 }
 
+/// Cycles the active document to the next or previous buffer in document order.
 fn cycle_buffer(ed: &mut editor, forward: bool) {
     let mut ids: Vec<_> = ed.documents.keys().copied().collect();
     ids.sort_unstable();
