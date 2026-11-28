@@ -42,6 +42,8 @@ pub struct editor {
     pub count: Option<usize>,
     /// Active register prefix key if explicitly selected (e.g. `"a`).
     pub selected_register: Option<char>,
+    /// Pending character replace operation flag (`r`).
+    pub pending_replace: bool,
     /// Pending key prefix tree for multi-keystroke combinations (e.g. `g`, `]`, `[`).
     pub key_prefix: Option<key_trie_node>,
     /// Ephemeral status line message.
@@ -89,6 +91,7 @@ impl editor {
             registers: register_storage::new(),
             count: None,
             selected_register: None,
+            pending_replace: false,
             key_prefix: None,
             status_message,
             hover_popup: None,
@@ -327,23 +330,23 @@ impl editor {
 
             // --- Editing & Deletion ---
             action::delete_selection => {
-                self.yank_selection();
-                self.delete_selected_text();
+                self.delete_selection(true);
             }
             action::delete_selection_noyank => {
-                self.delete_selected_text();
+                self.delete_selection(false);
             }
             action::change_selection => {
-                self.yank_selection();
-                self.delete_selected_text();
-                self.mode = mode::insert;
+                self.change_selection(true);
             }
             action::change_selection_noyank => {
-                self.delete_selected_text();
-                self.mode = mode::insert;
+                self.change_selection(false);
             }
             action::replace => {
-                // Next character replaces selected text
+                self.pending_replace = true;
+                self.status_message = Some("replace: ".to_string());
+            }
+            action::replace_with_yanked => {
+                self.replace_with_yanked();
             }
             action::yank => {
                 self.yank_selection();
@@ -692,7 +695,7 @@ impl editor {
 
     /// Deletes text covered by all selections and collapses selections to point cursors.
     #[inline]
-    fn delete_selected_text(&mut self) {
+    pub fn delete_selected_text(&mut self) {
         edit_ops::delete_selected_text(self);
     }
 
@@ -700,6 +703,30 @@ impl editor {
     #[inline]
     fn yank_selection(&mut self) {
         edit_ops::yank_selection(self);
+    }
+
+    /// Deletes active selection with or without yanking.
+    #[inline]
+    fn delete_selection(&mut self, yank: bool) {
+        edit_ops::delete_selection(self, yank);
+    }
+
+    /// Changes active selection with or without yanking.
+    #[inline]
+    fn change_selection(&mut self, yank: bool) {
+        edit_ops::change_selection(self, yank);
+    }
+
+    /// Replaces active selection with a typed character literal.
+    #[inline]
+    pub fn replace_selection_with_char(&mut self, ch: char) {
+        edit_ops::replace_selection_with_char(self, ch);
+    }
+
+    /// Replaces active selection with yanked text from chosen register.
+    #[inline]
+    fn replace_with_yanked(&mut self) {
+        edit_ops::replace_with_yanked(self);
     }
 
     /// Pastes text from active register after or before cursor.

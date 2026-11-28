@@ -54,11 +54,14 @@ fn handle_insert_key(ed: &mut editor, ev: key_event) -> bool {
 fn handle_modal_key(ed: &mut editor, ev: key_event) -> bool {
     // 1. Escape clears any pending prefix, count, register selection, and status message
     if ev.code == key_code::escape {
-        let had_prefix =
-            ed.key_prefix.is_some() || ed.count.is_some() || ed.selected_register.is_some();
+        let had_prefix = ed.key_prefix.is_some()
+            || ed.count.is_some()
+            || ed.selected_register.is_some()
+            || ed.pending_replace;
         ed.key_prefix = None;
         ed.count = None;
         ed.selected_register = None;
+        ed.pending_replace = false;
         if had_prefix {
             ed.status_message = None;
             return true;
@@ -70,13 +73,38 @@ fn handle_modal_key(ed: &mut editor, ev: key_event) -> bool {
         return true;
     }
 
-    // 2. Register selection char capture (when `"` was previously pressed)
+    // 2. Pending replace character capture (`r`)
+    if ed.pending_replace {
+        ed.pending_replace = false;
+        ed.status_message = None;
+        if let key_code::char(ch) = ev.code {
+            if !ev.modifiers.ctrl && !ev.modifiers.alt {
+                ed.replace_selection_with_char(ch);
+                return true;
+            }
+        }
+        return true;
+    }
+
+    // 3. Register selection char capture (when `"` was previously pressed)
     if ed.selected_register == Some('\0') {
         if let key_code::char(ch) = ev.code {
             if !ev.modifiers.ctrl && !ev.modifiers.alt {
-                ed.selected_register = Some(ch);
-                ed.status_message = Some(format!("register: \"{ch}"));
-                return true;
+                let is_valid = ch.is_ascii_alphanumeric()
+                    || ch == '"'
+                    || ch == '_'
+                    || ch == '.'
+                    || ch == '#'
+                    || ch == '%'
+                    || ch == '/'
+                    || ch == ':'
+                    || ch == '+'
+                    || ch == '*';
+                if is_valid {
+                    ed.selected_register = Some(ch);
+                    ed.status_message = Some(format!("register: \"{ch}"));
+                    return true;
+                }
             }
         }
         ed.selected_register = None;

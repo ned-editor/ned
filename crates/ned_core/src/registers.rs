@@ -2,10 +2,20 @@
 
 use std::collections::HashMap;
 
-/// Storage managing text registers for yank and paste operations.
+/// Maximum number of named registers allowed.
+const MAX_NAMED_REGISTERS: usize = 128;
+/// Maximum bytes allowed per register (4 MiB).
+const MAX_REGISTER_BYTES: usize = 4 * 1024 * 1024;
+
+/// Storage managing text registers for yank, delete, change, and paste operations.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct register_storage {
+    /// Named registers mapping character to list of selection string fragments.
     registers: HashMap<char, Vec<String>>,
+    /// Last regex pattern used in search operations (`/`).
+    pub last_search: Option<String>,
+    /// Last typable command executed in command mode (`:`).
+    pub last_command: Option<String>,
 }
 
 impl register_storage {
@@ -14,6 +24,8 @@ impl register_storage {
     pub fn new() -> Self {
         Self {
             registers: HashMap::new(),
+            last_search: None,
+            last_command: None,
         }
     }
 
@@ -21,31 +33,86 @@ impl register_storage {
     ///
     /// Register `_` (blackhole) always returns `None`.
     #[must_use]
-    pub fn read(&self, reg: char) -> Option<&[String]> {
-        if reg == '_' {
-            return None;
+    pub fn read(&self, reg: char) -> Option<Vec<String>> {
+        match reg {
+            '_' => None,
+            '/' => self.last_search.as_ref().map(|s| vec![s.clone()]),
+            ':' => self.last_command.as_ref().map(|c| vec![c.clone()]),
+            _ => self.registers.get(&reg).cloned(),
         }
-        self.registers.get(&reg).map(std::vec::Vec::as_slice)
     }
 
     /// Writes values into register `reg`.
     ///
-    /// Register `_` (blackhole) discards writes silently.
-    pub fn write(&mut self, reg: char, values: Vec<String>) {
-        if reg == '_' {
-            return;
+    /// Handles uppercase append (e.g. `'A'` appends to `'a'`), blackhole discard (`_`),
+    /// and rejects writes to read-only special registers (`#`, `.`, `%`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the register is read-only, exceeds 4 MiB, or exceeds register capacity.
+    pub fn write(&mut self, reg: char, values: Vec<String>) -> Result<(), String> {
+        match reg {
+            '_' => Ok(()), // Blackhole: silently discard writes
+            '#' | '.' | '%' => Err(format!("Register \"{reg}\" is read-only")),
+            '+' | '*' => {
+                // Clipboard registers: stored locally pending OS provider wiring
+                self.registers.insert(reg, values);
+                Ok(())
+            }
+            '/' => {
+                if let Some(first) = values.into_iter().next() {
+                    self.last_search = Some(first);
+                }
+                Ok(())
+            }
+            ':' => {
+                if let Some(first) = values.into_iter().next() {
+                    self.last_command = Some(first);
+                }
+                Ok(())
+            }
+            c if c.is_ascii_uppercase() => {
+                let lower = c.to_ascii_lowercase();
+                if self.registers.len() >= MAX_NAMED_REGISTERS
+                    && !self.registers.contains_key(&lower)
+                {
+                    return Err(format!(
+                        "Maximum register limit reached ({MAX_NAMED_REGISTERS})"
+                    ));
+                }
+                let total_new_bytes: usize = values.iter().map(String::len).sum();
+                let entry = self.registers.entry(lower).or_default();
+                let current_bytes: usize = entry.iter().map(String::len).sum();
+                if current_bytes + total_new_bytes > MAX_REGISTER_BYTES {
+                    return Err("Register content exceeds 4 MiB limit".to_string());
+                }
+                entry.extend(values);
+                Ok(())
+            }
+            c => {
+                if self.registers.len() >= MAX_NAMED_REGISTERS && !self.registers.contains_key(&c) {
+                    return Err(format!(
+                        "Maximum register limit reached ({MAX_NAMED_REGISTERS})"
+                    ));
+                }
+                let total_bytes: usize = values.iter().map(String::len).sum();
+                if total_bytes > MAX_REGISTER_BYTES {
+                    return Err("Register content exceeds 4 MiB limit".to_string());
+                }
+                self.registers.insert(c, values);
+                Ok(())
+            }
         }
-        self.registers.insert(reg, values);
     }
 
-    /// Reads from the default register (`"`).
+    /// Reads from the default unnamed register (`"`).
     #[must_use]
-    pub fn read_default(&self) -> Option<&[String]> {
+    pub fn read_default(&self) -> Option<Vec<String>> {
         self.read('"')
     }
 
-    /// Writes values to the default register (`"`).
+    /// Writes values to the default unnamed register (`"`).
     pub fn write_default(&mut self, values: Vec<String>) {
-        self.write('"', values);
+        let _ = self.write('"', values);
     }
 }

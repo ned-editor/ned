@@ -275,11 +275,13 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                     let forward = prefix == "/";
                     let trimmed = cmd.trim();
                     if !trimmed.is_empty() {
+                        let _ = app.ed.registers.write('/', vec![trimmed.to_string()]);
                         app.ed.search_query = Some(trimmed.to_string());
                         app.ed.jump_search(forward);
                     }
                 } else {
                     let trimmed = cmd.trim();
+                    let _ = app.ed.registers.write(':', vec![trimmed.to_string()]);
                     if trimmed == "o" || trimmed == "open" {
                         let cwd = std::env::current_dir()
                             .unwrap_or_else(|_| std::path::PathBuf::from("."));

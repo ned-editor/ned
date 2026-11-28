@@ -57,6 +57,7 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     normal.insert("c", action::change_selection);
     normal.insert("A-c", action::change_selection_noyank);
     normal.insert("r", action::replace);
+    normal.insert("R", action::replace_with_yanked);
     normal.insert("y", action::yank);
     normal.insert("p", action::paste_after);
     normal.insert("P", action::paste_before);
@@ -234,6 +235,7 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     select.insert("c", action::change_selection);
     select.insert("A-c", action::change_selection_noyank);
     select.insert("r", action::replace);
+    select.insert("R", action::replace_with_yanked);
     select.insert("y", action::yank);
     select.insert("p", action::paste_after);
     select.insert("P", action::paste_before);

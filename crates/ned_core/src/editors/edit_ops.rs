@@ -1,9 +1,7 @@
 //! Document editing operations: insert, delete, change, yank, paste, casing, and indentation.
 
 use ned_config::action;
-use ned_text::{
-    apply_motion, change_set, direction, move_horizontally, movement, prev_grapheme_boundary,
-};
+use ned_text::{change_set, prev_grapheme_boundary};
 
 use crate::editors::editor;
 
@@ -155,6 +153,40 @@ pub fn delete_selected_text(ed: &mut editor) {
     ed.notify_lsp_did_change(doc_id);
 }
 
+/// Reads values from register `reg` taking dynamic editor context into account
+/// (e.g. `.` for current selections, `#` for selection indices, `%` for file path).
+#[must_use]
+pub fn read_register(ed: &editor, reg: char) -> Option<Vec<String>> {
+    match reg {
+        '_' => None,
+        '.' => {
+            let doc = ed.active_doc();
+            let mut vals = Vec::new();
+            for r in doc.selection().ranges() {
+                let from = r.from();
+                let to = r.to().max(from + 1).min(doc.text().char_len());
+                vals.push(doc.text().slice_chars(from..to));
+            }
+            Some(vals)
+        }
+        '#' => {
+            let doc = ed.active_doc();
+            let count = doc.selection().len();
+            Some((1..=count).map(|i| i.to_string()).collect())
+        }
+        '%' => {
+            let doc = ed.active_doc();
+            let p = doc
+                .path()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
+            Some(vec![p])
+        }
+        '+' | '*' => None,
+        _ => ed.registers.read(reg),
+    }
+}
+
 /// Yanks text from active selection ranges into the chosen register.
 pub fn yank_selection(ed: &mut editor) {
     let reg = ed.selected_register.take().unwrap_or('"');
@@ -167,29 +199,218 @@ pub fn yank_selection(ed: &mut editor) {
         values.push(doc.text().slice_chars(from..to));
     }
 
-    ed.registers.write(reg, values);
+    let count = values.len();
+    match ed.registers.write(reg, values) {
+        Ok(()) => {
+            ed.status_message = Some(format!(
+                "yanked {count} selection{} to register \"{reg}\"",
+                if count == 1 { "" } else { "s" }
+            ));
+        }
+        Err(err) => {
+            ed.status_message = Some(err);
+        }
+    }
 }
 
-/// Pastes text from active register after or before cursor.
-pub fn paste_register(ed: &mut editor, after: bool) {
+/// Deletes selected text with or without yanking to active register.
+pub fn delete_selection(ed: &mut editor, yank: bool) {
     let reg = ed.selected_register.take().unwrap_or('"');
-    let strings = match ed.registers.read(reg) {
-        Some(vals) => vals.to_vec(),
-        None => return,
-    };
-    if strings.is_empty() {
-        return;
+    if yank && reg != '_' {
+        let doc = ed.active_doc();
+        let mut values = Vec::new();
+        for r in doc.selection().ranges() {
+            let from = r.from();
+            let to = r.to().max(from + 1).min(doc.text().char_len());
+            values.push(doc.text().slice_chars(from..to));
+        }
+        let _ = ed.registers.write(reg, values);
+    }
+    delete_selected_text(ed);
+}
+
+/// Changes selected text with or without yanking, entering insert mode.
+pub fn change_selection(ed: &mut editor, yank: bool) {
+    delete_selection(ed, yank);
+    ed.mode = ned_config::mode::insert;
+}
+
+/// Replaces each selection with a single typed character literal.
+pub fn replace_selection_with_char(ed: &mut editor, ch: char) {
+    let doc_id = ed.active_doc_id;
+    let doc = ed.active_doc_mut();
+    let doc_len = doc.text().char_len();
+    let mut cs = change_set::new(doc_len);
+    let mut last_pos = 0;
+    let repl = ch.to_string();
+
+    for r in doc.selection().ranges() {
+        let from = r.from();
+        let to = r.to().max(from + 1).min(doc_len);
+        if from > last_pos {
+            cs.retain(from - last_pos);
+        }
+        if to > from {
+            cs.delete(to - from);
+        }
+        cs.insert(&repl);
+        last_pos = to;
+    }
+    if last_pos < doc_len {
+        cs.retain(doc_len - last_pos);
     }
 
-    let text_to_paste = strings.join("\n");
-    if after {
-        let doc = ed.active_doc_mut();
-        let sel = apply_motion(doc.text(), doc.selection(), |r| {
-            move_horizontally(doc.text(), r, direction::forward, 1, movement::move_)
-        });
-        doc.set_selection(sel);
+    let new_sel = cs.map_selection(doc.selection().clone());
+    doc.apply(cs, Some(new_sel));
+    ed.ensure_active_cursor_visible();
+    ed.notify_lsp_did_change(doc_id);
+}
+
+/// Replaces each selection range with corresponding text from the active register.
+pub fn replace_with_yanked(ed: &mut editor) {
+    let reg = ed.selected_register.take().unwrap_or('"');
+    let values = match read_register(ed, reg) {
+        Some(v) if !v.is_empty() => v,
+        _ => return,
+    };
+
+    let doc_id = ed.active_doc_id;
+    let doc = ed.active_doc_mut();
+    let doc_len = doc.text().char_len();
+    let mut cs = change_set::new(doc_len);
+    let mut last_pos = 0;
+    let mut new_ranges = Vec::new();
+    let mut current_offset: isize = 0;
+
+    let sel_ranges: Vec<_> = doc.selection().ranges().to_vec();
+    for (i, r) in sel_ranges.iter().enumerate() {
+        let from = r.from();
+        let to = r.to().max(from + 1).min(doc_len);
+        if from > last_pos {
+            cs.retain(from - last_pos);
+        }
+        if to > from {
+            cs.delete(to - from);
+        }
+        let repl = if values.len() == 1 {
+            &values[0]
+        } else if i < values.len() {
+            &values[i]
+        } else {
+            values.last().unwrap()
+        };
+        cs.insert(repl);
+        let repl_char_len = repl.chars().count();
+        let new_anchor = (from as isize + current_offset) as usize;
+        let new_head = new_anchor + repl_char_len;
+        new_ranges.push(ned_text::range::new(new_anchor, new_head));
+        current_offset += repl_char_len as isize - (to - from) as isize;
+        last_pos = to;
     }
-    insert_string(ed, &text_to_paste);
+    if last_pos < doc_len {
+        cs.retain(doc_len - last_pos);
+    }
+
+    let new_sel = ned_text::selection::new(new_ranges, doc.selection().primary_index());
+    doc.apply(cs, Some(new_sel));
+    ed.ensure_active_cursor_visible();
+    ed.notify_lsp_did_change(doc_id);
+}
+
+/// Pastes text from active register after or before cursor with cardinality and linewise rules.
+pub fn paste_register(ed: &mut editor, after: bool) {
+    let is_normal_mode = ed.mode == ned_config::mode::normal;
+    let reg = ed.selected_register.take().unwrap_or('"');
+    let values = match read_register(ed, reg) {
+        Some(v) if !v.is_empty() => v,
+        _ => return,
+    };
+
+    let doc_id = ed.active_doc_id;
+    let doc = ed.active_doc_mut();
+    let text = doc.text();
+    let doc_len = text.char_len();
+
+    let linewise = values.iter().any(|v| v.ends_with('\n') || v.ends_with("\r\n"));
+    let sel_ranges: Vec<_> = doc.selection().ranges().to_vec();
+    let num_selections = sel_ranges.len();
+
+    struct paste_op {
+        target_char: usize,
+        content: String,
+    }
+
+    let mut ops = Vec::with_capacity(num_selections);
+
+    for (i, r) in sel_ranges.iter().enumerate() {
+        let content = if values.len() == 1 {
+            values[0].clone()
+        } else if i < values.len() {
+            values[i].clone()
+        } else {
+            values.last().unwrap().clone()
+        };
+
+        let target_char = if linewise {
+            if after {
+                let line_byte = text.char_to_byte(r.to().saturating_sub(1));
+                let line_idx = text.byte_to_line(line_byte);
+                let next_line = (line_idx + 1).min(text.line_count());
+                let next_byte = text.line_to_byte(next_line).unwrap_or(text.byte_len());
+                text.byte_to_char(next_byte)
+            } else {
+                let line_byte = text.char_to_byte(r.from());
+                let line_idx = text.byte_to_line(line_byte);
+                let curr_byte = text.line_to_byte(line_idx).unwrap_or(0);
+                text.byte_to_char(curr_byte)
+            }
+        } else if after {
+            r.to().min(doc_len)
+        } else {
+            r.from().min(doc_len)
+        };
+
+        ops.push(paste_op {
+            target_char,
+            content,
+        });
+    }
+
+    ops.sort_by_key(|op| op.target_char);
+
+    let mut cs = change_set::new(doc_len);
+    let mut last_pos = 0;
+    let mut new_ranges = Vec::with_capacity(ops.len());
+    let mut current_offset: isize = 0;
+
+    for op in ops {
+        if op.target_char > last_pos {
+            cs.retain(op.target_char - last_pos);
+            last_pos = op.target_char;
+        }
+        cs.insert(&op.content);
+        let content_char_len = op.content.chars().count();
+        let new_anchor = (op.target_char as isize + current_offset) as usize;
+        let new_head = new_anchor + content_char_len;
+        new_ranges.push(ned_text::range::new(new_anchor, new_head));
+        current_offset += content_char_len as isize;
+    }
+    if last_pos < doc_len {
+        cs.retain(doc_len - last_pos);
+    }
+
+    let new_sel = if is_normal_mode {
+        Some(ned_text::selection::new(
+            new_ranges,
+            doc.selection().primary_index(),
+        ))
+    } else {
+        None
+    };
+
+    doc.apply(cs, new_sel);
+    ed.ensure_active_cursor_visible();
+    ed.notify_lsp_did_change(doc_id);
 }
 
 /// Applies casing transformations (lowercase, uppercase, switch case) to selections.

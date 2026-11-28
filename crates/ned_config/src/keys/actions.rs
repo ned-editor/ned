@@ -87,6 +87,8 @@ pub enum action {
     change_selection_noyank,
     /// Replace selected character (`r`).
     replace,
+    /// Replace selection with yanked text (`R`).
+    replace_with_yanked,
     /// Yank selected text to clipboard (`y`).
     yank,
     /// Paste clipboard text after cursor (`p`).
