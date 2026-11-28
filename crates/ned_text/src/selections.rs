@@ -149,6 +149,193 @@ impl selection {
         self.normalize()
     }
 
+    /// Inverts the anchor and head of every range in this selection.
+    #[must_use]
+    pub fn flip(&self) -> Self {
+        let flipped: Vec<range> = self
+            .ranges
+            .iter()
+            .map(|r| range::new(r.head, r.anchor))
+            .collect();
+        Self::new(flipped, self.primary_index)
+    }
+
+    /// Ensures all selection ranges are oriented forward (`anchor <= head`).
+    #[must_use]
+    pub fn ensure_forward(&self) -> Self {
+        let forward: Vec<range> = self
+            .ranges
+            .iter()
+            .map(|r| {
+                if r.anchor > r.head {
+                    range::new(r.head, r.anchor)
+                } else {
+                    *r
+                }
+            })
+            .collect();
+        Self::new(forward, self.primary_index)
+    }
+
+    /// Removes the current primary selection, promoting the next surviving selection.
+    ///
+    /// If there is only one range, returns a clone of `self`.
+    #[must_use]
+    pub fn remove_primary(&self) -> Self {
+        if self.ranges.len() <= 1 {
+            return self.clone();
+        }
+        let mut new_ranges = self.ranges.clone();
+        new_ranges.remove(self.primary_index);
+        let new_idx = self.primary_index.min(new_ranges.len() - 1);
+        Self::new(new_ranges, new_idx)
+    }
+
+    /// Cycles the active primary selection forward by `count` positions.
+    pub fn cycle_primary_forward(&mut self, count: usize) {
+        if !self.ranges.is_empty() {
+            self.primary_index = (self.primary_index + count) % self.ranges.len();
+        }
+    }
+
+    /// Cycles the active primary selection backward by `count` positions.
+    pub fn cycle_primary_backward(&mut self, count: usize) {
+        if !self.ranges.is_empty() {
+            let step = count % self.ranges.len();
+            self.primary_index =
+                (self.primary_index + self.ranges.len() - step) % self.ranges.len();
+        }
+    }
+
+    /// Merges consecutive adjacent ranges where `prev.to() == curr.from()`.
+    #[must_use]
+    pub fn merge_consecutive(mut self) -> Self {
+        if self.ranges.len() < 2 {
+            return self;
+        }
+
+        let mut primary = self.ranges[self.primary_index];
+        let mut merged: Vec<range> = Vec::with_capacity(self.ranges.len());
+
+        for curr in self.ranges {
+            if let Some(prev) = merged.last_mut() {
+                if prev.to() == curr.from() {
+                    let combined = prev.merge(curr);
+                    if *prev == primary || curr == primary {
+                        primary = combined;
+                    }
+                    *prev = combined;
+                    continue;
+                }
+            }
+            merged.push(curr);
+        }
+
+        self.ranges = merged;
+        self.primary_index = self.ranges.iter().position(|r| *r == primary).unwrap_or(0);
+        self
+    }
+
+    /// Trims leading and trailing whitespace from each selection range.
+    #[must_use]
+    pub fn trim_whitespace(&self, buffer: &rope) -> Self {
+        let total_chars = buffer.char_len();
+        let mut new_ranges = Vec::with_capacity(self.ranges.len());
+
+        for sel in &self.ranges {
+            let from = sel.from().min(total_chars);
+            let to = sel.to().min(total_chars);
+            if from >= to {
+                continue;
+            }
+
+            let text = buffer.slice_chars(from..to);
+            let chars: Vec<char> = text.chars().collect();
+            let mut start_offset = 0;
+            let mut end_offset = chars.len();
+
+            while start_offset < chars.len() && chars[start_offset].is_whitespace() {
+                start_offset += 1;
+            }
+            while end_offset > start_offset && chars[end_offset - 1].is_whitespace() {
+                end_offset -= 1;
+            }
+
+            if start_offset < end_offset {
+                let start_char = from + start_offset;
+                let end_char = from + end_offset;
+                let r = if sel.anchor > sel.head {
+                    range::new(end_char, start_char)
+                } else {
+                    range::new(start_char, end_char)
+                };
+                new_ranges.push(r);
+            }
+        }
+
+        if new_ranges.is_empty() {
+            Self::single(self.primary().anchor, self.primary().head)
+        } else {
+            let primary = self.primary();
+            let idx = new_ranges
+                .iter()
+                .position(|r| r.overlaps(&primary))
+                .unwrap_or(0);
+            Self::new(new_ranges, idx)
+        }
+    }
+
+    /// Splits each range in this selection across newline boundaries.
+    #[must_use]
+    pub fn split_on_newline(&self, buffer: &rope) -> Self {
+        let mut new_ranges = Vec::with_capacity(self.ranges.len());
+        let total_chars = buffer.char_len();
+
+        for sel in &self.ranges {
+            if sel.from() == sel.to() {
+                new_ranges.push(*sel);
+                continue;
+            }
+
+            let start_char = sel.from().min(total_chars);
+            let end_char = sel.to().min(total_chars);
+            if start_char >= end_char {
+                new_ranges.push(*sel);
+                continue;
+            }
+
+            let start_byte = buffer.char_to_byte(start_char);
+            let end_byte = buffer.char_to_byte(end_char);
+            let start_line = buffer.byte_to_line(start_byte);
+            let end_line = buffer.byte_to_line(end_byte);
+
+            for line_idx in start_line..=end_line {
+                let l_start_byte = buffer.line_to_byte(line_idx).unwrap_or(0);
+                let l_start_char = buffer.byte_to_char(l_start_byte);
+                let line_str = buffer.line(line_idx).unwrap_or_default();
+                let trimmed_line_chars = line_str.trim_end_matches(['\r', '\n']).chars().count();
+                let l_end_char = l_start_char + trimmed_line_chars;
+
+                let r_start = l_start_char.max(start_char);
+                let r_end = l_end_char.min(end_char);
+                if r_start <= r_end {
+                    let r = if sel.anchor > sel.head {
+                        range::new(r_end, r_start)
+                    } else {
+                        range::new(r_start, r_end)
+                    };
+                    new_ranges.push(r);
+                }
+            }
+        }
+
+        if new_ranges.is_empty() {
+            Self::single(self.primary().anchor, self.primary().head)
+        } else {
+            Self::new(new_ranges, 0)
+        }
+    }
+
     /// Collapses all selection ranges to their block-cursor point positions.
     #[must_use]
     pub fn collapse(&self, buffer: &rope) -> Self {

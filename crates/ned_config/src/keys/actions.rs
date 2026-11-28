@@ -113,12 +113,50 @@ pub enum action {
     // --- Selection operations ---
     /// Select entire document (`%`).
     select_all,
+    /// Select sub-matches of regex within current selections (`s`).
+    select_regex,
+    /// Split selections on regex matches (`S`).
+    split_selection,
+    /// Split selections on newlines (`A-s`).
+    split_selection_on_newline,
+    /// Merge consecutive selections (`A-minus` / `A-_`).
+    merge_consecutive_selections,
+    /// Align selections in columns (`&`).
+    align_selections,
+    /// Trim whitespace from selections (`_`).
+    trim_selections,
     /// Collapse selections to single-character cursor points (`;`).
     collapse_selection,
     /// Invert anchor and head of all selections (`A-;`).
     flip_selections,
+    /// Ensure all selections are oriented forward (`A-:`).
+    ensure_selection_forward,
     /// Drop all secondary selections, keeping only primary (`,`).
     keep_primary_selection,
+    /// Remove primary selection, promoting next surviving (`A-,`).
+    remove_primary_selection,
+    /// Copy selection on next line (`C`).
+    copy_selection_on_next_line,
+    /// Copy selection on previous line (`A-C`).
+    copy_selection_on_prev_line,
+    /// Cycle primary selection forward (`)`).
+    rotate_selections_forward,
+    /// Cycle primary selection backward (`(`).
+    rotate_selections_backward,
+    /// Rotate selected text contents forward across selections (`A-)`).
+    rotate_selection_contents_forward,
+    /// Rotate selected text contents backward across selections (`A-(`).
+    rotate_selection_contents_backward,
+    /// Shrink selection to line bounds (`A-x`).
+    shrink_to_line_bounds,
+    /// Join selected lines with space (`J`).
+    join_selections,
+    /// Join selected lines without space (`A-J`).
+    join_selections_space,
+    /// Keep selections matching regex (`K`).
+    keep_matching_selections,
+    /// Remove selections matching regex (`A-K`).
+    remove_matching_selections,
 
     // --- Search ---
     /// Start forward search (`/`).

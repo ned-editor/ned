@@ -72,19 +72,36 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     // Selections
     normal.insert("x", action::extend_line_below);
     normal.insert("X", action::extend_to_line_bounds);
+    normal.insert("A-x", action::shrink_to_line_bounds);
     normal.insert("%", action::select_all);
+    normal.insert("s", action::select_regex);
+    normal.insert("S", action::split_selection);
+    normal.insert("A-s", action::split_selection_on_newline);
+    normal.insert("A-_", action::merge_consecutive_selections);
+    normal.insert("A-minus", action::merge_consecutive_selections);
+    normal.insert("&", action::align_selections);
+    normal.insert("_", action::trim_selections);
     normal.insert(";", action::collapse_selection);
     normal.insert("A-;", action::flip_selections);
+    normal.insert("A-:", action::ensure_selection_forward);
     normal.insert(",", action::keep_primary_selection);
+    normal.insert("A-,", action::remove_primary_selection);
+    normal.insert("C", action::copy_selection_on_next_line);
+    normal.insert("A-C", action::copy_selection_on_prev_line);
+    normal.insert(")", action::rotate_selections_forward);
+    normal.insert("(", action::rotate_selections_backward);
+    normal.insert("A-)", action::rotate_selection_contents_forward);
+    normal.insert("A-(", action::rotate_selection_contents_backward);
+    normal.insert("J", action::join_selections);
+    normal.insert("A-J", action::join_selections_space);
+    normal.insert("K", action::keep_matching_selections);
+    normal.insert("A-K", action::remove_matching_selections);
 
     // Search
     normal.insert("/", action::search);
     normal.insert("?", action::rsearch);
     normal.insert("n", action::search_next);
     normal.insert("N", action::search_prev);
-
-    // LSP
-    normal.insert("K", action::hover);
 
     // 'g' goto sub-layer
     let mut goto = key_trie_node::new("Goto");
@@ -249,16 +266,35 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
 
     select.insert("x", action::extend_line_below);
     select.insert("X", action::extend_to_line_bounds);
+    select.insert("A-x", action::shrink_to_line_bounds);
     select.insert("%", action::select_all);
+    select.insert("s", action::select_regex);
+    select.insert("S", action::split_selection);
+    select.insert("A-s", action::split_selection_on_newline);
+    select.insert("A-_", action::merge_consecutive_selections);
+    select.insert("A-minus", action::merge_consecutive_selections);
+    select.insert("&", action::align_selections);
+    select.insert("_", action::trim_selections);
     select.insert(";", action::collapse_selection);
     select.insert("A-;", action::flip_selections);
+    select.insert("A-:", action::ensure_selection_forward);
     select.insert(",", action::keep_primary_selection);
+    select.insert("A-,", action::remove_primary_selection);
+    select.insert("C", action::copy_selection_on_next_line);
+    select.insert("A-C", action::copy_selection_on_prev_line);
+    select.insert(")", action::rotate_selections_forward);
+    select.insert("(", action::rotate_selections_backward);
+    select.insert("A-)", action::rotate_selection_contents_forward);
+    select.insert("A-(", action::rotate_selection_contents_backward);
+    select.insert("J", action::join_selections);
+    select.insert("A-J", action::join_selections_space);
+    select.insert("K", action::keep_matching_selections);
+    select.insert("A-K", action::remove_matching_selections);
 
     select.insert("/", action::search);
     select.insert("?", action::rsearch);
     select.insert("n", action::search_next);
     select.insert("N", action::search_prev);
-    select.insert("K", action::hover);
     select.insert_node("g", goto);
     select.insert_node("z", view.clone());
     select.insert_node("Z", view);

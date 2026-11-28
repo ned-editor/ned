@@ -279,6 +279,26 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                         app.ed.search_query = Some(trimmed.to_string());
                         app.ed.jump_search(forward);
                     }
+                } else if prefix == "select:" {
+                    let trimmed = cmd.trim();
+                    if !trimmed.is_empty() {
+                        app.ed.select_on_matches(trimmed);
+                    }
+                } else if prefix == "split:" {
+                    let trimmed = cmd.trim();
+                    if !trimmed.is_empty() {
+                        app.ed.split_on_matches(trimmed);
+                    }
+                } else if prefix == "keep:" {
+                    let trimmed = cmd.trim();
+                    if !trimmed.is_empty() {
+                        app.ed.keep_or_remove_matches(trimmed, false);
+                    }
+                } else if prefix == "remove:" {
+                    let trimmed = cmd.trim();
+                    if !trimmed.is_empty() {
+                        app.ed.keep_or_remove_matches(trimmed, true);
+                    }
                 } else {
                     let trimmed = cmd.trim();
                     let _ = app.ed.registers.write(':', vec![trimmed.to_string()]);
@@ -321,6 +341,14 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                 app.prompt = Some(prompt_state::new(":"));
             } else if msg == "/" || msg == "?" {
                 app.prompt = Some(prompt_state::new(&msg));
+            } else if msg == "prompt:select" {
+                app.prompt = Some(prompt_state::new("select:"));
+            } else if msg == "prompt:split" {
+                app.prompt = Some(prompt_state::new("split:"));
+            } else if msg == "prompt:keep" {
+                app.prompt = Some(prompt_state::new("keep:"));
+            } else if msg == "prompt:remove" {
+                app.prompt = Some(prompt_state::new("remove:"));
             } else if msg == "picker:file" {
                 let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
                 app.picker = Some(picker_state::new_file_picker(&cwd));

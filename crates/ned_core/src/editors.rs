@@ -395,18 +395,94 @@ impl editor {
             }
             action::flip_selections => {
                 let doc = self.active_doc_mut();
-                let flipped: Vec<range> = doc
-                    .selection()
-                    .ranges()
-                    .iter()
-                    .map(|r| range::new(r.head, r.anchor))
-                    .collect();
-                doc.set_selection(selection::new(flipped, doc.selection().primary_index()));
+                doc.set_selection(doc.selection().flip());
+                self.ensure_active_cursor_visible();
+            }
+            action::ensure_selection_forward => {
+                let doc = self.active_doc_mut();
+                doc.set_selection(doc.selection().ensure_forward());
+                self.ensure_active_cursor_visible();
             }
             action::keep_primary_selection => {
                 let doc = self.active_doc_mut();
-                let primary = doc.selection().primary();
-                doc.set_selection(selection::single(primary.anchor, primary.head));
+                doc.set_selection(doc.selection().clone().into_single());
+                self.ensure_active_cursor_visible();
+            }
+            action::remove_primary_selection => {
+                let doc = self.active_doc_mut();
+                doc.set_selection(doc.selection().remove_primary());
+                self.ensure_active_cursor_visible();
+            }
+            action::rotate_selections_forward => {
+                let count = self.count.take().unwrap_or(1);
+                let doc = self.active_doc_mut();
+                let mut sel = doc.selection().clone();
+                sel.cycle_primary_forward(count);
+                doc.set_selection(sel);
+                self.ensure_active_cursor_visible();
+            }
+            action::rotate_selections_backward => {
+                let count = self.count.take().unwrap_or(1);
+                let doc = self.active_doc_mut();
+                let mut sel = doc.selection().clone();
+                sel.cycle_primary_backward(count);
+                doc.set_selection(sel);
+                self.ensure_active_cursor_visible();
+            }
+            action::rotate_selection_contents_forward => {
+                let count = self.count.take().unwrap_or(1);
+                self.rotate_selection_contents(true, count);
+            }
+            action::rotate_selection_contents_backward => {
+                let count = self.count.take().unwrap_or(1);
+                self.rotate_selection_contents(false, count);
+            }
+            action::merge_consecutive_selections => {
+                let doc = self.active_doc_mut();
+                doc.set_selection(doc.selection().clone().merge_consecutive());
+                self.ensure_active_cursor_visible();
+            }
+            action::trim_selections => {
+                let doc = self.active_doc_mut();
+                doc.set_selection(doc.selection().trim_whitespace(doc.text()));
+                self.ensure_active_cursor_visible();
+            }
+            action::split_selection_on_newline => {
+                let doc = self.active_doc_mut();
+                doc.set_selection(doc.selection().split_on_newline(doc.text()));
+                self.ensure_active_cursor_visible();
+            }
+            action::shrink_to_line_bounds => {
+                self.shrink_to_line_bounds();
+            }
+            action::align_selections => {
+                self.align_selections();
+            }
+            action::join_selections => {
+                self.join_selections(true);
+            }
+            action::join_selections_space => {
+                self.join_selections(false);
+            }
+            action::copy_selection_on_next_line => {
+                let count = self.count.take().unwrap_or(1);
+                self.copy_selection_on_line(true, count);
+            }
+            action::copy_selection_on_prev_line => {
+                let count = self.count.take().unwrap_or(1);
+                self.copy_selection_on_line(false, count);
+            }
+            action::select_regex => {
+                self.status_message = Some("prompt:select".to_string());
+            }
+            action::split_selection => {
+                self.status_message = Some("prompt:split".to_string());
+            }
+            action::keep_matching_selections => {
+                self.status_message = Some("prompt:keep".to_string());
+            }
+            action::remove_matching_selections => {
+                self.status_message = Some("prompt:remove".to_string());
             }
 
             // --- Search ---
@@ -745,6 +821,54 @@ impl editor {
     #[inline]
     fn indent_lines(&mut self, unindent: bool) {
         edit_ops::indent_lines(self, unindent);
+    }
+
+    /// Rotates selected contents forward or backward.
+    #[inline]
+    fn rotate_selection_contents(&mut self, forward: bool, count: usize) {
+        edit_ops::rotate_selection_contents(self, forward, count);
+    }
+
+    /// Aligns selections in columns.
+    #[inline]
+    fn align_selections(&mut self) {
+        edit_ops::align_selections(self);
+    }
+
+    /// Joins selections with or without spaces.
+    #[inline]
+    fn join_selections(&mut self, with_space: bool) {
+        edit_ops::join_selections(self, with_space);
+    }
+
+    /// Copies selection to line above or below.
+    #[inline]
+    fn copy_selection_on_line(&mut self, forward: bool, count: usize) {
+        edit_ops::copy_selection_on_line(self, forward, count);
+    }
+
+    /// Shrinks selection to full line bounds.
+    #[inline]
+    fn shrink_to_line_bounds(&mut self) {
+        edit_ops::shrink_to_line_bounds(self);
+    }
+
+    /// Selects sub-matches of regex within selections.
+    #[inline]
+    pub fn select_on_matches(&mut self, pattern: &str) {
+        edit_ops::select_on_matches(self, pattern);
+    }
+
+    /// Splits selections on regex matches.
+    #[inline]
+    pub fn split_on_matches(&mut self, pattern: &str) {
+        edit_ops::split_on_matches(self, pattern);
+    }
+
+    /// Keeps or removes selections matching regex.
+    #[inline]
+    pub fn keep_or_remove_matches(&mut self, pattern: &str, remove: bool) {
+        edit_ops::keep_or_remove_matches(self, pattern, remove);
     }
 
     /// Jumps to next or previous match of `self.search_query` using `ned_regex`.
