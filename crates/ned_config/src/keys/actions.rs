@@ -103,7 +103,7 @@ pub enum action {
     switch_case,
     /// Convert selection to lowercase (`` ` ``).
     switch_to_lowercase,
-    /// Convert selection to uppercase (`A-` `).
+    /// Convert selection to uppercase (`A-`).
     switch_to_uppercase,
     /// Indent selected lines (`>`).
     indent,

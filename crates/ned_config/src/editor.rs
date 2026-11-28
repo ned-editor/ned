@@ -29,10 +29,12 @@ pub enum cursor_shape {
     underline,
 }
 
+/// Default cursor shape for normal and select modes (block).
 fn default_block_cursor() -> cursor_shape {
     cursor_shape::block
 }
 
+/// Default cursor shape for insert mode (bar).
 fn default_bar_cursor() -> cursor_shape {
     cursor_shape::bar
 }
@@ -110,6 +112,7 @@ pub enum statusline_element {
     separator,
 }
 
+/// Default left-aligned statusline elements.
 fn default_statusline_left() -> Vec<statusline_element> {
     vec![
         statusline_element::mode,
@@ -118,6 +121,7 @@ fn default_statusline_left() -> Vec<statusline_element> {
     ]
 }
 
+/// Default right-aligned statusline elements.
 fn default_statusline_right() -> Vec<statusline_element> {
     vec![
         statusline_element::diagnostics,
@@ -128,6 +132,7 @@ fn default_statusline_right() -> Vec<statusline_element> {
     ]
 }
 
+/// Default statusline separator string.
 fn default_separator() -> String {
     "│".to_string()
 }
@@ -176,6 +181,7 @@ pub enum gutter_element {
     spacer,
 }
 
+/// Default gutter element layout.
 fn default_gutters_layout() -> Vec<gutter_element> {
     vec![
         gutter_element::diff,
@@ -202,6 +208,7 @@ impl Default for gutters_config {
     }
 }
 
+/// Default boolean value (`true`) for serde default attributes.
 fn default_true() -> bool {
     true
 }
@@ -245,6 +252,7 @@ pub struct whitespace_config {
     pub render: String,
 }
 
+/// Default whitespace render policy ("none").
 fn default_whitespace_render() -> String {
     "none".to_string()
 }
@@ -278,12 +286,14 @@ pub struct picker_config {
     pub preview_max_bytes: usize,
 }
 
+/// Default maximum candidate items to collect in the picker.
 fn default_picker_max_items() -> usize {
     50000
 }
 
+/// Default maximum bytes to preview for a file.
 fn default_picker_preview_bytes() -> usize {
-    1048576
+    1_048_576
 }
 
 impl Default for picker_config {
@@ -296,6 +306,10 @@ impl Default for picker_config {
 }
 
 /// Language Server Protocol integration options.
+///
+/// Six boolean flags represent independent LSP features; merging them into a
+/// bitfield would reduce readability, so the excessive-bools lint is allowed.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct lsp_config {
@@ -347,22 +361,27 @@ impl Default for git_config {
     }
 }
 
+/// Default theme name ("dacctal").
 fn default_theme_name() -> String {
     "dacctal".to_string()
 }
 
+/// Default line number style (relative).
 fn default_line_number_style() -> line_number_style {
     line_number_style::relative
 }
 
+/// Default tab width (4 spaces).
 fn default_tab_width() -> usize {
     4
 }
 
+/// Default scrolloff (lines of margin above/below cursor).
 fn default_scrolloff() -> usize {
     5
 }
 
+/// Default scroll lines per scrollwheel tick.
 fn default_scroll_lines() -> usize {
     3
 }
@@ -391,6 +410,11 @@ impl config_warning {
 }
 
 /// Complete configuration for the Ned editor core.
+///
+/// Several boolean flags represent independent editor features; merging them
+/// into a bitfield would reduce readability, so the excessive-bools lint is
+/// allowed here.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct editor_config {
@@ -506,10 +530,13 @@ impl Default for editor_config {
 impl editor_config {
     /// Applies a layer of raw TOML configuration onto self, validating fields,
     /// enforcing bounds, and recording warnings for unknown or invalid values.
+    ///
+    /// This is a single large match over config keys; splitting it into smaller
+    /// helpers would thread `self` and `warnings` through many signatures
+    /// without improving clarity, so the line-limit lint is allowed here.
+    #[allow(clippy::too_many_lines)]
     pub fn apply_toml_layer(&mut self, val: &Value, warnings: &mut Vec<config_warning>) {
-        let tbl = if let Value::Table(t) = val {
-            t
-        } else {
+        let Value::Table(tbl) = val else {
             warnings.push(config_warning::new("Expected table for [editor] config"));
             return;
         };
@@ -578,7 +605,7 @@ impl editor_config {
                 "tab-width" | "tab_width" => {
                     if let Some(i) = v.as_integer() {
                         if (1..=16).contains(&i) {
-                            self.tab_width = i as usize;
+                            self.tab_width = usize::try_from(i).unwrap_or(4);
                         } else {
                             warnings.push(config_warning::new(format!(
                                 "editor.tab-width {i} out of range (1..=16)"
@@ -593,7 +620,7 @@ impl editor_config {
                 "indent-width" | "indent_width" => {
                     if let Some(i) = v.as_integer() {
                         if (1..=16).contains(&i) {
-                            self.indent_width = i as usize;
+                            self.indent_width = usize::try_from(i).unwrap_or(4);
                         } else {
                             warnings.push(config_warning::new(format!(
                                 "editor.indent-width {i} out of range (1..=16)"
@@ -617,7 +644,7 @@ impl editor_config {
                 "scrolloff" => {
                     if let Some(i) = v.as_integer() {
                         if (0..=100).contains(&i) {
-                            self.scrolloff = i as usize;
+                            self.scrolloff = usize::try_from(i).unwrap_or(5);
                         } else {
                             warnings.push(config_warning::new(format!(
                                 "editor.scrolloff {i} out of range (0..=100)"
@@ -632,7 +659,7 @@ impl editor_config {
                 "scroll-lines" | "scroll_lines" => {
                     if let Some(i) = v.as_integer() {
                         if (1..=100).contains(&i) {
-                            self.scroll_lines = i as usize;
+                            self.scroll_lines = usize::try_from(i).unwrap_or(3);
                         } else {
                             warnings.push(config_warning::new(format!(
                                 "editor.scroll-lines {i} out of range (1..=100)"
@@ -673,7 +700,7 @@ impl editor_config {
                         for item in arr {
                             if let Some(i) = item.as_integer() {
                                 if i > 0 {
-                                    r_vec.push(i as usize);
+                                    r_vec.push(usize::try_from(i).unwrap_or(0));
                                 }
                             }
                         }

@@ -38,6 +38,7 @@ impl std::error::Error for theme_error {}
 pub struct theme {
     /// Human-readable theme name.
     pub name: String,
+    /// Scope-to-style mappings resolved from the theme file.
     styles: HashMap<String, style>,
 }
 
@@ -98,10 +99,15 @@ impl theme {
     pub fn load(name: &str) -> Result<Self, theme_error> {
         let mut visited = HashSet::new();
         let value = load_theme_value(name, &mut visited)?;
-        parse_theme_from_value(name, value)
+        Ok(parse_theme_from_value(name, value))
     }
 
     /// Built-in `dacctal` theme: organic, minimalist, and premium dark aesthetic.
+    ///
+    /// This function inserts all built-in scope styles in one pass; splitting it
+    /// would fragment the palette without improving clarity, so the line-limit
+    /// lint is allowed here.
+    #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn default_dacctal() -> Self {
         let mut t = Self::new("dacctal");
@@ -275,11 +281,10 @@ fn load_theme_value(name: &str, visited: &mut HashSet<String>) -> Result<Value, 
 }
 
 /// Parses a resolved TOML value into a [`theme`] object.
-fn parse_theme_from_value(name: &str, value: Value) -> Result<theme, theme_error> {
+fn parse_theme_from_value(name: &str, value: Value) -> theme {
     let mut t = theme::new(name);
-    let table = match value {
-        Value::Table(map) => map,
-        _ => return Ok(t),
+    let Value::Table(table) = value else {
+        return t;
     };
 
     // Parse palette table if present
@@ -301,7 +306,7 @@ fn parse_theme_from_value(name: &str, value: Value) -> Result<theme, theme_error
         t.insert(k, parsed_style);
     }
 
-    Ok(t)
+    t
 }
 
 /// Resolves a single style entry from TOML, translating palette variables.

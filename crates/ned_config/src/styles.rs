@@ -107,6 +107,10 @@ impl color {
 }
 
 /// Text formatting modifiers.
+///
+/// Five boolean flags represent independent text attributes; merging them into
+/// a bitfield would reduce readability, so the excessive-bools lint is allowed.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct modifier {
     /// Bold text weight.

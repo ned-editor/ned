@@ -7,6 +7,11 @@ use super::key_types::mode;
 use super::trie::key_trie_node;
 
 /// Constructs the complete set of default Helix-equivalent modal keymaps.
+///
+/// This is a large data-driven function inserting hundreds of key bindings;
+/// splitting it would fragment the keymap table without improving clarity,
+/// so the line-limit lint is allowed here.
+#[allow(clippy::too_many_lines)]
 #[must_use]
 pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     let mut keymaps = HashMap::new();

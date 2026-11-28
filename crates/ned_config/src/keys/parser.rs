@@ -62,9 +62,8 @@ pub fn parse_key_event(s: &str) -> Option<key_event> {
 #[must_use]
 pub fn parse_keymaps_from_toml(val: &Value) -> HashMap<mode, key_trie_node> {
     let mut res = HashMap::new();
-    let table = match val.as_table() {
-        Some(t) => t,
-        None => return res,
+    let Some(table) = val.as_table() else {
+        return res;
     };
 
     let parse_mode_table = |sub_val: &Value, label: &str| -> key_trie_node {
@@ -101,6 +100,7 @@ pub fn parse_keymaps_from_toml(val: &Value) -> HashMap<mode, key_trie_node> {
     res
 }
 
+/// Recursively parses a nested keymap node from a TOML table.
 fn parse_keymap_node(val: &Value, label: &str) -> key_trie_node {
     let mut node = key_trie_node::new(label);
     if let Some(tbl) = val.as_table() {

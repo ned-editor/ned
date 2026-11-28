@@ -9,10 +9,12 @@ use toml::Value;
 use crate::dirs::{global_languages_file, runtime_languages_file, workspace_languages_file};
 use crate::merge::merge_toml;
 
+/// Default tab width (4 spaces).
 fn default_tab_width() -> usize {
     4
 }
 
+/// Default indentation unit (4 spaces).
 fn default_indent_unit() -> String {
     "    ".to_string()
 }
@@ -54,7 +56,7 @@ pub struct language_config {
     /// Highlighting scope name (e.g. "source.rust").
     #[serde(default)]
     pub scope: Option<String>,
-    /// File extensions associated with this language (e.g. ["rs"]).
+    /// File extensions associated with this language (e.g. `["rs"]`).
     #[serde(default, alias = "file-types")]
     pub file_types: Vec<String>,
     /// Name of grammar definition file in runtime/grammars/ (e.g. "rust").
@@ -63,13 +65,13 @@ pub struct language_config {
     /// Line comment prefix token (e.g. "//", "#").
     #[serde(default, alias = "comment-token")]
     pub comment_token: Option<String>,
-    /// Block comment delimiter pair (e.g. ["/*", "*/"]).
+    /// Block comment delimiter pair (e.g. `["/*", "*/"]`).
     #[serde(default, alias = "block-comment-tokens")]
     pub block_comment_tokens: Option<Vec<String>>,
     /// Indentation options and increase/decrease triggers.
     #[serde(default)]
     pub indent: Option<indent_config>,
-    /// Workspace root indicator file patterns (e.g. ["Cargo.toml", ".git"]).
+    /// Workspace root indicator file patterns (e.g. `["Cargo.toml", ".git"]`).
     #[serde(default)]
     pub roots: Vec<String>,
     /// Default tab indentation width.
@@ -80,6 +82,7 @@ pub struct language_config {
 /// Registry managing all available language definitions and file type associations.
 #[derive(Debug, Clone, Default)]
 pub struct language_registry {
+    /// Registered language definitions.
     languages: Vec<language_config>,
 }
 
