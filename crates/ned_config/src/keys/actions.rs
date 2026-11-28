@@ -221,6 +221,16 @@ pub enum action {
     // --- Match & Surround ---
     /// Jump between matching brackets (`mm`).
     match_brackets,
+    /// Select around textobject (`ma`).
+    select_textobject_around,
+    /// Select inside textobject (`mi`).
+    select_textobject_inside,
+    /// Surround selections with delimiters (`ms`).
+    surround_add,
+    /// Replace enclosing delimiters around selections (`mr`).
+    surround_replace,
+    /// Delete enclosing delimiters around selections (`md`).
+    surround_delete,
 
     // --- Window / View management ---
     /// Split view vertically (`C-w v`).

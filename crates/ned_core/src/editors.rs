@@ -44,6 +44,10 @@ pub struct editor {
     pub selected_register: Option<char>,
     /// Pending character replace operation flag (`r`).
     pub pending_replace: bool,
+    /// Pending textobject selection mode (`ma` or `mi`).
+    pub pending_textobject: Option<ned_text::textobject_mode>,
+    /// Pending surround operation (`ms`, `md`, `mr`).
+    pub pending_surround: Option<crate::surround::surround_op>,
     /// Pending key prefix tree for multi-keystroke combinations (e.g. `g`, `]`, `[`).
     pub key_prefix: Option<key_trie_node>,
     /// Ephemeral status line message.
@@ -94,6 +98,8 @@ impl editor {
             count: None,
             selected_register: None,
             pending_replace: false,
+            pending_textobject: None,
+            pending_surround: None,
             key_prefix: None,
             status_message,
             hover_popup: None,
@@ -663,7 +669,27 @@ impl editor {
 
             // --- Match & Surround ---
             action::match_brackets => {
-                // Brackets matching
+                crate::editors::edit_ops::match_bracket_jump(self);
+            }
+            action::select_textobject_around => {
+                self.pending_textobject = Some(ned_text::textobject_mode::around);
+                self.status_message = Some("match around: ".to_string());
+            }
+            action::select_textobject_inside => {
+                self.pending_textobject = Some(ned_text::textobject_mode::inside);
+                self.status_message = Some("match inside: ".to_string());
+            }
+            action::surround_add => {
+                self.pending_surround = Some(crate::surround::surround_op::add);
+                self.status_message = Some("surround add: ".to_string());
+            }
+            action::surround_replace => {
+                self.pending_surround = Some(crate::surround::surround_op::replace_first);
+                self.status_message = Some("surround replace (old): ".to_string());
+            }
+            action::surround_delete => {
+                self.pending_surround = Some(crate::surround::surround_op::delete);
+                self.status_message = Some("surround delete: ".to_string());
             }
 
             // --- Window / View management ---

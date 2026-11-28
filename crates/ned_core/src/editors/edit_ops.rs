@@ -1058,3 +1058,64 @@ pub fn keep_or_remove_matches(ed: &mut editor, pattern: &str, remove: bool) {
         ed.ensure_active_cursor_visible();
     }
 }
+
+/// Applies a text object selection to each active selection range in the editor.
+pub fn apply_textobject(ed: &mut editor, mode: ned_text::textobject_mode, ch: char, count: usize) {
+    let doc = ed.active_doc_mut();
+    let buffer = doc.text();
+    let sel = doc.selection();
+    let mut new_ranges = Vec::with_capacity(sel.len());
+    let mut any_found = false;
+
+    for r in sel.ranges() {
+        let new_range = match ch {
+            'w' => Some(ned_text::textobject_word(buffer, *r, mode, false)),
+            'W' => Some(ned_text::textobject_word(buffer, *r, mode, true)),
+            'p' => Some(ned_text::textobject_paragraph(buffer, *r, mode, count)),
+            'm' => ned_text::textobject_pair_surround_closest(buffer, *r, mode, count),
+            delimiter => ned_text::textobject_pair_surround(buffer, *r, mode, delimiter, count),
+        };
+        if let Some(nr) = new_range {
+            new_ranges.push(nr);
+            any_found = true;
+        } else {
+            new_ranges.push(*r);
+        }
+    }
+
+    if any_found {
+        let primary_idx = sel.primary_index();
+        doc.set_selection(selection::new(new_ranges, primary_idx));
+        ed.ensure_active_cursor_visible();
+    } else {
+        ed.status_message = Some("No textobject found".to_string());
+    }
+}
+
+/// Jumps cursor to the matching bracket under cursor (`mm`).
+pub fn match_bracket_jump(ed: &mut editor) {
+    let doc = ed.active_doc_mut();
+    let buffer = doc.text();
+    let sel = doc.selection();
+    let mut new_ranges = Vec::with_capacity(sel.len());
+
+    for r in sel.ranges() {
+        let pos = r.cursor(buffer);
+        let ch = buffer.char_at(pos);
+        if let Some(c) = ch {
+            let (open, close) = ned_text::get_pair(c);
+            if open != close {
+                if let Some((o, cl)) = ned_text::find_nth_pairs_pos(buffer, c, *r, 1) {
+                    let dest = if pos == o { cl } else { o };
+                    new_ranges.push(range::point(dest));
+                    continue;
+                }
+            }
+        }
+        new_ranges.push(*r);
+    }
+
+    let primary_idx = sel.primary_index();
+    doc.set_selection(selection::new(new_ranges, primary_idx));
+    ed.ensure_active_cursor_visible();
+}

@@ -11,6 +11,7 @@ pub mod line_endings;
 pub mod motions;
 pub mod ranges;
 pub mod selections;
+pub mod textobjects;
 
 pub use changes::{assoc, change_error, change_set, operation};
 pub use chars::{
@@ -29,3 +30,8 @@ pub use motions::{
 };
 pub use ranges::{direction, range};
 pub use selections::selection;
+pub use textobjects::{
+    find_nth_closest_pairs_pos, find_nth_pairs_pos, get_pair, is_escaped_at, textobject_mode,
+    textobject_pair_surround, textobject_pair_surround_closest, textobject_paragraph,
+    textobject_word,
+};

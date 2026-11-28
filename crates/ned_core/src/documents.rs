@@ -55,6 +55,28 @@ impl document {
         }
     }
 
+    /// Creates a new document from an existing text string.
+    #[must_use]
+    pub fn from_string(id: document_id, text: &str) -> Self {
+        let r = rope::from_str(text);
+        let le = ned_text::detect_line_ending(&r);
+        Self {
+            id,
+            text: r,
+            selection: selection::point(0),
+            path: None,
+            line_ending: le,
+            modified: false,
+            saved_revision: 0,
+            history: history::new(),
+            highlighter: syntax_highlighter::new(None),
+            language: None,
+            diff_hunks: Vec::new(),
+            diagnostics: Vec::new(),
+            version: 1,
+        }
+    }
+
     /// Opens an existing file from disk into a new document buffer.
     ///
     /// # Errors

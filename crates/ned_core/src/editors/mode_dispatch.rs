@@ -57,11 +57,15 @@ fn handle_modal_key(ed: &mut editor, ev: key_event) -> bool {
         let had_prefix = ed.key_prefix.is_some()
             || ed.count.is_some()
             || ed.selected_register.is_some()
-            || ed.pending_replace;
+            || ed.pending_replace
+            || ed.pending_textobject.is_some()
+            || ed.pending_surround.is_some();
         ed.key_prefix = None;
         ed.count = None;
         ed.selected_register = None;
         ed.pending_replace = false;
+        ed.pending_textobject = None;
+        ed.pending_surround = None;
         if had_prefix {
             ed.status_message = None;
             return true;
@@ -73,7 +77,91 @@ fn handle_modal_key(ed: &mut editor, ev: key_event) -> bool {
         return true;
     }
 
-    // 2. Pending replace character capture (`r`)
+    // 2. Pending textobject selection capture (`ma` / `mi`)
+    if let Some(to_mode) = ed.pending_textobject.take() {
+        ed.status_message = None;
+        let count = ed.count.take().unwrap_or(1);
+        if let key_code::char(ch) = ev.code {
+            if !ev.modifiers.ctrl && !ev.modifiers.alt {
+                crate::editors::edit_ops::apply_textobject(ed, to_mode, ch, count);
+                return true;
+            }
+        }
+        return true;
+    }
+
+    // 3. Pending surround operations (`ms`, `md`, `mr`)
+    if let Some(op) = ed.pending_surround.take() {
+        let count = ed.count.take().unwrap_or(1);
+        match op {
+            crate::surround::surround_op::add => {
+                ed.status_message = None;
+                let ch = match ev.code {
+                    key_code::char(c) if !ev.modifiers.ctrl && !ev.modifiers.alt => Some(c),
+                    key_code::enter => Some('\n'),
+                    _ => None,
+                };
+                if let Some(c) = ch {
+                    if let Err(msg) = crate::surround::surround_add(ed.active_doc_mut(), c) {
+                        ed.status_message = Some(msg.to_string());
+                    }
+                    if ed.mode == mode::select {
+                        ed.mode = mode::normal;
+                    }
+                }
+                return true;
+            }
+            crate::surround::surround_op::delete => {
+                ed.status_message = None;
+                if let key_code::char(c) = ev.code {
+                    if !ev.modifiers.ctrl && !ev.modifiers.alt {
+                        if let Err(msg) =
+                            crate::surround::surround_delete(ed.active_doc_mut(), c, count)
+                        {
+                            ed.status_message = Some(msg.to_string());
+                        }
+                        if ed.mode == mode::select {
+                            ed.mode = mode::normal;
+                        }
+                    }
+                }
+                return true;
+            }
+            crate::surround::surround_op::replace_first => {
+                if let key_code::char(c) = ev.code {
+                    if !ev.modifiers.ctrl && !ev.modifiers.alt {
+                        ed.pending_surround = Some(crate::surround::surround_op::replace_second(c));
+                        ed.count = Some(count);
+                        ed.status_message = Some(format!("surround replace '{c}' with: "));
+                        return true;
+                    }
+                }
+                ed.status_message = None;
+                return true;
+            }
+            crate::surround::surround_op::replace_second(old_ch) => {
+                ed.status_message = None;
+                if let key_code::char(new_ch) = ev.code {
+                    if !ev.modifiers.ctrl && !ev.modifiers.alt {
+                        if let Err(msg) = crate::surround::surround_replace(
+                            ed.active_doc_mut(),
+                            old_ch,
+                            new_ch,
+                            count,
+                        ) {
+                            ed.status_message = Some(msg.to_string());
+                        }
+                        if ed.mode == mode::select {
+                            ed.mode = mode::normal;
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+    }
+
+    // 4. Pending replace character capture (`r`)
     if ed.pending_replace {
         ed.pending_replace = false;
         ed.status_message = None;

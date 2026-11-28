@@ -144,6 +144,11 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     // 'm' match sub-layer
     let mut match_trie = key_trie_node::new("Match");
     match_trie.insert("m", action::match_brackets);
+    match_trie.insert("a", action::select_textobject_around);
+    match_trie.insert("i", action::select_textobject_inside);
+    match_trie.insert("s", action::surround_add);
+    match_trie.insert("r", action::surround_replace);
+    match_trie.insert("d", action::surround_delete);
     normal.insert_node("m", match_trie.clone());
 
     // 'C-w' window sub-layer
