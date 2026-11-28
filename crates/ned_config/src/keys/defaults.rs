@@ -170,6 +170,7 @@ pub fn default_keymaps() -> HashMap<mode, key_trie_node> {
     space.insert("b", action::buffer_picker);
     space.insert("d", action::diagnostics_picker);
     space.insert("D", action::diagnostics_picker);
+    space.insert("/", action::global_search);
     space.insert("k", action::hover);
     space.insert("y", action::yank);
     space.insert("p", action::paste_after);

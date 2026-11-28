@@ -145,6 +145,8 @@ pub enum action {
     buffer_picker,
     /// Open diagnostics picker (`space d`).
     diagnostics_picker,
+    /// Open workspace global search picker (`space /`).
+    global_search,
 
     // --- File operations ---
     /// Save current buffer (`:w`).

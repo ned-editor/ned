@@ -474,6 +474,9 @@ impl editor {
             action::file_picker => {
                 self.status_message = Some("picker:file".to_string());
             }
+            action::global_search => {
+                self.status_message = Some("picker:global_search".to_string());
+            }
             action::buffer_picker => {
                 self.status_message = Some("picker:buffer".to_string());
             }

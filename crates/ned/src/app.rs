@@ -210,8 +210,27 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
                 app.picker = None;
             }
             picker_action::select(item) => {
+                let search_target = if p.is_global_search {
+                    p.selected_search_result().cloned()
+                } else {
+                    None
+                };
                 app.picker = None;
-                if p.title == "Diagnostics" {
+                if let Some(res) = search_target {
+                    if let Err(e) = app.ed.open_file(&res.path) {
+                        app.ed.status_message = Some(format!("error opening {}: {e}", res.path));
+                    } else {
+                        let doc = app.ed.active_doc_mut();
+                        let line_idx = res.line.saturating_sub(1);
+                        let col_idx = res.col.saturating_sub(1);
+                        let line_byte = doc.text().line_to_byte(line_idx).unwrap_or(0);
+                        let line_char = doc.text().byte_to_char(line_byte);
+                        let target_char = (line_char + col_idx).min(doc.text().char_len());
+                        let target_end = (target_char + res.match_len).min(doc.text().char_len());
+                        doc.set_selection(ned_text::selection::single(target_char, target_end));
+                        app.ed.ensure_active_cursor_visible();
+                    }
+                } else if p.title == "Diagnostics" {
                     if let Some((loc, msg)) = item.split_once("] ") {
                         if let Some(coords) = loc.split_whitespace().next() {
                             if let Some((l_str, c_str)) = coords.split_once(':') {
@@ -303,6 +322,9 @@ fn handle_key_event(app: &mut app_state, key_ev: &KeyEvent) {
             } else if msg == "picker:file" {
                 let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
                 app.picker = Some(picker_state::new_file_picker(&cwd));
+            } else if msg == "picker:global_search" {
+                let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+                app.picker = Some(picker_state::new_global_search_picker(&cwd));
             } else if msg == "picker:buffer" {
                 let mut buffers = Vec::new();
                 for doc in app.ed.documents.values() {

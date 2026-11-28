@@ -39,6 +39,12 @@ pub struct picker_state {
     pub show_preview: bool,
     /// Cached preview contents keyed by item path string.
     pub preview_cache: HashMap<String, preview_content>,
+    /// Search results collected during global workspace search.
+    pub search_results: Vec<crate::global_search::search_result>,
+    /// Optional regex error message encountered during global workspace search.
+    pub search_error: Option<String>,
+    /// Whether this picker is performing dynamic global workspace regex search.
+    pub is_global_search: bool,
 }
 
 impl picker_state {
@@ -61,6 +67,9 @@ impl picker_state {
             root_dir: Some(root_dir.to_path_buf()),
             show_preview: true,
             preview_cache: HashMap::new(),
+            search_results: Vec::new(),
+            search_error: None,
+            is_global_search: false,
         };
         state.ensure_preview_loaded();
         state
@@ -80,6 +89,9 @@ impl picker_state {
             root_dir,
             show_preview: true,
             preview_cache: HashMap::new(),
+            search_results: Vec::new(),
+            search_error: None,
+            is_global_search: false,
         };
         state.ensure_preview_loaded();
         state
@@ -98,7 +110,35 @@ impl picker_state {
             root_dir: None,
             show_preview: false,
             preview_cache: HashMap::new(),
+            search_results: Vec::new(),
+            search_error: None,
+            is_global_search: false,
         }
+    }
+
+    /// Creates a new global search picker for regex text search across `root_dir`.
+    #[must_use]
+    pub fn new_global_search_picker(root_dir: &Path) -> Self {
+        Self {
+            title: "Global Search".to_string(),
+            query: String::new(),
+            items: Vec::new(),
+            filtered: Vec::new(),
+            selected: 0,
+            root_dir: Some(root_dir.to_path_buf()),
+            show_preview: true,
+            preview_cache: HashMap::new(),
+            search_results: Vec::new(),
+            search_error: None,
+            is_global_search: true,
+        }
+    }
+
+    /// Returns the currently selected global search result, if any.
+    #[must_use]
+    pub fn selected_search_result(&self) -> Option<&crate::global_search::search_result> {
+        let filtered_idx = *self.filtered.get(self.selected)?;
+        self.search_results.get(filtered_idx)
     }
 
     /// Returns the currently selected item string, if any.
@@ -116,7 +156,11 @@ impl picker_state {
         if !self.show_preview {
             return None;
         }
-        let item = self.selected_item()?;
+        let item = if self.is_global_search {
+            self.selected_search_result().map(|r| r.path.as_str())?
+        } else {
+            self.selected_item()?
+        };
         if let Some(cached) = self.preview_cache.get(item) {
             return Some(cached.clone());
         }
@@ -168,8 +212,12 @@ impl picker_state {
         if !self.show_preview {
             return;
         }
-        if let Some(item) = self.selected_item() {
-            let item_str = item.to_string();
+        let target_item = if self.is_global_search {
+            self.selected_search_result().map(|r| r.path.clone())
+        } else {
+            self.selected_item().map(str::to_string)
+        };
+        if let Some(item_str) = target_item {
             if !self.preview_cache.contains_key(&item_str) {
                 if self.preview_cache.len() >= 2 {
                     self.preview_cache.clear();
@@ -274,6 +322,35 @@ impl picker_state {
 
     /// Re-evaluates matches against `self.query`.
     fn refilter(&mut self) {
+        if self.is_global_search {
+            self.search_error = None;
+            if self.query.is_empty() {
+                self.search_results.clear();
+                self.items.clear();
+                self.filtered.clear();
+            } else if let Some(root) = self.root_dir.as_deref() {
+                match crate::global_search::search_workspace(root, &self.query, 10_000) {
+                    Ok(results) => {
+                        self.items = results
+                            .iter()
+                            .map(crate::global_search::search_result::format_display)
+                            .collect();
+                        self.filtered = (0..self.items.len()).collect();
+                        self.search_results = results;
+                    }
+                    Err(err) => {
+                        self.search_error = Some(err);
+                        self.search_results.clear();
+                        self.items.clear();
+                        self.filtered.clear();
+                    }
+                }
+            }
+            self.selected = 0;
+            self.ensure_preview_loaded();
+            return;
+        }
+
         self.filtered = filter::filter_candidates(&self.query, &self.items);
         self.selected = 0;
         self.ensure_preview_loaded();

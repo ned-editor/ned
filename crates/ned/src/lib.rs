@@ -9,6 +9,7 @@
 
 pub mod app;
 pub mod cli;
+pub mod global_search;
 pub mod input_mapping;
 pub mod picker;
 pub mod prompt;

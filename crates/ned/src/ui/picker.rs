@@ -70,15 +70,24 @@ pub fn render_picker(
         picker_width.saturating_sub(12),
     );
 
-    let count_str = format!("{}/{}", picker.filtered.len(), picker.items.len());
+    let count_str = if let Some(err) = &picker.search_error {
+        format!("Regex error: {err}")
+    } else {
+        format!("{}/{}", picker.filtered.len(), picker.items.len())
+    };
     let count_col = (picker_width - 1).saturating_sub(count_str.len() as u16 + 1);
     if count_col > 4 + picker.query.chars().count() as u16 {
+        let count_style = if picker.search_error.is_some() {
+            merge_style(default_style, style_for_scope(theme, "diagnostic.error"))
+        } else {
+            text_style
+        };
         draw_str(
             screen,
             count_col,
             1,
             &count_str,
-            &text_style,
+            &count_style,
             picker_width - 1,
         );
     }
@@ -97,6 +106,23 @@ pub fn render_picker(
     } else {
         0
     };
+
+    if let Some(err) = &picker.search_error {
+        if picker.filtered.is_empty() && list_height > 0 {
+            let err_style = merge_style(
+                default_style,
+                style_for_scope(theme, "diagnostic.error"),
+            );
+            draw_str(
+                screen,
+                2,
+                3,
+                &format!("Regex error: {err}"),
+                &err_style,
+                picker_width.saturating_sub(4),
+            );
+        }
+    }
 
     for i in 0..list_height {
         let row_y = 3 + i as u16;
