@@ -262,31 +262,22 @@ impl document {
     /// # Errors
     /// Returns `Err("diff too large")` if either base content or document text exceeds 1 MiB or 20,000 lines.
     pub fn reload_diff(&mut self) -> Result<(), &'static str> {
-        let path = match &self.path {
-            Some(p) => p,
-            None => {
-                self.diff_too_large = false;
-                self.diff_hunks.clear();
-                return Ok(());
-            }
+        let path = if let Some(p) = &self.path { p } else {
+            self.diff_too_large = false;
+            self.diff_hunks.clear();
+            return Ok(());
         };
 
-        let repo_root = match discover_repo(path) {
-            Some(r) => r,
-            None => {
-                self.diff_too_large = false;
-                self.diff_hunks.clear();
-                return Ok(());
-            }
+        let repo_root = if let Some(r) = discover_repo(path) { r } else {
+            self.diff_too_large = false;
+            self.diff_hunks.clear();
+            return Ok(());
         };
 
-        let relative_path = match path.strip_prefix(&repo_root) {
-            Ok(rel) => rel,
-            Err(_) => {
-                self.diff_too_large = false;
-                self.diff_hunks.clear();
-                return Ok(());
-            }
+        let relative_path = if let Ok(rel) = path.strip_prefix(&repo_root) { rel } else {
+            self.diff_too_large = false;
+            self.diff_hunks.clear();
+            return Ok(());
         };
 
         if self.text.byte_len() > 1024 * 1024 || self.text.line_count() > 20_000 {

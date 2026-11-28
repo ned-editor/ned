@@ -23,10 +23,10 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
                     let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
                     let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
                     if out.status.success() {
-                        let msg = if !stdout.is_empty() {
-                            stdout
-                        } else {
+                        let msg = if stdout.is_empty() {
                             "Command run".to_string()
+                        } else {
+                            stdout
                         };
                         let first_line = msg.lines().next().unwrap_or("").to_string();
                         if msg.contains('\n') {
@@ -34,10 +34,10 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
                         }
                         ed.status_message = Some(first_line);
                     } else {
-                        let err = if !stderr.is_empty() {
-                            stderr
-                        } else {
+                        let err = if stderr.is_empty() {
                             format!("exit code {}", out.status)
+                        } else {
+                            stderr
                         };
                         ed.status_message = Some(format!("shell error: {err}"));
                     }
@@ -155,7 +155,7 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             }
         }
         Ok(editor_command::quit_all { force }) => {
-            let any_modified = ed.documents.values().any(|d| d.is_modified());
+            let any_modified = ed.documents.values().any(super::super::documents::document::is_modified);
             if any_modified && !force {
                 ed.status_message =
                     Some("unsaved changes in open buffers (use :qa! to force)".to_string());
@@ -224,7 +224,7 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             }
         }
         Ok(editor_command::buffer_close_all { force }) => {
-            let any_modified = ed.documents.values().any(|d| d.is_modified());
+            let any_modified = ed.documents.values().any(super::super::documents::document::is_modified);
             if any_modified && !force {
                 ed.status_message =
                     Some("buffers have unsaved changes (use :bca! to force)".to_string());
@@ -379,9 +379,7 @@ pub fn execute_command(ed: &mut editor, cmd_str: &str) {
             }
         }
         Ok(editor_command::show_directory) => {
-            let cwd = std::env::current_dir()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|_| "unknown".to_string());
+            let cwd = std::env::current_dir().map_or_else(|_| "unknown".to_string(), |p| p.display().to_string());
             ed.status_message = Some(cwd);
         }
         Ok(editor_command::character_info) => {

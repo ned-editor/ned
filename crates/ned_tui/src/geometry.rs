@@ -384,7 +384,7 @@ fn test_window_intersection() {
     assert_eq!(crop.width, (0));
     assert_eq!(crop.height, (0));
     let crop_commutative = c & a;
-    assert_eq!(crop_commutative, crop)
+    assert_eq!(crop_commutative, crop);
 }
 
 #[test]

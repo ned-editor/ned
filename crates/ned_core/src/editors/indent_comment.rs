@@ -192,8 +192,7 @@ pub fn maybe_decrease_indent_on_closer(ed: &mut editor, ch: char) -> bool {
             let tw = lang
                 .indent
                 .as_ref()
-                .map(|i| i.tab_width)
-                .unwrap_or(lang.tab_width);
+                .map_or(lang.tab_width, |i| i.tab_width);
             let dec = lang.indent.as_ref().map(|i| i.decrease.as_slice());
             (dec, tw)
         }
@@ -326,7 +325,7 @@ pub fn toggle_line_comment(ed: &mut editor) {
             let indent_bytes: usize = line_str
                 .chars()
                 .take(indent_len)
-                .map(|c| c.len_utf8())
+                .map(char::len_utf8)
                 .sum();
             let remainder = &line_str[indent_bytes..];
 
@@ -434,11 +433,7 @@ pub fn toggle_block_comment(ed: &mut editor) {
                 let open_rel_char = text[..open_rel_byte].chars().count();
                 let open_tok_chars = open_token.chars().count();
                 let after_open_byte = open_rel_byte + open_token.len();
-                let open_del_extra = if text[after_open_byte..].starts_with(' ') {
-                    1
-                } else {
-                    0
-                };
+                let open_del_extra = usize::from(text[after_open_byte..].starts_with(' '));
                 let open_del_chars = open_tok_chars + open_del_extra;
 
                 let open_start = from + open_rel_char;
@@ -449,11 +444,7 @@ pub fn toggle_block_comment(ed: &mut editor) {
                 last_pos = open_start + open_del_chars;
 
                 if let Some(close_rel_byte) = text.rfind(&close_token) {
-                    let before_close_extra = if text[..close_rel_byte].ends_with(' ') {
-                        1
-                    } else {
-                        0
-                    };
+                    let before_close_extra = usize::from(text[..close_rel_byte].ends_with(' '));
                     let close_rel_char =
                         text[..close_rel_byte].chars().count() - before_close_extra;
                     let close_del_chars = close_token.chars().count() + before_close_extra;

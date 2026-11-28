@@ -64,7 +64,41 @@ pub fn textobject_word(buffer: &rope, r: range, mode: textobject_mode, long: boo
     }
     let pos = r.cursor(buffer).min(len.saturating_sub(1));
 
-    let (word_start, word_end) = if !long {
+    let (word_start, word_end) = if long {
+        let ch = match buffer.char_at(pos) {
+            Some(c) => c,
+            None => return r,
+        };
+        if char_is_whitespace(ch) || char_is_line_ending(ch) {
+            (pos, pos)
+        } else {
+            let mut start = pos;
+            while start > 0 {
+                if let Some(c) = buffer.char_at(start - 1) {
+                    if !char_is_whitespace(c) && !char_is_line_ending(c) {
+                        start -= 1;
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            let mut end = pos + 1;
+            while end < len {
+                if let Some(c) = buffer.char_at(end) {
+                    if !char_is_whitespace(c) && !char_is_line_ending(c) {
+                        end += 1;
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            (start, end)
+        }
+    } else {
         let ch = match buffer.char_at(pos) {
             Some(c) => c,
             None => return r,
@@ -89,40 +123,6 @@ pub fn textobject_word(buffer: &rope, r: range, mode: textobject_mode, long: boo
             while end < len {
                 if let Some(c) = buffer.char_at(end) {
                     if categorize_char(c) == cat {
-                        end += 1;
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-            (start, end)
-        }
-    } else {
-        let ch = match buffer.char_at(pos) {
-            Some(c) => c,
-            None => return r,
-        };
-        if char_is_whitespace(ch) || char_is_line_ending(ch) {
-            (pos, pos)
-        } else {
-            let mut start = pos;
-            while start > 0 {
-                if let Some(c) = buffer.char_at(start - 1) {
-                    if !char_is_whitespace(c) && !char_is_line_ending(c) {
-                        start -= 1;
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-            let mut end = pos + 1;
-            while end < len {
-                if let Some(c) = buffer.char_at(end) {
-                    if !char_is_whitespace(c) && !char_is_line_ending(c) {
                         end += 1;
                     } else {
                         break;
@@ -265,71 +265,7 @@ pub fn find_nth_pairs_pos(
     let (open, close) = get_pair(ch);
     let count = count.max(1);
 
-    if open != close {
-        // Asymmetric pair (parentheses, brackets, braces, angle brackets)
-        let search_start = r.from();
-        let min_bound = search_start.saturating_sub(MAX_SCAN_CHARS);
-
-        let mut open_pos = None;
-        let mut depth = 0;
-        let mut found_count = 0;
-
-        // If cursor is right on the open delimiter, include it
-        let mut idx = (search_start + 1).min(len);
-        while idx > min_bound {
-            idx -= 1;
-            if is_escaped_at(buffer, idx) {
-                continue;
-            }
-            if let Some(c) = buffer.char_at(idx) {
-                if c == close && idx != search_start {
-                    depth += 1;
-                } else if c == open {
-                    if depth == 0 {
-                        found_count += 1;
-                        if found_count == count {
-                            open_pos = Some(idx);
-                            break;
-                        }
-                    } else {
-                        depth -= 1;
-                    }
-                }
-            }
-        }
-
-        let o_pos = open_pos?;
-
-        // Scan forward from `o_pos + 1` to find the exact matching closing delimiter
-        let max_bound = (o_pos + MAX_SCAN_CHARS).min(len);
-        let mut close_depth = 1;
-        let mut close_pos = None;
-
-        for f_idx in (o_pos + 1)..max_bound {
-            if is_escaped_at(buffer, f_idx) {
-                continue;
-            }
-            if let Some(c) = buffer.char_at(f_idx) {
-                if c == open {
-                    close_depth += 1;
-                } else if c == close {
-                    close_depth -= 1;
-                    if close_depth == 0 {
-                        close_pos = Some(f_idx);
-                        break;
-                    }
-                }
-            }
-        }
-
-        let c_pos = close_pos?;
-        // Verify enclosing range condition
-        if o_pos <= r.from() && c_pos >= r.to().saturating_sub(1) {
-            Some((o_pos, c_pos))
-        } else {
-            None
-        }
-    } else {
+    if open == close {
         // Symmetric pair (single quotes, double quotes, backticks)
         let pos = r.cursor(buffer).min(len.saturating_sub(1));
         let byte_pos = buffer.char_to_byte(pos);
@@ -398,6 +334,70 @@ pub fn find_nth_pairs_pos(
 
         let idx = (count - 1).min(enclosing.len() - 1);
         Some(enclosing[idx])
+    } else {
+        // Asymmetric pair (parentheses, brackets, braces, angle brackets)
+        let search_start = r.from();
+        let min_bound = search_start.saturating_sub(MAX_SCAN_CHARS);
+
+        let mut open_pos = None;
+        let mut depth = 0;
+        let mut found_count = 0;
+
+        // If cursor is right on the open delimiter, include it
+        let mut idx = (search_start + 1).min(len);
+        while idx > min_bound {
+            idx -= 1;
+            if is_escaped_at(buffer, idx) {
+                continue;
+            }
+            if let Some(c) = buffer.char_at(idx) {
+                if c == close && idx != search_start {
+                    depth += 1;
+                } else if c == open {
+                    if depth == 0 {
+                        found_count += 1;
+                        if found_count == count {
+                            open_pos = Some(idx);
+                            break;
+                        }
+                    } else {
+                        depth -= 1;
+                    }
+                }
+            }
+        }
+
+        let o_pos = open_pos?;
+
+        // Scan forward from `o_pos + 1` to find the exact matching closing delimiter
+        let max_bound = (o_pos + MAX_SCAN_CHARS).min(len);
+        let mut close_depth = 1;
+        let mut close_pos = None;
+
+        for f_idx in (o_pos + 1)..max_bound {
+            if is_escaped_at(buffer, f_idx) {
+                continue;
+            }
+            if let Some(c) = buffer.char_at(f_idx) {
+                if c == open {
+                    close_depth += 1;
+                } else if c == close {
+                    close_depth -= 1;
+                    if close_depth == 0 {
+                        close_pos = Some(f_idx);
+                        break;
+                    }
+                }
+            }
+        }
+
+        let c_pos = close_pos?;
+        // Verify enclosing range condition
+        if o_pos <= r.from() && c_pos >= r.to().saturating_sub(1) {
+            Some((o_pos, c_pos))
+        } else {
+            None
+        }
     }
 }
 

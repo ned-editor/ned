@@ -1,4 +1,4 @@
-//! Performance and stress benchmarks for ned_regex.
+//! Performance and stress benchmarks for `ned_regex`.
 
 use ned_regex::regex;
 use std::time::Instant;
@@ -47,8 +47,7 @@ fn test_hardcore_regex_performance() {
     let is_match = re3.is_match(&pathological_input);
     let elapsed = start.elapsed();
     println!(
-        "3. ReDoS immunity test (a+)+b on 100 'a's without match: is_match={} in {:?}",
-        is_match, elapsed
+        "3. ReDoS immunity test (a+)+b on 100 'a's without match: is_match={is_match} in {elapsed:?}"
     );
     assert!(!is_match);
 
@@ -92,8 +91,7 @@ fn test_hardcore_regex_performance() {
     let scan_time5 = start_scan5.elapsed();
 
     println!(
-        "5. Word boundary & range query (\\b[a-z]{{4,6}}\\b):\n   - Compile time: {:?}\n   - Total matches: {}\n   - Scan time: {:?}",
-        compile_time5, count5, scan_time5
+        "5. Word boundary & range query (\\b[a-z]{{4,6}}\\b):\n   - Compile time: {compile_time5:?}\n   - Total matches: {count5}\n   - Scan time: {scan_time5:?}"
     );
 
     println!("=== ALL HARDCORE REGEX PERFORMANCE CHECKS PASSED ===\n");

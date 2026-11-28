@@ -129,8 +129,7 @@ fn probe_provider() -> provider_kind {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
     {
         return provider_kind::wayland;
     }
@@ -141,8 +140,7 @@ fn probe_provider() -> provider_kind {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
     {
         return provider_kind::xclip;
     }
@@ -153,8 +151,7 @@ fn probe_provider() -> provider_kind {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .is_ok_and(|s| s.success())
     {
         return provider_kind::xsel;
     }
