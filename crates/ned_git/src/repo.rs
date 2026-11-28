@@ -73,7 +73,8 @@ fn normalize_git_path(relative_path: &Path) -> String {
 
 /// fetches the committed base content of a file using `git show :<path>`.
 ///
-/// # errors
+/// # Errors
+///
 /// returns `io::Error` if git command fails or file is not in git index.
 pub fn fetch_file_base(repo_root: &Path, relative_path: &Path) -> Result<String> {
     let git_path = normalize_git_path(relative_path);
@@ -94,7 +95,8 @@ pub fn fetch_file_base(repo_root: &Path, relative_path: &Path) -> Result<String>
 
 /// queries the git status of a specific file.
 ///
-/// # errors
+/// # Errors
+///
 /// returns `io::Error` if git execution fails.
 pub fn query_file_status(repo_root: &Path, relative_path: &Path) -> Result<file_status> {
     let git_path = normalize_git_path(relative_path);

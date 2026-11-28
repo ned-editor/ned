@@ -26,17 +26,25 @@ pub struct hunk {
     pub kind: diff_tag,
 }
 
+/// the nature of a single edit step in the myers diff trace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum edit_action {
+    /// the line is unchanged between base and current.
     keep,
+    /// the line was inserted in the current buffer.
     insert,
+    /// the line was deleted from the base buffer.
     delete,
 }
 
+/// a single step in the myers diff edit script.
 #[derive(Debug, Clone, Copy)]
 struct edit_step {
+    /// the kind of edit this step represents.
     action: edit_action,
+    /// index into the base text.
     base_index: usize,
+    /// index into the current text.
     current_index: usize,
 }
 
@@ -79,9 +87,9 @@ fn split_lines(text: &str) -> Vec<&str> {
 
 /// implements the myers diff algorithm returning list of edit steps.
 fn myers_diff(base: &[&str], current: &[&str]) -> Vec<edit_step> {
-    let n = base.len();
-    let m = current.len();
-    let max = n + m;
+    let base_len = base.len();
+    let current_len = current.len();
+    let max = base_len + current_len;
 
     if max == 0 {
         return Vec::new();
@@ -91,33 +99,33 @@ fn myers_diff(base: &[&str], current: &[&str]) -> Vec<edit_step> {
     let mut v = vec![0isize; 2 * max + 1];
     let mut trace: Vec<Vec<isize>> = Vec::new();
 
-    for d in 0..=max {
+    for distance in 0..=max {
         trace.push(v.clone());
-        let d_isize = isize::try_from(d).unwrap_or(0);
-        let mut k = -d_isize;
-        while k <= d_isize {
-            let k_idx = usize::try_from(k + offset).unwrap_or(0);
-            let mut x = if k == -d_isize || (k != d_isize && v[k_idx - 1] < v[k_idx + 1]) {
+        let d_isize = isize::try_from(distance).unwrap_or(0);
+        let mut diagonal = -d_isize;
+        while diagonal <= d_isize {
+            let k_idx = usize::try_from(diagonal + offset).unwrap_or(0);
+            let mut x_pos = if diagonal == -d_isize || (diagonal != d_isize && v[k_idx - 1] < v[k_idx + 1]) {
                 v[k_idx + 1]
             } else {
                 v[k_idx - 1] + 1
             };
-            let mut y = x - k;
+            let mut y_pos = x_pos - diagonal;
 
-            while x < isize::try_from(n).unwrap_or(0)
-                && y < isize::try_from(m).unwrap_or(0)
-                && base[usize::try_from(x).unwrap_or(0)] == current[usize::try_from(y).unwrap_or(0)]
+            while x_pos < isize::try_from(base_len).unwrap_or(0)
+                && y_pos < isize::try_from(current_len).unwrap_or(0)
+                && base[usize::try_from(x_pos).unwrap_or(0)] == current[usize::try_from(y_pos).unwrap_or(0)]
             {
-                x += 1;
-                y += 1;
+                x_pos += 1;
+                y_pos += 1;
             }
 
-            v[k_idx] = x;
+            v[k_idx] = x_pos;
 
-            if x >= isize::try_from(n).unwrap_or(0) && y >= isize::try_from(m).unwrap_or(0) {
+            if x_pos >= isize::try_from(base_len).unwrap_or(0) && y_pos >= isize::try_from(current_len).unwrap_or(0) {
                 return backtrack_trace(&trace, base, current, offset);
             }
-            k += 2;
+            diagonal += 2;
         }
     }
 
@@ -132,48 +140,48 @@ fn backtrack_trace(
     offset: isize,
 ) -> Vec<edit_step> {
     let mut edits = Vec::new();
-    let mut x = isize::try_from(base.len()).unwrap_or(0);
-    let mut y = isize::try_from(current.len()).unwrap_or(0);
+    let mut x_pos = isize::try_from(base.len()).unwrap_or(0);
+    let mut y_pos = isize::try_from(current.len()).unwrap_or(0);
 
-    for (d, v) in trace.iter().enumerate().rev() {
-        let d_isize = isize::try_from(d).unwrap_or(0);
-        let k = x - y;
-        let k_idx = usize::try_from(k + offset).unwrap_or(0);
+    for (distance, v) in trace.iter().enumerate().rev() {
+        let d_isize = isize::try_from(distance).unwrap_or(0);
+        let diagonal = x_pos - y_pos;
+        let k_idx = usize::try_from(diagonal + offset).unwrap_or(0);
 
-        let prev_k = if k == -d_isize || (k != d_isize && v[k_idx - 1] < v[k_idx + 1]) {
-            k + 1
+        let prev_diagonal = if diagonal == -d_isize || (diagonal != d_isize && v[k_idx - 1] < v[k_idx + 1]) {
+            diagonal + 1
         } else {
-            k - 1
+            diagonal - 1
         };
 
-        let prev_k_idx = usize::try_from(prev_k + offset).unwrap_or(0);
+        let prev_k_idx = usize::try_from(prev_diagonal + offset).unwrap_or(0);
         let prev_x = v[prev_k_idx];
-        let prev_y = prev_x - prev_k;
+        let prev_y = prev_x - prev_diagonal;
 
-        while x > prev_x && y > prev_y {
-            x -= 1;
-            y -= 1;
+        while x_pos > prev_x && y_pos > prev_y {
+            x_pos -= 1;
+            y_pos -= 1;
             edits.push(edit_step {
                 action: edit_action::keep,
-                base_index: usize::try_from(x).unwrap_or(0),
-                current_index: usize::try_from(y).unwrap_or(0),
+                base_index: usize::try_from(x_pos).unwrap_or(0),
+                current_index: usize::try_from(y_pos).unwrap_or(0),
             });
         }
 
         if d_isize > 0 {
-            if x == prev_x {
-                y -= 1;
+            if x_pos == prev_x {
+                y_pos -= 1;
                 edits.push(edit_step {
                     action: edit_action::insert,
-                    base_index: usize::try_from(x).unwrap_or(0),
-                    current_index: usize::try_from(y).unwrap_or(0),
+                    base_index: usize::try_from(x_pos).unwrap_or(0),
+                    current_index: usize::try_from(y_pos).unwrap_or(0),
                 });
-            } else if y == prev_y {
-                x -= 1;
+            } else if y_pos == prev_y {
+                x_pos -= 1;
                 edits.push(edit_step {
                     action: edit_action::delete,
-                    base_index: usize::try_from(x).unwrap_or(0),
-                    current_index: usize::try_from(y).unwrap_or(0),
+                    base_index: usize::try_from(x_pos).unwrap_or(0),
+                    current_index: usize::try_from(y_pos).unwrap_or(0),
                 });
             }
         }

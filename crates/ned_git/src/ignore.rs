@@ -143,6 +143,7 @@ pub fn load_gitignore(dir: &Path) -> Vec<git_ignore_rule> {
 /// Hierarchical stack of gitignore rules tracking nested directories.
 #[derive(Debug, Clone, Default)]
 pub struct git_ignore_stack {
+    /// directory scopes with their associated ignore rules, outermost first.
     scopes: Vec<(PathBuf, Vec<git_ignore_rule>)>,
 }
 
