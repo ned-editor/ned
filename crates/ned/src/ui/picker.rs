@@ -109,10 +109,7 @@ pub fn render_picker(
 
     if let Some(err) = &picker.search_error {
         if picker.filtered.is_empty() && list_height > 0 {
-            let err_style = merge_style(
-                default_style,
-                style_for_scope(theme, "diagnostic.error"),
-            );
+            let err_style = merge_style(default_style, style_for_scope(theme, "diagnostic.error"));
             draw_str(
                 screen,
                 2,

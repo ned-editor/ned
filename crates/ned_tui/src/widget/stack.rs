@@ -2,9 +2,7 @@ use std::ops::DerefMut;
 
 use crate::{
     geometry::{point, window},
-    widget::{
-        AnchorPlacementEnabled, AppEvent, Event, Painter, Screen, Widget, Window,
-    },
+    widget::{AnchorPlacementEnabled, AppEvent, Event, Painter, Screen, Widget, Window},
 };
 
 /// A stack layout widget

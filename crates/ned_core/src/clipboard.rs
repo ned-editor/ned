@@ -394,8 +394,7 @@ pub fn write(target: clipboard_target, values: &[String]) -> Result<(), String> 
     match target {
         clipboard_target::clipboard => {
             *GLOBAL_CLIPBOARD.cached_clipboard_joined.lock().unwrap() = Some(joined);
-            *GLOBAL_CLIPBOARD.cached_clipboard_pieces.lock().unwrap() =
-                Some(values.to_vec());
+            *GLOBAL_CLIPBOARD.cached_clipboard_pieces.lock().unwrap() = Some(values.to_vec());
         }
         clipboard_target::primary => {
             *GLOBAL_CLIPBOARD.cached_primary_joined.lock().unwrap() = Some(joined);

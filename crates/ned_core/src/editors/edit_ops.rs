@@ -329,11 +329,14 @@ pub fn paste_register(ed: &mut editor, after: bool) {
         Some(v) if !v.is_empty() => v,
         _ => {
             if reg == '+' {
-                if let Err(e) = crate::clipboard::read(crate::clipboard::clipboard_target::clipboard) {
+                if let Err(e) =
+                    crate::clipboard::read(crate::clipboard::clipboard_target::clipboard)
+                {
                     ed.status_message = Some(e);
                 }
             } else if reg == '*' {
-                if let Err(e) = crate::clipboard::read(crate::clipboard::clipboard_target::primary) {
+                if let Err(e) = crate::clipboard::read(crate::clipboard::clipboard_target::primary)
+                {
                     ed.status_message = Some(e);
                 }
             }
